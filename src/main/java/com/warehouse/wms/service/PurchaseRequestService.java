@@ -43,9 +43,20 @@ public class PurchaseRequestService {
         
         // Get the latest sequence number for today
         Integer maxSequence = purchaseRequestRepository.findMaxSequenceForDate(datePart);
+        
+        // If maxSequence is null, start from 1
         int nextSequence = (maxSequence != null) ? maxSequence + 1 : 1;
         
-        return String.format("%s-%04d", prefix, nextSequence);
+        // Generate the PR number
+        String prNumber = String.format("%s-%04d", prefix, nextSequence);
+        
+        // Safety check: If this PR number already exists, increment until we find a unique one
+        while (purchaseRequestRepository.existsByPrNumber(prNumber)) {
+            nextSequence++;
+            prNumber = String.format("%s-%04d", prefix, nextSequence);
+        }
+        
+        return prNumber;
     }
 
     // Create new purchase request

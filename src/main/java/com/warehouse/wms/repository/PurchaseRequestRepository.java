@@ -16,31 +16,27 @@ import java.util.List;
 @Repository
 public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest, Long> {
     
-    // Find by status
     List<PurchaseRequest> findByStatus(RequestStatus status);
     
-    // Find by priority
     List<PurchaseRequest> findByPriority(Priority priority);
     
-    // Find by requestedBy (String - employee name) - REMOVE the Long version
     List<PurchaseRequest> findByRequestedBy(String requestedBy);
     
-    // Find by requestedBy containing (for search)
     List<PurchaseRequest> findByRequestedByContaining(String requestedBy);
     
-    // Find by department
     List<PurchaseRequest> findByDepartment(String department);
     
-    // Find by warehouse
     List<PurchaseRequest> findByWarehouse(String warehouse);
     
-    // Page by status
     Page<PurchaseRequest> findByStatus(RequestStatus status, Pageable pageable);
     
-    // Count by status
+    
+    boolean existsByPrNumber(String prNumber);
+
+    
+    
     Long countByStatus(RequestStatus status);
     
-    // Find with filters
     @Query("SELECT pr FROM PurchaseRequest pr WHERE " +
            "(:status IS NULL OR pr.status = :status) AND " +
            "(:priority IS NULL OR pr.priority = :priority) AND " +
@@ -52,18 +48,15 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
                                          @Param("endDate") LocalDate endDate,
                                          Pageable pageable);
     
-    // Find by date range
     @Query("SELECT pr FROM PurchaseRequest pr WHERE pr.prDate BETWEEN :startDate AND :endDate")
     List<PurchaseRequest> findByPrDateBetween(@Param("startDate") LocalDate startDate, 
                                               @Param("endDate") LocalDate endDate);
     
-    // Find by status and requestedBy
     List<PurchaseRequest> findByStatusAndRequestedBy(RequestStatus status, String requestedBy);
     
-    // Find by status and department
     List<PurchaseRequest> findByStatusAndDepartment(RequestStatus status, String department);
     
-    // Find the maximum sequence number for a specific date (for PR number generation)
-    @Query(value = "SELECT MAX(CAST(SUBSTRING(pr_number, -4) AS INTEGER)) FROM purchase_requests WHERE pr_number LIKE CONCAT(:datePattern, '%')", nativeQuery = true)
+    // FIX: Updated query to properly find max sequence
+    @Query(value = "SELECT MAX(CAST(SUBSTRING(pr_number, LOCATE('-', pr_number, LOCATE('-', pr_number) + 1) + 1) AS UNSIGNED)) FROM purchase_requests WHERE pr_number LIKE CONCAT(:datePattern, '%')", nativeQuery = true)
     Integer findMaxSequenceForDate(@Param("datePattern") String datePattern);
 }
