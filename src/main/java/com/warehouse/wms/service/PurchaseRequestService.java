@@ -28,67 +28,65 @@ public class PurchaseRequestService {
     private final PurchaseRequestItemRepository itemRepository;
     private final SupplierRepository supplierRepository;
 
-    // Generate PR Number
+    private static final String PR_PREFIX = "PR";
+
+    /**
+     * Generates PR number in format: PR-YYYY-MMDD-SEQ
+     * Example: PR-2026-0713-0001
+     */
     private String generatePRNumber() {
-        String year = String.valueOf(LocalDate.now().getYear());
-        long count = purchaseRequestRepository.count() + 1;
-        return String.format("PR-%s-%04d", year, count);
+        LocalDate now = LocalDate.now();
+        String year = String.valueOf(now.getYear());
+        String monthDay = String.format("%02d%02d", now.getMonthValue(), now.getDayOfMonth());
+        String datePart = String.format("%s-%s", year, monthDay);
+        String prefix = String.format("%s-%s", PR_PREFIX, datePart);
+        
+        // Get the latest sequence number for today
+        Integer maxSequence = purchaseRequestRepository.findMaxSequenceForDate(datePart);
+        int nextSequence = (maxSequence != null) ? maxSequence + 1 : 1;
+        
+        return String.format("%s-%04d", prefix, nextSequence);
     }
 
     // Create new purchase request
     @Transactional
-    public PurchaseRequestDTO createPurchaseRequest(CreatePurchaseRequestDTO requestDTO, Long userId) {
-        log.info("Creating purchase request for user: {}", userId);
-
+    public PurchaseRequestDTO createPurchaseRequest(CreatePurchaseRequestDTO requestDTO) {
+        log.info("Creating purchase request for: {}", requestDTO.getRequestedBy());
+        
+        // Create and populate purchase request
         PurchaseRequest purchaseRequest = new PurchaseRequest();
         purchaseRequest.setPrNumber(generatePRNumber());
-        purchaseRequest.setRequestedDate(requestDTO.getRequestedDate());
+        purchaseRequest.setPrDate(requestDTO.getPrDate());
+        purchaseRequest.setRequestedBy(requestDTO.getRequestedBy());
+        purchaseRequest.setDepartment(requestDTO.getDepartment());
+        purchaseRequest.setWarehouse(requestDTO.getWarehouse());
+        purchaseRequest.setPriority(requestDTO.getPriority());
         purchaseRequest.setRequiredDate(requestDTO.getRequiredDate());
-        purchaseRequest.setPriority(Priority.valueOf(requestDTO.getPriority()));
+        purchaseRequest.setRemarks(requestDTO.getRemarks());
         purchaseRequest.setStatus(RequestStatus.DRAFT);
-        purchaseRequest.setNotes(requestDTO.getNotes());
-        purchaseRequest.setCreatedBy(userId);
-
-        // Set supplier if provided
-        if (requestDTO.getSupplierId() != null) {
-            Supplier supplier = supplierRepository.findById(requestDTO.getSupplierId())
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with id: " + requestDTO.getSupplierId()));
-            purchaseRequest.setSupplier(supplier);
-        }
-
+        
         // Save purchase request first
         purchaseRequest = purchaseRequestRepository.save(purchaseRequest);
-
+        
         // Add items
         for (PurchaseRequestItemDTO itemDTO : requestDTO.getItems()) {
             PurchaseRequestItem item = new PurchaseRequestItem();
             item.setItemCode(itemDTO.getItemCode());
             item.setItemName(itemDTO.getItemName());
-            item.setItemBarcode(itemDTO.getItemBarcode());
-
-            item.setBatchNo(itemDTO.getBatchNo());
-
-            item.setQuantity(itemDTO.getQuantity());
-            item.setUnit(itemDTO.getUnit());
-            item.setUnitPrice(itemDTO.getUnitPrice());
-            item.setTotal(itemDTO.getQuantity() * itemDTO.getUnitPrice());
-            item.setRemarks(itemDTO.getRemarks());
-            item.setReceivedQuantity(0);
-            item.setPendingQuantity(itemDTO.getQuantity());
-            item.setItemStatus("PENDING");
-            item.setReceipts(new ArrayList<>());
+            item.setDescription(itemDTO.getDescription());
+            item.setUom(itemDTO.getUom());
+            item.setRequestedQty(itemDTO.getRequestedQty());
+            item.setCurrentStock(itemDTO.getCurrentStock());
+            item.setReason(itemDTO.getReason());
             item.setPurchaseRequest(purchaseRequest);
             purchaseRequest.addItem(item);
         }
-
-        // Calculate total amount
-        purchaseRequest.calculateTotalAmount();
-
+        
         // Save again with items
         purchaseRequest = purchaseRequestRepository.save(purchaseRequest);
-
-        log.info("Purchase request created with ID: {}", purchaseRequest.getId());
-
+        
+        log.info("Purchase request created with PR Number: {}", purchaseRequest.getPrNumber());
+        
         return convertToDTO(purchaseRequest);
     }
 
@@ -110,7 +108,7 @@ public class PurchaseRequestService {
         log.info("Found item: {}, Pending quantity: {}", item.getItemName(), item.getPendingQuantity());
 
         // Validate receiving quantity
-        int pendingQty = item.getPendingQuantity() != null ? item.getPendingQuantity() : item.getQuantity();
+        int pendingQty = item.getPendingQuantity() != null ? item.getPendingQuantity() : item.getRequestedQty();
         if (receiveDTO.getReceivedQuantity() > pendingQty) {
             throw new IllegalStateException("Cannot receive more than pending quantity: " + pendingQty);
         }
@@ -146,7 +144,7 @@ public class PurchaseRequestService {
 
         // Update quantities
         item.setReceivedQuantity(totalReceived);
-        int pending = item.getQuantity() - totalReceived;
+        int pending = item.getRequestedQty() - totalReceived;
         item.setPendingQuantity(Math.max(pending, 0));
 
         // Update item status
@@ -196,7 +194,7 @@ public class PurchaseRequestService {
 
     // Submit purchase request (change from DRAFT to SUBMITTED)
     @Transactional
-    public PurchaseRequestDTO submitPurchaseRequest(Long id, Long userId) {
+    public PurchaseRequestDTO submitPurchaseRequest(Long id) {
         log.info("Submitting purchase request: {}", id);
 
         PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
@@ -217,7 +215,7 @@ public class PurchaseRequestService {
 
     // Approve purchase request
     @Transactional
-    public PurchaseRequestDTO approvePurchaseRequest(Long id, Long userId, boolean approved, String rejectionReason) {
+    public PurchaseRequestDTO approvePurchaseRequest(Long id, boolean approved, String rejectionReason) {
         log.info("Approving purchase request: {} with status: {}", id, approved);
 
         PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
@@ -234,7 +232,6 @@ public class PurchaseRequestService {
             purchaseRequest.setRejectionReason(rejectionReason);
         }
 
-        purchaseRequest.setApprovedBy(userId);
         purchaseRequest.setApprovedAt(LocalDateTime.now());
         purchaseRequest = purchaseRequestRepository.save(purchaseRequest);
 
@@ -265,7 +262,7 @@ public class PurchaseRequestService {
 
     // Update purchase request (only DRAFT status)
     @Transactional
-    public PurchaseRequestDTO updatePurchaseRequest(Long id, CreatePurchaseRequestDTO requestDTO, Long userId) {
+    public PurchaseRequestDTO updatePurchaseRequest(Long id, CreatePurchaseRequestDTO requestDTO) {
         log.info("Updating purchase request: {}", id);
 
         PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(id)
@@ -276,19 +273,13 @@ public class PurchaseRequestService {
         }
 
         // Update basic info
-        purchaseRequest.setRequestedDate(requestDTO.getRequestedDate());
+        purchaseRequest.setPrDate(requestDTO.getPrDate());
+        purchaseRequest.setRequestedBy(requestDTO.getRequestedBy());
+        purchaseRequest.setDepartment(requestDTO.getDepartment());
+        purchaseRequest.setWarehouse(requestDTO.getWarehouse());
+        purchaseRequest.setPriority(requestDTO.getPriority());
         purchaseRequest.setRequiredDate(requestDTO.getRequiredDate());
-        purchaseRequest.setPriority(Priority.valueOf(requestDTO.getPriority()));
-        purchaseRequest.setNotes(requestDTO.getNotes());
-
-        // Update supplier
-        if (requestDTO.getSupplierId() != null) {
-            Supplier supplier = supplierRepository.findById(requestDTO.getSupplierId())
-                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
-            purchaseRequest.setSupplier(supplier);
-        } else {
-            purchaseRequest.setSupplier(null);
-        }
+        purchaseRequest.setRemarks(requestDTO.getRemarks());
 
         // Clear existing items
         purchaseRequest.getItems().clear();
@@ -298,25 +289,14 @@ public class PurchaseRequestService {
             PurchaseRequestItem item = new PurchaseRequestItem();
             item.setItemCode(itemDTO.getItemCode());
             item.setItemName(itemDTO.getItemName());
-            item.setItemBarcode(itemDTO.getItemBarcode());
-
-            item.setBatchNo(itemDTO.getBatchNo());
-
-            item.setQuantity(itemDTO.getQuantity());
-            item.setUnit(itemDTO.getUnit());
-            item.setUnitPrice(itemDTO.getUnitPrice());
-            item.setTotal(itemDTO.getQuantity() * itemDTO.getUnitPrice());
-            item.setRemarks(itemDTO.getRemarks());
-            item.setReceivedQuantity(0);
-            item.setPendingQuantity(itemDTO.getQuantity());
-            item.setItemStatus("PENDING");
-            item.setReceipts(new ArrayList<>());
+            item.setDescription(itemDTO.getDescription());
+            item.setUom(itemDTO.getUom());
+            item.setRequestedQty(itemDTO.getRequestedQty());
+            item.setCurrentStock(itemDTO.getCurrentStock());
+            item.setReason(itemDTO.getReason());
             item.setPurchaseRequest(purchaseRequest);
             purchaseRequest.addItem(item);
         }
-
-        // Recalculate total
-        purchaseRequest.calculateTotalAmount();
 
         purchaseRequest = purchaseRequestRepository.save(purchaseRequest);
 
@@ -341,8 +321,8 @@ public class PurchaseRequestService {
     }
 
     // Get purchase requests by user
-    public List<PurchaseRequestDTO> getPurchaseRequestsByUser(Long userId) {
-        List<PurchaseRequest> requests = purchaseRequestRepository.findByCreatedBy(userId);
+    public List<PurchaseRequestDTO> getPurchaseRequestsByUser(String requestedBy) {
+        List<PurchaseRequest> requests = purchaseRequestRepository.findByRequestedBy(requestedBy);
         return requests.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
@@ -369,22 +349,19 @@ public class PurchaseRequestService {
         PurchaseRequestDTO dto = new PurchaseRequestDTO();
         dto.setId(entity.getId());
         dto.setPrNumber(entity.getPrNumber());
-        dto.setRequestedDate(entity.getRequestedDate());
+        dto.setPrDate(entity.getPrDate());
+        dto.setRequestedBy(entity.getRequestedBy());
+        dto.setDepartment(entity.getDepartment());
+        dto.setWarehouse(entity.getWarehouse());
+        dto.setPriority(entity.getPriority());
         dto.setRequiredDate(entity.getRequiredDate());
-        dto.setPriority(entity.getPriority().name());
-        dto.setStatus(entity.getStatus().name());
-        dto.setNotes(entity.getNotes());
-        dto.setTotalAmount(entity.getTotalAmount());
+        dto.setRemarks(entity.getRemarks());
+        dto.setStatus(entity.getStatus());
         dto.setSubmittedAt(entity.getSubmittedAt());
         dto.setApprovedAt(entity.getApprovedAt());
         dto.setRejectionReason(entity.getRejectionReason());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-
-        if (entity.getSupplier() != null) {
-            dto.setSupplierId(entity.getSupplier().getId());
-            dto.setSupplierName(entity.getSupplier().getName());
-        }
 
         if (entity.getItems() != null) {
             List<PurchaseRequestItemDTO> itemDTOs = entity.getItems().stream()
@@ -396,7 +373,6 @@ public class PurchaseRequestService {
         return dto;
     }
 
-    // Convert Item Entity to DTO
     private PurchaseRequestItemDTO convertItemToDTO(PurchaseRequestItem entity) {
         List<ItemReceiptDTO> receiptDTOs = null;
         if (entity.getReceipts() != null && !entity.getReceipts().isEmpty()) {
@@ -409,19 +385,15 @@ public class PurchaseRequestService {
             .id(entity.getId())
             .itemCode(entity.getItemCode())
             .itemName(entity.getItemName())
-            .itemBarcode(entity.getItemBarcode())
-
-            .batchNo(entity.getBatchNo())
-
-            .quantity(entity.getQuantity())
-            .unit(entity.getUnit())
-            .unitPrice(entity.getUnitPrice())
-            .total(entity.getTotal())
-            .remarks(entity.getRemarks())
+            .description(entity.getDescription())
+            .uom(entity.getUom())
+            .requestedQty(entity.getRequestedQty())
+            .currentStock(entity.getCurrentStock())
+            .reason(entity.getReason())
             .receivedQuantity(entity.getReceivedQuantity())
             .pendingQuantity(entity.getPendingQuantity())
             .itemStatus(entity.getItemStatus())
-            .receipts(receiptDTOs)
+            .receipts(receiptDTOs)  // Now this will work
             .build();
     }
 
@@ -436,5 +408,20 @@ public class PurchaseRequestService {
             .remarks(entity.getRemarks())
             .images(entity.getImages() != null ? entity.getImages() : new ArrayList<>())
             .build();
+    }
+    
+    
+    
+  
+
+    // Get purchase requests by user ID (if you have user entity)
+    public List<PurchaseRequestDTO> getPurchaseRequestsByUserId(Long userId) {
+        // If you have a User entity with name field
+        // User user = userRepository.findById(userId).orElseThrow();
+        // List<PurchaseRequest> requests = purchaseRequestRepository.findByRequestedBy(user.getName());
+        // Or if you want to store userId instead of name, update the entity to have createdBy field
+        return purchaseRequestRepository.findAll().stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
     }
 }

@@ -7,5 +7,6 @@ public enum RequestStatus {
     REJECTED,
     PARTIAL,      // Add this
     COMPLETED,    // Add this
-    IN_PROGRESS   // Add this (optional)
+    IN_PROGRESS ,  // Add this (optional)
+    PENDING
 }

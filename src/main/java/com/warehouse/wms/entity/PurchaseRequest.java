@@ -26,43 +26,40 @@ public class PurchaseRequest {
     @Column(nullable = false, unique = true)
     private String prNumber;
     
-    @Column(nullable = false)
-    private LocalDate requestedDate;
+    @Column(name = "pr_date", nullable = false)
+    private LocalDate prDate;
+    
+    @Column(name = "requested_by", nullable = false)
+    private String requestedBy;
     
     @Column(nullable = false)
-    private LocalDate requiredDate;
+    private String department;
+    
+    @Column(nullable = false)
+    private String warehouse;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Priority priority = Priority.NORMAL;
+    private Priority priority;
+    
+    @Column(name = "required_date", nullable = false)
+    private LocalDate requiredDate;
+    
+    @Column(columnDefinition = "TEXT")
+    private String remarks;
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.DRAFT;
     
-    @Column(columnDefinition = "TEXT")
-    private String notes;
-    
-    @Column(nullable = false)
-    private Double totalAmount = 0.0;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supplier_id")
-    private Supplier supplier;
-    
-    @Column(name = "created_by")
-    private Long createdBy;
-    
-    @Column(name = "approved_by")
-    private Long approvedBy;
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
     
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
     
-    @Column(name = "submitted_at")
-    private LocalDateTime submittedAt;
-    
-    @Column(name = "rejection_reason")
+    // Make sure this is the only field mapped to 'rejection_reason'
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
     
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
@@ -85,11 +82,5 @@ public class PurchaseRequest {
     public void removeItem(PurchaseRequestItem item) {
         items.remove(item);
         item.setPurchaseRequest(null);
-    }
-    
-    public void calculateTotalAmount() {
-        this.totalAmount = items.stream()
-            .mapToDouble(PurchaseRequestItem::getTotal)
-            .sum();
     }
 }

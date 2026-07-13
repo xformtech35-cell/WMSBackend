@@ -1,5 +1,7 @@
 package com.warehouse.wms.dto;
 
+import com.warehouse.wms.entity.Priority;
+import com.warehouse.wms.entity.RequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,25 +16,23 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PurchaseRequestDTO {
+    
     private Long id;
     private String prNumber;
-    private LocalDate requestedDate;
-    private String batchNo;
+    private LocalDate prDate;
+    private String requestedBy;
+    private String department;
+    private String warehouse;
+    private Priority priority;
     private LocalDate requiredDate;
-    private String priority;
-    private String status;
-    private String notes;
-    private Double totalAmount;
-    private Long supplierId;
-    private String supplierName;
+    private String remarks;
+    private RequestStatus status;
     private List<PurchaseRequestItemDTO> items;
-    private Long createdBy;
-    private String createdByName;
-    private LocalDateTime submittedAt;
-    private Long approvedBy;
-    private String approvedByName;
-    private LocalDateTime approvedAt;
-    private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime SubmittedAt;
+    private LocalDateTime submittedAt;
+    private String rejectionReason;
+    private LocalDateTime approvedAt;
+
 }

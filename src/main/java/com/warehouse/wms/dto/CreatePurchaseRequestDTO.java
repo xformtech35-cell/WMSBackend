@@ -1,14 +1,18 @@
 package com.warehouse.wms.dto;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import com.warehouse.wms.entity.Priority;
+
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @Data
 @Builder
@@ -16,19 +20,25 @@ import java.util.List;
 @AllArgsConstructor
 public class CreatePurchaseRequestDTO {
     
-    @NotNull(message = "Requested date is required")
-    private LocalDate requestedDate;
+    @NotNull(message = "PR Date is required")
+    private LocalDate prDate; // Date of request
     
-    @NotNull(message = "Required date is required")
-    private LocalDate requiredDate;
+    @NotBlank(message = "Requested By is required")
+    private String requestedBy; // Employee name
     
-    @NotBlank(message = "Priority is required")
-    @Pattern(regexp = "LOW|NORMAL|MEDIUM|HIGH|URGENT", message = "Invalid priority")
-    private String priority;
+    @NotBlank(message = "Department is required")
+    private String department; // Requesting department
     
-    private String notes;
+    @NotBlank(message = "Warehouse is required")
+    private String warehouse; // Destination warehouse
     
-    private Long supplierId;
+    @NotNull(message = "Priority is required")
+    private Priority priority; // LOW, MEDIUM, HIGH
+    
+    @NotNull(message = "Required Date is required")
+    private LocalDate requiredDate; // When items are needed
+    
+    private String remarks; // Additional notes
     
     @NotEmpty(message = "At least one item is required")
     @Valid

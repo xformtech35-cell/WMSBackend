@@ -11,34 +11,59 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest, Long> {
     
+    // Find by status
     List<PurchaseRequest> findByStatus(RequestStatus status);
     
+    // Find by priority
     List<PurchaseRequest> findByPriority(Priority priority);
     
+    // Find by requestedBy (String - employee name) - REMOVE the Long version
+    List<PurchaseRequest> findByRequestedBy(String requestedBy);
+    
+    // Find by requestedBy containing (for search)
+    List<PurchaseRequest> findByRequestedByContaining(String requestedBy);
+    
+    // Find by department
+    List<PurchaseRequest> findByDepartment(String department);
+    
+    // Find by warehouse
+    List<PurchaseRequest> findByWarehouse(String warehouse);
+    
+    // Page by status
     Page<PurchaseRequest> findByStatus(RequestStatus status, Pageable pageable);
     
+    // Count by status
+    Long countByStatus(RequestStatus status);
+    
+    // Find with filters
     @Query("SELECT pr FROM PurchaseRequest pr WHERE " +
            "(:status IS NULL OR pr.status = :status) AND " +
            "(:priority IS NULL OR pr.priority = :priority) AND " +
-           "(:startDate IS NULL OR pr.requestedDate >= :startDate) AND " +
-           "(:endDate IS NULL OR pr.requestedDate <= :endDate)")
+           "(:startDate IS NULL OR pr.prDate >= :startDate) AND " +
+           "(:endDate IS NULL OR pr.prDate <= :endDate)")
     Page<PurchaseRequest> findWithFilters(@Param("status") RequestStatus status,
                                          @Param("priority") Priority priority,
                                          @Param("startDate") LocalDate startDate,
                                          @Param("endDate") LocalDate endDate,
                                          Pageable pageable);
     
-    @Query("SELECT pr FROM PurchaseRequest pr WHERE pr.createdBy = :userId ORDER BY pr.createdAt DESC")
-    List<PurchaseRequest> findByCreatedBy(@Param("userId") Long userId);
+    // Find by date range
+    @Query("SELECT pr FROM PurchaseRequest pr WHERE pr.prDate BETWEEN :startDate AND :endDate")
+    List<PurchaseRequest> findByPrDateBetween(@Param("startDate") LocalDate startDate, 
+                                              @Param("endDate") LocalDate endDate);
     
-    Long countByStatus(RequestStatus status);
+    // Find by status and requestedBy
+    List<PurchaseRequest> findByStatusAndRequestedBy(RequestStatus status, String requestedBy);
     
-    @Query("SELECT COALESCE(SUM(pr.totalAmount), 0) FROM PurchaseRequest pr WHERE pr.status = 'APPROVED' AND pr.createdAt BETWEEN :startDate AND :endDate")
-    Double getTotalApprovedAmountBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    // Find by status and department
+    List<PurchaseRequest> findByStatusAndDepartment(RequestStatus status, String department);
+    
+    // Find the maximum sequence number for a specific date (for PR number generation)
+    @Query(value = "SELECT MAX(CAST(SUBSTRING(pr_number, -4) AS INTEGER)) FROM purchase_requests WHERE pr_number LIKE CONCAT(:datePattern, '%')", nativeQuery = true)
+    Integer findMaxSequenceForDate(@Param("datePattern") String datePattern);
 }

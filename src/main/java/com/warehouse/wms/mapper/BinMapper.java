@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-@Mapper(componentModel = "spring", implementationPackage = "com.warehouse.wms.mapper.impl")
+@Mapper(componentModel = "spring")
 public interface BinMapper {
 
     @Mapping(target = "id", ignore = true)

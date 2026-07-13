@@ -38,7 +38,7 @@ public class PurchaseRequestController {
             @Valid @RequestBody CreatePurchaseRequestDTO requestDTO) {
         try {
             Long userId = SecurityUtils.getCurrentUserId();
-            PurchaseRequestDTO created = purchaseRequestService.createPurchaseRequest(requestDTO, userId);
+            PurchaseRequestDTO created = purchaseRequestService.createPurchaseRequest(requestDTO);
             return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Purchase request created successfully", created));
         } catch (Exception e) {
@@ -53,7 +53,7 @@ public class PurchaseRequestController {
     public ResponseEntity<ApiResponse<PurchaseRequestDTO>> submitPurchaseRequest(@PathVariable Long id) {
         try {
             Long userId = SecurityUtils.getCurrentUserId();
-            PurchaseRequestDTO submitted = purchaseRequestService.submitPurchaseRequest(id, userId);
+            PurchaseRequestDTO submitted = purchaseRequestService.submitPurchaseRequest(id);
             return ResponseEntity.ok(ApiResponse.success("Purchase request submitted successfully", submitted));
         } catch (Exception e) {
             log.error("Error submitting purchase request", e);
@@ -70,7 +70,7 @@ public class PurchaseRequestController {
             @RequestParam(required = false) String rejectionReason) {
         try {
             Long userId = SecurityUtils.getCurrentUserId();
-            PurchaseRequestDTO result = purchaseRequestService.approvePurchaseRequest(id, userId, approved, rejectionReason);
+            PurchaseRequestDTO result = purchaseRequestService.approvePurchaseRequest(id, approved, rejectionReason);
             String message = approved ? "Purchase request approved" : "Purchase request rejected";
             return ResponseEntity.ok(ApiResponse.success(message, result));
         } catch (Exception e) {
@@ -107,8 +107,13 @@ public class PurchaseRequestController {
         try {
             PurchaseRequestDTO request = purchaseRequestService.getPurchaseRequestById(id);
             return ResponseEntity.ok(ApiResponse.success(request));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            log.error("Error getting purchase request", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error retrieving purchase request"));
         }
     }
     
@@ -119,12 +124,18 @@ public class PurchaseRequestController {
             @Valid @RequestBody CreatePurchaseRequestDTO requestDTO) {
         try {
             Long userId = SecurityUtils.getCurrentUserId();
-            PurchaseRequestDTO updated = purchaseRequestService.updatePurchaseRequest(id, requestDTO, userId);
+            PurchaseRequestDTO updated = purchaseRequestService.updatePurchaseRequest(id, requestDTO);
             return ResponseEntity.ok(ApiResponse.success("Purchase request updated successfully", updated));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             log.error("Error updating purchase request", e);
-            return ResponseEntity.badRequest()
-                .body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error updating purchase request"));
         }
     }
     
@@ -134,46 +145,90 @@ public class PurchaseRequestController {
         try {
             purchaseRequestService.deletePurchaseRequest(id);
             return ResponseEntity.ok(ApiResponse.success("Purchase request deleted successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             log.error("Error deleting purchase request", e);
-            return ResponseEntity.badRequest()
-                .body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error deleting purchase request"));
         }
     }
     
     // Get purchase requests by current user
     @GetMapping("/my-requests")
     public ResponseEntity<ApiResponse<List<PurchaseRequestDTO>>> getMyPurchaseRequests() {
-        Long userId = SecurityUtils.getCurrentUserId();
-        List<PurchaseRequestDTO> requests = purchaseRequestService.getPurchaseRequestsByUser(userId);
-        return ResponseEntity.ok(ApiResponse.success(requests));
+        try {
+            Long userId = SecurityUtils.getCurrentUserId();
+            // Convert Long to String
+            String userIdStr = String.valueOf(userId);
+            List<PurchaseRequestDTO> requests = purchaseRequestService.getPurchaseRequestsByUser(userIdStr);
+            return ResponseEntity.ok(ApiResponse.success(requests));
+        } catch (Exception e) {
+            log.error("Error getting user purchase requests", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error retrieving purchase requests"));
+        }
     }
     
     // Get statistics
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<Object>> getStatistics() {
-        Object stats = purchaseRequestService.getStatistics();
-        return ResponseEntity.ok(ApiResponse.success(stats));
+        try {
+            Object stats = purchaseRequestService.getStatistics();
+            return ResponseEntity.ok(ApiResponse.success(stats));
+        } catch (Exception e) {
+            log.error("Error getting statistics", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error retrieving statistics"));
+        }
     }
 
-    // ✅ Receive items with quality check
-   @PostMapping("/items/{itemId}/receive")
-public ResponseEntity<ApiResponse<PurchaseRequestItemDTO>> receiveItem(
-        @PathVariable Long itemId,
-        @Valid @RequestBody ReceiveItemDTO receiveDTO) {
-    try {
-        log.info("=== RECEIVE ITEM DEBUG ===");
-        log.info("itemId: {}", itemId);
-        log.info("receiveDTO: {}", receiveDTO);
-        log.info("receivedQuantity: {}", receiveDTO.getReceivedQuantity());
-        log.info("qualityStatus: {}", receiveDTO.getQualityStatus());
-        
-        PurchaseRequestItemDTO updatedItem = purchaseRequestService.receiveItem(itemId, receiveDTO);
-        return ResponseEntity.ok(ApiResponse.success("Item received successfully", updatedItem));
-    } catch (Exception e) {
-        log.error("Error receiving item", e);
-        return ResponseEntity.badRequest()
-            .body(ApiResponse.error(e.getMessage()));
+    // Receive items with quality check
+    @PostMapping("/items/{itemId}/receive")
+    public ResponseEntity<ApiResponse<PurchaseRequestItemDTO>> receiveItem(
+            @PathVariable Long itemId,
+            @Valid @RequestBody ReceiveItemDTO receiveDTO) {
+        try {
+            log.info("=== RECEIVE ITEM DEBUG ===");
+            log.info("itemId: {}", itemId);
+            log.info("receiveDTO: {}", receiveDTO);
+            log.info("receivedQuantity: {}", receiveDTO.getReceivedQuantity());
+            log.info("qualityStatus: {}", receiveDTO.getQualityStatus());
+            
+            PurchaseRequestItemDTO updatedItem = purchaseRequestService.receiveItem(itemId, receiveDTO);
+            return ResponseEntity.ok(ApiResponse.success("Item received successfully", updatedItem));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error receiving item", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error receiving item: " + e.getMessage()));
+        }
     }
-}
+
+//    // Get items by purchase request ID
+//    @GetMapping("/{id}/items")
+//    public ResponseEntity<ApiResponse<List<PurchaseRequestItemDTO>>> getItemsByPurchaseRequest(@PathVariable Long id) {
+//        try {
+//            List<PurchaseRequestItemDTO> items = purchaseRequestService.getItemsByPurchaseRequestId(id);
+//            return ResponseEntity.ok(ApiResponse.success(items));
+//        } catch (ResourceNotFoundException e) {
+//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                .body(ApiResponse.error(e.getMessage()));
+//        } catch (Exception e) {
+//            log.error("Error getting items", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(ApiResponse.error("Error retrieving items"));
+//        }
+//    }
+
+  
 }
