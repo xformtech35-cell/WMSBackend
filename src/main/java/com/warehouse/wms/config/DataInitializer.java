@@ -114,7 +114,7 @@ public class DataInitializer implements CommandLineRunner {
             seedRackCompartments();
             seedTrolleys();
             seedSkus();
-            seedPurchaseOrders();
+//            seedPurchaseOrders();
             seedGoodsReceipts();
             seedSalesOrdersAndShipments();
             seedInventory();
@@ -366,47 +366,47 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     // ── Purchase Orders ────────────────────────────────────────────────────────
-    private void seedPurchaseOrders() {
-        List<Sku> skus = skuRepository.findAll();
-        if (skus.size() < 10) return;
-
-        PurchaseOrder po1 = new PurchaseOrder();
-        po1.setPoNumber("PO-2026-001");
-        po1.setSupplier("TechSupply Co.");
-        po1.setExpectedArrivalDate(LocalDate.now().minusDays(5));
-        po1.setStatus("RECEIVED");
-        po1 = purchaseOrderRepository.save(po1);
-
-        int[][] po1Lines = {{0,50},{1,200},{2,100},{3,80},{4,20}};
-        for (int[] l : po1Lines) savePOLine(po1, skus.get(l[0]), l[1]);
-
-        PurchaseOrder po2 = new PurchaseOrder();
-        po2.setPoNumber("PO-2026-002");
-        po2.setSupplier("Global Parts Ltd.");
-        po2.setExpectedArrivalDate(LocalDate.now().minusDays(3));
-        po2.setStatus("PARTIALLY_RECEIVED");
-        po2 = purchaseOrderRepository.save(po2);
-
-        int[][] po2Lines = {{5,150},{6,100},{7,80},{8,200},{9,60}};
-        for (int[] l : po2Lines) savePOLine(po2, skus.get(l[0]), l[1]);
-
-        PurchaseOrder po3 = new PurchaseOrder();
-        po3.setPoNumber("PO-2026-003");
-        po3.setSupplier("FutureTech Inc.");
-        po3.setExpectedArrivalDate(LocalDate.now().plusDays(5));
-        po3.setStatus("OPEN");
-        po3 = purchaseOrderRepository.save(po3);
-
-        int[][] po3Lines = {{0,10},{2,30},{4,5}};
-        for (int[] l : po3Lines) savePOLine(po3, skus.get(l[0]), l[1]);
-
-        System.out.println("[DataInitializer] Seeded 3 purchase orders with lines");
-    }
+//    private void seedPurchaseOrders() {
+//        List<Sku> skus = skuRepository.findAll();
+//        if (skus.size() < 10) return;
+//
+//        PurchaseOrder po1 = new PurchaseOrder();
+//        po1.setPoNumber("PO-2026-001");
+//        po1.setSupplier("TechSupply Co.");
+//        po1.setExpectedArrivalDate(LocalDate.now().minusDays(5));
+//        po1.setStatus("RECEIVED");
+//        po1 = purchaseOrderRepository.save(po1);
+//
+//        int[][] po1Lines = {{0,50},{1,200},{2,100},{3,80},{4,20}};
+//        for (int[] l : po1Lines) savePOLine(po1, skus.get(l[0]), l[1]);
+//
+//        PurchaseOrder po2 = new PurchaseOrder();
+//        po2.setPoNumber("PO-2026-002");
+//        po2.setSupplier("Global Parts Ltd.");
+//        po2.setExpectedArrivalDate(LocalDate.now().minusDays(3));
+//        po2.setStatus("PARTIALLY_RECEIVED");
+//        po2 = purchaseOrderRepository.save(po2);
+//
+//        int[][] po2Lines = {{5,150},{6,100},{7,80},{8,200},{9,60}};
+//        for (int[] l : po2Lines) savePOLine(po2, skus.get(l[0]), l[1]);
+//
+//        PurchaseOrder po3 = new PurchaseOrder();
+//        po3.setPoNumber("PO-2026-003");
+//        po3.setSupplier("FutureTech Inc.");
+//        po3.setExpectedArrivalDate(LocalDate.now().plusDays(5));
+//        po3.setStatus("OPEN");
+//        po3 = purchaseOrderRepository.save(po3);
+//
+//        int[][] po3Lines = {{0,10},{2,30},{4,5}};
+//        for (int[] l : po3Lines) savePOLine(po3, skus.get(l[0]), l[1]);
+//
+//        System.out.println("[DataInitializer] Seeded 3 purchase orders with lines");
+//    }
 
     private void savePOLine(PurchaseOrder po, Sku sku, int qty) {
         PurchaseOrderLine line = new PurchaseOrderLine();
         line.setPurchaseOrder(po);
-        line.setSku(sku);
+        line.setSkuId(sku);
         line.setQuantity(qty);
         line = purchaseOrderLineRepository.save(line);
         if (po.getLines() == null) {
@@ -429,7 +429,7 @@ public class DataInitializer implements CommandLineRunner {
         for (PurchaseOrderLine line : po1.getLines()) {
             GoodsReceiptLine grLine = new GoodsReceiptLine();
             grLine.setGoodsReceipt(gr1);
-            grLine.setSku(line.getSku());
+            grLine.setSkuId(line.getSkuId());
             grLine.setQuantityReceived(line.getQuantity());
             grLine.setBatchNo("BATCH-2026-001");
             grLine = goodsReceiptLineRepository.save(grLine);
@@ -447,7 +447,7 @@ public class DataInitializer implements CommandLineRunner {
             PurchaseOrderLine line = po2.getLines().get(i);
             GoodsReceiptLine grLine = new GoodsReceiptLine();
             grLine.setGoodsReceipt(gr2);
-            grLine.setSku(line.getSku());
+            grLine.setSkuId(line.getSkuId());
             grLine.setQuantityReceived(line.getQuantity());
             grLine.setBatchNo("BATCH-2026-002");
             grLine = goodsReceiptLineRepository.save(grLine);
@@ -582,7 +582,7 @@ public class DataInitializer implements CommandLineRunner {
         int taskCount = 0;
         for (GoodsReceiptLine grLine : grLines) {
             Inventory inv = new Inventory();
-            inv.setSku(grLine.getSku());
+            inv.setSku(grLine.getSkuId());
             inv.setQuantity(grLine.getQuantityReceived());
             inv.setState(Inventory.InventoryState.IN_PUTAWAY);
             inv.setBatchNo(grLine.getBatchNo());

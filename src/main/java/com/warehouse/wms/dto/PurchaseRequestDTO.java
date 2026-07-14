@@ -26,6 +26,9 @@ public class PurchaseRequestDTO {
     private Priority priority;
     private LocalDate requiredDate;
     private String remarks;
+    
+    private String aprovalRemarks;
+
     private RequestStatus status;
     private LocalDateTime submittedAt;
     private LocalDateTime approvedAt;

@@ -463,7 +463,7 @@ public class PurchaseRequestService {
         dto.setRejectionReason(entity.getRejectionReason());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-
+        dto.setAprovalRemarks(entity.getAprovalRemarks());
         
 
         if (entity.getItems() != null) {
@@ -583,11 +583,8 @@ public class PurchaseRequestService {
         
         // Add remarks if provided
         if (statusUpdateRequest.getRemarks() != null) {
-            String currentRemarks = purchaseRequest.getRemarks();
-            String newRemarks = currentRemarks != null ? 
-                currentRemarks + "\n[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks() : 
-                "[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks();
-            purchaseRequest.setRemarks(newRemarks);
+            String newRemarks =  statusUpdateRequest.getRemarks();
+            purchaseRequest.setAprovalRemarks(newRemarks);
         }
         
         purchaseRequest = purchaseRequestRepository.save(purchaseRequest);
@@ -609,6 +606,8 @@ public class PurchaseRequestService {
         ));
         
         allowedTransitions.put(RequestStatus.PENDING, Arrays.asList(
+                RequestStatus.APPROVED,
+	
             RequestStatus.SUBMITTED
         ));
         
@@ -675,8 +674,7 @@ public class PurchaseRequestService {
             filter.getRemarks(),
             filter.getItemCode(),
             filter.getItemName(),
-            filter.getSupplierId(),
-            filter.getSupplierName(),
+        
             filter.getIsActive(),
             filter.getHasSupplier(),
             filter.getHasItems(),

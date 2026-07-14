@@ -68,66 +68,64 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
     
     
     @Query("SELECT DISTINCT pr FROM PurchaseRequest pr " +
-           "LEFT JOIN pr.items i " +
-           "WHERE " +
-           "(:status IS NULL OR pr.status = :status) AND " +
-           "(:statuses IS NULL OR pr.status IN :statuses) AND " +
-           "(:priority IS NULL OR pr.priority = :priority) AND " +
-           "(:priorities IS NULL OR pr.priority IN :priorities) AND " +
-           "(:startDate IS NULL OR pr.prDate >= :startDate) AND " +
-           "(:endDate IS NULL OR pr.prDate <= :endDate) AND " +
-           "(:prDateFrom IS NULL OR pr.prDate >= :prDateFrom) AND " +
-           "(:prDateTo IS NULL OR pr.prDate <= :prDateTo) AND " +
-           "(:requiredDateFrom IS NULL OR pr.requiredDate >= :requiredDateFrom) AND " +
-           "(:requiredDateTo IS NULL OR pr.requiredDate <= :requiredDateTo) AND " +
-           "(:prNumber IS NULL OR pr.prNumber LIKE CONCAT('%', :prNumber, '%')) AND " +
-           "(:requestedBy IS NULL OR pr.requestedBy LIKE CONCAT('%', :requestedBy, '%')) AND " +
-           "(:department IS NULL OR pr.department LIKE CONCAT('%', :department, '%')) AND " +
-           "(:warehouse IS NULL OR pr.warehouse LIKE CONCAT('%', :warehouse, '%')) AND " +
-           "(:remarks IS NULL OR pr.remarks LIKE CONCAT('%', :remarks, '%')) AND " +
-           "(:itemCode IS NULL OR i.itemCode LIKE CONCAT('%', :itemCode, '%')) AND " +
-           "(:itemName IS NULL OR i.itemName LIKE CONCAT('%', :itemName, '%')) AND " +
-           "(:supplierId IS NULL OR pr.supplier.id = :supplierId) AND " +
-           "(:supplierName IS NULL OR pr.supplier.name LIKE CONCAT('%', :supplierName, '%')) AND " +
-           "(:isActive IS NULL OR pr.status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'IN_PROGRESS', 'PARTIAL')) AND " +
-           "(:hasSupplier IS NULL OR (CASE WHEN :hasSupplier = true THEN pr.supplier IS NOT NULL ELSE pr.supplier IS NULL END)) AND " +
-           "(:hasItems IS NULL OR (CASE WHEN :hasItems = true THEN pr.items IS NOT EMPTY ELSE pr.items IS EMPTY END)) AND " +
-           "(:createdFrom IS NULL OR pr.createdAt >= :createdFrom) AND " +
-           "(:createdTo IS NULL OR pr.createdAt <= :createdTo) AND " +
-           "(:searchTerm IS NULL OR " +
-           "pr.prNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "pr.requestedBy LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "pr.department LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "pr.warehouse LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.itemCode LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.itemName LIKE CONCAT('%', :searchTerm, '%'))")
-    Page<PurchaseRequest> filterPurchaseRequests(
-            @Param("status") RequestStatus status,
-            @Param("statuses") List<RequestStatus> statuses,
-            @Param("priority") Priority priority,
-            @Param("priorities") List<Priority> priorities,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
-            @Param("prDateFrom") LocalDate prDateFrom,
-            @Param("prDateTo") LocalDate prDateTo,
-            @Param("requiredDateFrom") LocalDate requiredDateFrom,
-            @Param("requiredDateTo") LocalDate requiredDateTo,
-            @Param("prNumber") String prNumber,
-            @Param("requestedBy") String requestedBy,
-            @Param("department") String department,
-            @Param("warehouse") String warehouse,
-            @Param("remarks") String remarks,
-            @Param("itemCode") String itemCode,
-            @Param("itemName") String itemName,
-            @Param("supplierId") Long supplierId,
-            @Param("supplierName") String supplierName,
-            @Param("isActive") Boolean isActive,
-            @Param("hasSupplier") Boolean hasSupplier,
-            @Param("hasItems") Boolean hasItems,
-            @Param("createdFrom") LocalDate createdFrom,
-            @Param("createdTo") LocalDate createdTo,
-            @Param("searchTerm") String searchTerm,
-            Pageable pageable
-    );
+    	       "LEFT JOIN pr.items i " +
+    	       "WHERE " +
+    	       "(:status IS NULL OR pr.status = :status) AND " +
+    	       "(:statuses IS NULL OR pr.status IN :statuses) AND " +
+    	       "(:priority IS NULL OR pr.priority = :priority) AND " +
+    	       "(:priorities IS NULL OR pr.priority IN :priorities) AND " +
+    	       "(:startDate IS NULL OR pr.prDate >= :startDate) AND " +
+    	       "(:endDate IS NULL OR pr.prDate <= :endDate) AND " +
+    	       "(:prDateFrom IS NULL OR pr.prDate >= :prDateFrom) AND " +
+    	       "(:prDateTo IS NULL OR pr.prDate <= :prDateTo) AND " +
+    	       "(:requiredDateFrom IS NULL OR pr.requiredDate >= :requiredDateFrom) AND " +
+    	       "(:requiredDateTo IS NULL OR pr.requiredDate <= :requiredDateTo) AND " +
+    	       "(:prNumber IS NULL OR pr.prNumber LIKE CONCAT('%', :prNumber, '%')) AND " +
+    	       "(:requestedBy IS NULL OR pr.requestedBy LIKE CONCAT('%', :requestedBy, '%')) AND " +
+    	       "(:department IS NULL OR pr.department LIKE CONCAT('%', :department, '%')) AND " +
+    	       "(:warehouse IS NULL OR pr.warehouse LIKE CONCAT('%', :warehouse, '%')) AND " +
+    	       "(:remarks IS NULL OR pr.remarks LIKE CONCAT('%', :remarks, '%')) AND " +
+    	       "(:itemCode IS NULL OR i.itemCode LIKE CONCAT('%', :itemCode, '%')) AND " +
+    	       "(:itemName IS NULL OR i.itemName LIKE CONCAT('%', :itemName, '%')) AND " +
+    	    
+    	       "(:isActive IS NULL OR pr.status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'IN_PROGRESS', 'PARTIAL', 'PENDING')) AND " +
+    	       "(:hasSupplier IS NULL OR (CASE WHEN :hasSupplier = true THEN pr.supplier IS NOT NULL ELSE pr.supplier IS NULL END)) AND " +
+    	       "(:hasItems IS NULL OR (CASE WHEN :hasItems = true THEN pr.items IS NOT EMPTY ELSE pr.items IS EMPTY END)) AND " +
+    	       "(:createdFrom IS NULL OR pr.createdAt >= :createdFrom) AND " +
+    	       "(:createdTo IS NULL OR pr.createdAt <= :createdTo) AND " +
+    	       "(:searchTerm IS NULL OR " +
+    	       "pr.prNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.requestedBy LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.department LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.warehouse LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.itemCode LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.itemName LIKE CONCAT('%', :searchTerm, '%'))")
+    	Page<PurchaseRequest> filterPurchaseRequests(
+    	        @Param("status") RequestStatus status,
+    	        @Param("statuses") List<RequestStatus> statuses,
+    	        @Param("priority") Priority priority,
+    	        @Param("priorities") List<Priority> priorities,
+    	        @Param("startDate") LocalDate startDate,
+    	        @Param("endDate") LocalDate endDate,
+    	        @Param("prDateFrom") LocalDate prDateFrom,
+    	        @Param("prDateTo") LocalDate prDateTo,
+    	        @Param("requiredDateFrom") LocalDate requiredDateFrom,
+    	        @Param("requiredDateTo") LocalDate requiredDateTo,
+    	        @Param("prNumber") String prNumber,
+    	        @Param("requestedBy") String requestedBy,
+    	        @Param("department") String department,
+    	        @Param("warehouse") String warehouse,
+    	        @Param("remarks") String remarks,
+    	        @Param("itemCode") String itemCode,
+    	        @Param("itemName") String itemName,
+    	   
+    	        @Param("isActive") Boolean isActive,
+    	        @Param("hasSupplier") Boolean hasSupplier,
+    	        @Param("hasItems") Boolean hasItems,
+    	        @Param("createdFrom") LocalDate createdFrom,
+    	        @Param("createdTo") LocalDate createdTo,
+    	        @Param("searchTerm") String searchTerm,
+    	        Pageable pageable
+    	);
 
 }

@@ -23,7 +23,7 @@ public class GoodsReceiptLine {
 
     @ManyToOne
     @JoinColumn(name = "sku_id", nullable = false)
-    private Sku sku;
+    private Sku skuId;
 
     @Column(name = "batch_no")
     private String batchNo;

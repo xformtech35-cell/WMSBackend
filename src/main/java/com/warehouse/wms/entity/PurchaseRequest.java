@@ -48,6 +48,9 @@ public class PurchaseRequest {
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
     
+    @Column(name = "Aproval_remarks", columnDefinition = "TEXT")
+    private String aprovalRemarks;
+    
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private RequestStatus status = RequestStatus.DRAFT;
