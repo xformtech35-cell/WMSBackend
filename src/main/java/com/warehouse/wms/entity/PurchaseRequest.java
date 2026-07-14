@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "purchase_requests")
+@Table(name = "wms_purchase_requests")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +23,7 @@ public class PurchaseRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
+    @Column(name = "pr_number", nullable = false, unique = true)
     private String prNumber;
     
     @Column(name = "pr_date", nullable = false)
@@ -32,24 +32,24 @@ public class PurchaseRequest {
     @Column(name = "requested_by", nullable = false)
     private String requestedBy;
     
-    @Column(nullable = false)
+    @Column(name = "department", nullable = false)
     private String department;
     
-    @Column(nullable = false)
+    @Column(name = "warehouse", nullable = false)
     private String warehouse;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "priority", nullable = false)
     private Priority priority;
     
     @Column(name = "required_date", nullable = false)
     private LocalDate requiredDate;
     
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private RequestStatus status = RequestStatus.DRAFT;
     
     @Column(name = "submitted_at")
@@ -58,9 +58,27 @@ public class PurchaseRequest {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
     
-    // Make sure this is the only field mapped to 'rejection_reason'
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
+    
+    @Column(name = "total_amount")
+    private Double totalAmount = 0.0;
+    
+    @Column(name = "total_gst")
+    private Double totalGst = 0.0;
+    
+    @Column(name = "grand_total")
+    private Double grandTotal = 0.0;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
+    private Supplier supplier;
+    
+    @Column(name = "created_by")
+    private Long createdBy;
+    
+    @Column(name = "approved_by")
+    private Long approvedBy;
     
     @OneToMany(mappedBy = "purchaseRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<PurchaseRequestItem> items = new ArrayList<>();
@@ -82,5 +100,17 @@ public class PurchaseRequest {
     public void removeItem(PurchaseRequestItem item) {
         items.remove(item);
         item.setPurchaseRequest(null);
+    }
+    
+    public void calculateTotals() {
+        this.totalAmount = items.stream()
+            .mapToDouble(PurchaseRequestItem::getTotalPrice)
+            .sum();
+        
+        this.totalGst = items.stream()
+            .mapToDouble(PurchaseRequestItem::getGstAmount)
+            .sum();
+        
+        this.grandTotal = this.totalAmount + this.totalGst;
     }
 }

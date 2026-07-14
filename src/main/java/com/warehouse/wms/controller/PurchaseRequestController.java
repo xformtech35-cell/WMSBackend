@@ -1,16 +1,8 @@
 package com.warehouse.wms.controller;
 
-import com.warehouse.wms.dto.ApiResponse;
-import com.warehouse.wms.dto.CreatePurchaseRequestDTO;
-import com.warehouse.wms.dto.PurchaseRequestDTO;
-import com.warehouse.wms.dto.PurchaseRequestItemDTO;
-import com.warehouse.wms.dto.ReceiveItemDTO;
-import com.warehouse.wms.exception.ResourceNotFoundException;
-import com.warehouse.wms.service.PurchaseRequestService;
-import com.warehouse.wms.util.SecurityUtils;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,10 +10,32 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.warehouse.wms.dto.ApiResponse;
+import com.warehouse.wms.dto.CreatePurchaseRequestDTO;
+import com.warehouse.wms.dto.PurchaseRequestDTO;
+import com.warehouse.wms.dto.PurchaseRequestFilterDTO;
+import com.warehouse.wms.dto.PurchaseRequestFilterRequestDTO;
+import com.warehouse.wms.dto.PurchaseRequestItemDTO;
+import com.warehouse.wms.dto.ReceiveItemDTO;
+import com.warehouse.wms.dto.StatusUpdateRequestDTO;
+import com.warehouse.wms.exception.ResourceNotFoundException;
+import com.warehouse.wms.service.PurchaseRequestService;
+import com.warehouse.wms.util.SecurityUtils;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/purchase-requests")
@@ -230,5 +244,73 @@ public class PurchaseRequestController {
 //        }
 //    }
 
+    
+    
+    @PostMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<PurchaseRequestDTO>> updateStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody StatusUpdateRequestDTO statusUpdateRequest) {
+        try {
+            Long userId = SecurityUtils.getCurrentUserId();
+            PurchaseRequestDTO updated = purchaseRequestService.updateStatus(id, statusUpdateRequest, userId);
+            return ResponseEntity.ok(ApiResponse.success(
+                "Status updated successfully to: " + statusUpdateRequest.getStatus(), 
+                updated
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid status transition: " + e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid status transition: " + e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error updating status", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error updating status: " + e.getMessage()));
+        }
+    }
   
+    
+    @PostMapping("/filter")
+    public ResponseEntity<ApiResponse<Page<PurchaseRequestDTO>>> filterPurchaseRequests(
+            @RequestBody(required = false) PurchaseRequestFilterRequestDTO filterRequest) {
+        try {
+            // If filterRequest is null, create default with empty filters
+            if (filterRequest == null) {
+                filterRequest = PurchaseRequestFilterRequestDTO.builder()
+                    .filters(PurchaseRequestFilterDTO.builder().build())
+                    .page(0)
+                    .size(10)
+                    .sortBy("createdAt")
+                    .sortDir("desc")
+                    .build();
+            }
+            
+            // If filters is null, create empty filters
+            if (filterRequest.getFilters() == null) {
+                filterRequest.setFilters(PurchaseRequestFilterDTO.builder().build());
+            }
+            
+            // Build pageable
+            Sort.Direction direction = filterRequest.getSortDir().equalsIgnoreCase("desc") ? 
+                Sort.Direction.DESC : Sort.Direction.ASC;
+            Pageable pageable = PageRequest.of(
+                filterRequest.getPage(), 
+                filterRequest.getSize(), 
+                Sort.by(direction, filterRequest.getSortBy())
+            );
+            
+            Page<PurchaseRequestDTO> result = purchaseRequestService.filterPurchaseRequests(
+                filterRequest.getFilters(), pageable);
+            
+            return ResponseEntity.ok(ApiResponse.success(result));
+            
+        } catch (Exception e) {
+            log.error("Error filtering purchase requests", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Error filtering purchase requests: " + e.getMessage()));
+        }
+    }
+    
+    
 }

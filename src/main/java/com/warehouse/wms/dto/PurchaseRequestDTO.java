@@ -27,12 +27,16 @@ public class PurchaseRequestDTO {
     private LocalDate requiredDate;
     private String remarks;
     private RequestStatus status;
-    private List<PurchaseRequestItemDTO> items;
+    private LocalDateTime submittedAt;
+    private LocalDateTime approvedAt;
+    private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private LocalDateTime SubmittedAt;
-    private LocalDateTime submittedAt;
-    private String rejectionReason;
-    private LocalDateTime approvedAt;
-
+    
+    // Supplier fields
+    private Long supplierId;
+    private String supplierName;
+    
+    // Items
+    private List<PurchaseRequestItemDTO> items;
 }

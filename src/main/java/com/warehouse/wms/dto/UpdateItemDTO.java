@@ -2,19 +2,16 @@ package com.warehouse.wms.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PurchaseRequestItemDTO {
+public class UpdateItemDTO {
     
     private Long id;
     
@@ -29,35 +26,23 @@ public class PurchaseRequestItemDTO {
     @NotBlank(message = "UOM is required")
     private String uom;
     
-    @NotNull(message = "Requested Quantity is required")
-    @Min(value = 1, message = "Requested Quantity must be at least 1")
-    private Integer requestedQty;
-    
-    private Integer currentStock;
-    
-    private String reason;
-    
     // GST Fields
     private Double gstRate;
     private String gstHsnCode;
-    private Boolean isGstApplicable;
+    private String gstSacCode;
+    private Boolean isGstApplicable = true;
     private Double cgstRate;
     private Double sgstRate;
     private Double igstRate;
     
-    // Price fields
+    // Additional Fields
     private Double unitPrice;
-    private Double totalPrice;
-    private Double gstAmount;
-    private Double totalWithGst;
-    
-    // Stock fields
-    private String itemBarcode;
-    private Integer receivedQuantity;
-    private Integer pendingQuantity;
-    private String itemStatus;
-    
-    // Relationship
-    private Long itemId;
-    private List<ItemReceiptDTO> receipts;
+    private Integer currentStock = 0;
+    private Integer minStockLevel = 0;
+    private Integer reorderLevel = 0;
+    private Boolean isActive = true;
+    private String category;
+    private String brand;
+    private Long supplierId;
+    private String notes;
 }
