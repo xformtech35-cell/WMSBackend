@@ -26,6 +26,8 @@ public class SupplierController {
     
     @GetMapping
     public ResponseEntity<ApiResponse<Page<SupplierDTO>>> getAllSuppliers(
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) Boolean isActive,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "name") String sortBy,
@@ -34,7 +36,7 @@ public class SupplierController {
         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         
-        Page<SupplierDTO> suppliers = supplierService.getAllSuppliers(pageable);
+        Page<SupplierDTO> suppliers = supplierService.getAllSuppliers(searchTerm, isActive, pageable);
         return ResponseEntity.ok(ApiResponse.success(suppliers));
     }
 

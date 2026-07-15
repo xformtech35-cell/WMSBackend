@@ -20,8 +20,19 @@ public class SupplierService {
     
     private final SupplierRepository supplierRepository;
     
-    public Page<SupplierDTO> getAllSuppliers(Pageable pageable) {
-        Page<Supplier> suppliers = supplierRepository.findAll(pageable);
+    public Page<SupplierDTO> getAllSuppliers(String searchTerm, Boolean isActive, Pageable pageable) {
+        Page<Supplier> suppliers;
+        
+        if (searchTerm != null && !searchTerm.isEmpty()) {
+            suppliers = supplierRepository.searchSuppliers(searchTerm, isActive, pageable);
+        } else {
+            if (isActive != null) {
+                suppliers = supplierRepository.findByIsActive(isActive, pageable);
+            } else {
+                suppliers = supplierRepository.findAll(pageable);
+            }
+        }
+        
         return suppliers.map(this::convertToDTO);
     }
     
