@@ -2,6 +2,7 @@ package com.warehouse.wms.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -143,38 +144,38 @@ public class RfqService {
         }
         
         // Create Vendor Quotations for selected suppliers
-        if (requestDTO.getSupplierIds() != null && !requestDTO.getSupplierIds().isEmpty()) {
-            for (Long supplierId : requestDTO.getSupplierIds()) {
-                Supplier supplier = supplierRepository.findById(supplierId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Supplier not found: " + supplierId));
-                
-                VendorQuotation quotation = new VendorQuotation();
-                quotation.setQuotationNumber("QUOT-" + supplier.getCode() + "-" + rfq.getRfqNumber());
-                quotation.setQuotationDate(LocalDate.now());
-                quotation.setStatus(QuotationStatus.PENDING);
-                quotation.setSupplier(supplier);
-                quotation.setRfq(rfq);
-                
-                // Create quotation items from RFQ items
-                for (RfqItem rfqItem : rfq.getItems()) {
-                    VendorQuotationItem qItem = new VendorQuotationItem();
-                    qItem.setItemCode(rfqItem.getItemCode());
-                    qItem.setItemName(rfqItem.getItemName());
-                    qItem.setDescription(rfqItem.getDescription());
-                    qItem.setUom(rfqItem.getUom());
-                    qItem.setQuantity(rfqItem.getQuantity());
-                    qItem.setGstRate(rfqItem.getGstRate());
-                    qItem.setCgstRate(rfqItem.getCgstRate());
-                    qItem.setSgstRate(rfqItem.getSgstRate());
-                    qItem.setIgstRate(rfqItem.getIgstRate());
-                    qItem.setRfqItem(rfqItem);
-                    qItem.setVendorQuotation(quotation);
-                    quotation.addItem(qItem);
-                }
-                
-                rfq.addVendorQuotation(quotation);
-            }
-        }
+//        if (requestDTO.getSupplierIds() != null && !requestDTO.getSupplierIds().isEmpty()) {
+//            for (Long supplierId : requestDTO.getSupplierIds()) {
+//                Supplier supplier = supplierRepository.findById(supplierId)
+//                    .orElseThrow(() -> new ResourceNotFoundException("Supplier not found: " + supplierId));
+//                
+//                VendorQuotation quotation = new VendorQuotation();
+//                quotation.setQuotationNumber("QUOT-" + supplier.getCode() + "-" + rfq.getRfqNumber());
+//                quotation.setQuotationDate(LocalDate.now());
+//                quotation.setStatus(QuotationStatus.PENDING);
+//                quotation.setSupplier(supplier);
+//                quotation.setRfq(rfq);
+//                
+//                // Create quotation items from RFQ items
+//                for (RfqItem rfqItem : rfq.getItems()) {
+//                    VendorQuotationItem qItem = new VendorQuotationItem();
+//                    qItem.setItemCode(rfqItem.getItemCode());
+//                    qItem.setItemName(rfqItem.getItemName());
+//                    qItem.setDescription(rfqItem.getDescription());
+//                    qItem.setUom(rfqItem.getUom());
+//                    qItem.setQuantity(rfqItem.getQuantity());
+//                    qItem.setGstRate(rfqItem.getGstRate());
+//                    qItem.setCgstRate(rfqItem.getCgstRate());
+//                    qItem.setSgstRate(rfqItem.getSgstRate());
+//                    qItem.setIgstRate(rfqItem.getIgstRate());
+//                    qItem.setRfqItem(rfqItem);
+//                    qItem.setVendorQuotation(quotation);
+//                    quotation.addItem(qItem);
+//                }
+//                
+//                rfq.addVendorQuotation(quotation);
+//            }
+//        }
         
         rfq = rfqRepository.save(rfq);
         log.info("RFQ created with number: {}", rfq.getRfqNumber());
@@ -184,70 +185,95 @@ public class RfqService {
 
     // ============ ADD VENDOR QUOTATION ============
     
-    @Transactional
-    public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quotationDTO) {
-        log.info("Adding vendor quotation for RFQ: {}", rfqId);
+   @Transactional
+public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quotationDTO) {
+    log.info("Adding vendor quotation for RFQ: {}", rfqId);
+    
+    Rfq rfq = rfqRepository.findById(rfqId)
+        .orElseThrow(() -> new ResourceNotFoundException("RFQ not found"));
+    
+    Supplier supplier = supplierRepository.findById(quotationDTO.getSupplierId())
+        .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
+    
+    VendorQuotation quotation = new VendorQuotation();
+    
+    // Generate unique quotation number
+    String quotationNumber = quotationDTO.getQuotationNumber();
+    if (quotationNumber == null || quotationNumber.isEmpty()) {
+        quotationNumber = generateQuotationNumber(supplier, rfq);
+    }
+    quotation.setQuotationNumber(quotationNumber);
+    
+    quotation.setQuotationDate(quotationDTO.getQuotationDate() != null ? 
+        quotationDTO.getQuotationDate() : LocalDate.now());
+    quotation.setDeliveryDate(quotationDTO.getDeliveryDate());
+    quotation.setValidTill(quotationDTO.getValidTill());
+    quotation.setDiscountAmount(quotationDTO.getDiscountAmount() != null ? quotationDTO.getDiscountAmount() : 0.0);
+    quotation.setShippingCharges(quotationDTO.getShippingCharges() != null ? quotationDTO.getShippingCharges() : 0.0);
+    quotation.setRemarks(quotationDTO.getRemarks());
+    quotation.setStatus(QuotationStatus.PENDING);
+    quotation.setSupplier(supplier);
+    quotation.setRfq(rfq);
+    
+    // Add items
+    for (VendorQuotationItemDTO itemDTO : quotationDTO.getItems()) {
+        VendorQuotationItem item = new VendorQuotationItem();
+        item.setItemCode(itemDTO.getItemCode());
+        item.setItemName(itemDTO.getItemName());
+        item.setDescription(itemDTO.getDescription());
+        item.setUom(itemDTO.getUom());
+        item.setQuantity(itemDTO.getQuantity());
+        item.setUnitPrice(itemDTO.getUnitPrice() != null ? itemDTO.getUnitPrice() : 0.0);
+        item.setGstRate(itemDTO.getGstRate() != null ? itemDTO.getGstRate() : 0.0);
+        item.setCgstRate(itemDTO.getCgstRate());
+        item.setSgstRate(itemDTO.getSgstRate());
+        item.setIgstRate(itemDTO.getIgstRate());
+        item.setDiscountPercentage(itemDTO.getDiscountPercentage() != null ? itemDTO.getDiscountPercentage() : 0.0);
         
-        Rfq rfq = rfqRepository.findById(rfqId)
-            .orElseThrow(() -> new ResourceNotFoundException("RFQ not found"));
+        item.calculatePrice();
+        item.setVendorQuotation(quotation);
         
-        Supplier supplier = supplierRepository.findById(quotationDTO.getSupplierId())
-            .orElseThrow(() -> new ResourceNotFoundException("Supplier not found"));
-        
-        VendorQuotation quotation = new VendorQuotation();
-        quotation.setQuotationNumber(quotationDTO.getQuotationNumber() != null ? 
-            quotationDTO.getQuotationNumber() : 
-            "QUOT-" + supplier.getCode() + "-" + LocalDate.now().toString());
-        quotation.setQuotationDate(quotationDTO.getQuotationDate() != null ? 
-            quotationDTO.getQuotationDate() : LocalDate.now());
-        quotation.setDeliveryDate(quotationDTO.getDeliveryDate());
-        quotation.setValidTill(quotationDTO.getValidTill());
-        quotation.setDiscountAmount(quotationDTO.getDiscountAmount() != null ? quotationDTO.getDiscountAmount() : 0.0);
-        quotation.setShippingCharges(quotationDTO.getShippingCharges() != null ? quotationDTO.getShippingCharges() : 0.0);
-        quotation.setRemarks(quotationDTO.getRemarks());
-        quotation.setStatus(QuotationStatus.PENDING);
-        quotation.setSupplier(supplier);
-        quotation.setRfq(rfq);
-        
-        // Add items
-        for (VendorQuotationItemDTO itemDTO : quotationDTO.getItems()) {
-            VendorQuotationItem item = new VendorQuotationItem();
-            item.setItemCode(itemDTO.getItemCode());
-            item.setItemName(itemDTO.getItemName());
-            item.setDescription(itemDTO.getDescription());
-            item.setUom(itemDTO.getUom());
-            item.setQuantity(itemDTO.getQuantity());
-            item.setUnitPrice(itemDTO.getUnitPrice() != null ? itemDTO.getUnitPrice() : 0.0);
-            item.setGstRate(itemDTO.getGstRate() != null ? itemDTO.getGstRate() : 0.0);
-            item.setCgstRate(itemDTO.getCgstRate());
-            item.setSgstRate(itemDTO.getSgstRate());
-            item.setIgstRate(itemDTO.getIgstRate());
-            item.setDiscountPercentage(itemDTO.getDiscountPercentage() != null ? itemDTO.getDiscountPercentage() : 0.0);
-            
-            item.calculatePrice();
-            item.setVendorQuotation(quotation);
-            
-            // Link to RFQ item if possible
-            if (rfq.getItems() != null) {
-                rfq.getItems().stream()
-                    .filter(rfqItem -> rfqItem.getItemCode().equals(itemDTO.getItemCode()))
-                    .findFirst()
-                    .ifPresent(rfqItem -> item.setRfqItem(rfqItem));
-            }
-            
-            quotation.addItem(item);
+        // Link to RFQ item if possible
+        if (rfq.getItems() != null) {
+            rfq.getItems().stream()
+                .filter(rfqItem -> rfqItem.getItemCode().equals(itemDTO.getItemCode()))
+                .findFirst()
+                .ifPresent(rfqItem -> item.setRfqItem(rfqItem));
         }
         
-        quotation.calculateTotals();
-        quotation = vendorQuotationRepository.save(quotation);
-        
-        // Update RFQ status
-        rfq.setStatus(RfqStatus.IN_PROGRESS);
-        rfqRepository.save(rfq);
-        
-        log.info("Vendor quotation added with number: {}", quotation.getQuotationNumber());
-        return convertQuotationToDTO(quotation);
+        quotation.addItem(item);
     }
+    
+    quotation.calculateTotals();
+    quotation = vendorQuotationRepository.save(quotation);
+    
+    // Update RFQ status
+    rfq.setStatus(RfqStatus.IN_PROGRESS);
+    rfqRepository.save(rfq);
+    
+    log.info("Vendor quotation added with number: {}", quotation.getQuotationNumber());
+    return convertQuotationToDTO(quotation);
+}
+
+// Helper method to generate unique quotation number
+private String generateQuotationNumber(Supplier supplier, Rfq rfq) {
+    String prefix = "QT-" + supplier.getCode() + "-" + 
+                     LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    
+    // Get count of existing quotations with this prefix
+    Long count = vendorQuotationRepository.countByQuotationNumberStartingWith(prefix);
+    int sequence = count.intValue() + 1;
+    
+    String quotationNumber = String.format("%s-%04d", prefix, sequence);
+    
+    // Safety check - if exists, increment until unique
+    while (vendorQuotationRepository.existsByQuotationNumber(quotationNumber)) {
+        sequence++;
+        quotationNumber = String.format("%s-%04d", prefix, sequence);
+    }
+    
+    return quotationNumber;
+}
 
     // ============ COMPARE QUOTATIONS ============
     

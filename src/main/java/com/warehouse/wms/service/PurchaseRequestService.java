@@ -633,7 +633,12 @@ public class PurchaseRequestService {
         ));
         
         allowedTransitions.put(RequestStatus.REJECTED, Arrays.asList(
-            RequestStatus.DRAFT
+            RequestStatus.DRAFT,
+            RequestStatus.PENDING,
+            RequestStatus.APPROVED,
+            RequestStatus.IN_PROGRESS
+
+
         ));
         
         allowedTransitions.put(RequestStatus.COMPLETED, Arrays.asList(

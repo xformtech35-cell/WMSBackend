@@ -30,4 +30,13 @@ public interface VendorQuotationRepository extends JpaRepository<VendorQuotation
     
     @Query("SELECT MIN(vq.grandTotal) FROM VendorQuotation vq WHERE vq.rfq.id = :rfqId")
     Double findMinGrandTotalByRfqId(@Param("rfqId") Long rfqId);
+    
+    
+   boolean existsByQuotationNumber(String quotationNumber);
+    
+    // Count quotations with a specific prefix
+    @Query("SELECT COUNT(vq) FROM VendorQuotation vq WHERE vq.quotationNumber LIKE CONCAT(:prefix, '%')")
+    Long countByQuotationNumberStartingWith(@Param("prefix") String prefix);
+    
+    // Find by quotation number
 }
