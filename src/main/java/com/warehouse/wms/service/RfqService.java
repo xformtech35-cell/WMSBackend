@@ -100,6 +100,15 @@ public class RfqService {
         rfq.setDeliveryTerms(requestDTO.getDeliveryTerms());
         rfq.setPaymentTerms(requestDTO.getPaymentTerms());
         rfq.setPurchaseRequest(pr);
+        
+        
+        
+        if (requestDTO.getSupplierIds() != null && !requestDTO.getSupplierIds().isEmpty()) {
+            // Convert to JSON array string
+            String supplierIdsJson = requestDTO.getSupplierIds().toString();
+            rfq.setSupplierIds(supplierIdsJson);
+            log.info("Saved supplier IDs as JSON: {}", supplierIdsJson);
+        }
         rfq.setCreatedBy(userId);
         
         rfq = rfqRepository.save(rfq);
@@ -207,6 +216,15 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
         quotationNumber = generateQuotationNumber(supplier, rfq);
     }
     quotation.setQuotationNumber(quotationNumber);
+    
+    
+    quotation.setSupplierName(supplier.getName());
+    quotation.setSupplierEmail(supplier.getEmail());
+    quotation.setSupplierMobile(supplier.getPhone());
+    quotation.setSupplierAddress(supplier.getAddress());
+    quotation.setGstNumber(supplier.getGstNumber());
+    
+    
     
     quotation.setQuotationDate(quotationDTO.getQuotationDate() != null ? 
         quotationDTO.getQuotationDate() : LocalDate.now());
@@ -437,6 +455,7 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
             .prNumber(entity.getPurchaseRequest() != null ? entity.getPurchaseRequest().getPrNumber() : null)
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
+            .supplierIds(entity.getSupplierIds())
             .build();
         
         if (entity.getItems() != null) {
@@ -471,6 +490,7 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
             .estimatedTotal(entity.getEstimatedTotal())
             .specifications(entity.getSpecifications())
             .purchaseRequestItemId(entity.getPurchaseRequestItem() != null ? entity.getPurchaseRequestItem().getId() : null)
+            
             .build();
     }
     
@@ -489,6 +509,16 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
             .remarks(entity.getRemarks())
             .status(entity.getStatus())
             .rank(entity.getRank())
+            
+            .supplierName(entity.getSupplierName())
+            .supplierEmail(entity.getSupplierEmail())
+            .supplierMobile(entity.getSupplierMobile())           
+            .supplierAddress(entity.getSupplierAddress())
+            .gstNumber(entity.getGstNumber())            
+            
+            
+            
+            
             .supplierId(entity.getSupplier().getId())
             .supplierName(entity.getSupplier().getName())
             .supplierCode(entity.getSupplier().getCode())

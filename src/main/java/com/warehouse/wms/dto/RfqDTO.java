@@ -32,7 +32,7 @@ public class RfqDTO {
     
     private List<RfqItemDTO> items;
     private List<VendorQuotationDTO> vendorQuotations;
-    
+    private String supplierIds;  // Will store like "[1, 2, 3, 4, 5]"
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -33,5 +33,16 @@ public class VendorQuotationDTO {
     private String supplierName;
     private String supplierCode;
     
+    
+    
+    
+    private String supplierEmail;
+
+    private String supplierMobile;
+
+    private String supplierAddress;
+    
+    private String gstNumber;
+    
     private List<VendorQuotationItemDTO> items;
 }

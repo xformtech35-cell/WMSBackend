@@ -74,6 +74,19 @@ public class VendorQuotation {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
+    
+    private String supplierName;
+    
+    private String supplierEmail;
+
+    private String supplierMobile;
+
+    private String supplierAddress;
+    
+    private String gstNumber;
+
+
+    
     // Helper methods
     public void addItem(VendorQuotationItem item) {
         items.add(item);

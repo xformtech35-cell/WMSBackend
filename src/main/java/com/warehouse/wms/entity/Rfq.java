@@ -58,6 +58,10 @@ public class Rfq {
     @Column(name = "created_by")
     private Long createdBy;
     
+    
+    @Column(name = "supplier_ids", columnDefinition = "TEXT")
+    private String supplierIds;  // Will store like "[1, 2, 3, 4, 5]"
+    
     @Column(name = "approved_by")
     private Long approvedBy;
     
