@@ -111,12 +111,17 @@ public class RfqController {
 
     // ============ CONVERT TO PO ============
     
+ // In RfqController.java
     @PostMapping("/vendor-quotations/{quotationId}/convert-to-po")
     public ResponseEntity<ApiResponse<PurchaseOrderDTO>> convertToPO(
             @PathVariable Long quotationId) {
         try {
-            PurchaseOrderDTO po = rfqService.convertToPO(quotationId);
-            return ResponseEntity.ok(ApiResponse.success("Quotation converted to PO successfully", po));
+            Long userId = SecurityUtils.getCurrentUserId();
+            PurchaseOrderDTO po = rfqService.convertToPO(quotationId, userId);
+            return ResponseEntity.ok(ApiResponse.success("Quotation converted to PO successfully: " + po.getPoNumber(), po));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             log.error("Error converting to PO", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

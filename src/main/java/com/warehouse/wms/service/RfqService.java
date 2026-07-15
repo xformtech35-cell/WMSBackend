@@ -2,7 +2,6 @@ package com.warehouse.wms.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -12,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.warehouse.wms.dto.CreatePurchaseOrderDTO;
+import com.warehouse.wms.dto.CreatePurchaseOrderLineDTO;
 import com.warehouse.wms.dto.CreateRfqDTO;
 import com.warehouse.wms.dto.PurchaseOrderDTO;
 import com.warehouse.wms.dto.RfqDTO;
@@ -51,6 +52,9 @@ public class RfqService {
     private final PurchaseRequestRepository purchaseRequestRepository;
     private final SupplierRepository supplierRepository;
     private final PurchaseRequestItemRepository purchaseRequestItemRepository;
+    
+    private final PurchaseOrderService purchaseOrderService;
+
 
     private static final String RFQ_PREFIX = "RFQ";
 
@@ -256,24 +260,24 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
 }
 
 // Helper method to generate unique quotation number
-private String generateQuotationNumber(Supplier supplier, Rfq rfq) {
-    String prefix = "QT-" + supplier.getCode() + "-" + 
-                     LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    
-    // Get count of existing quotations with this prefix
-    Long count = vendorQuotationRepository.countByQuotationNumberStartingWith(prefix);
-    int sequence = count.intValue() + 1;
-    
-    String quotationNumber = String.format("%s-%04d", prefix, sequence);
-    
-    // Safety check - if exists, increment until unique
-    while (vendorQuotationRepository.existsByQuotationNumber(quotationNumber)) {
-        sequence++;
-        quotationNumber = String.format("%s-%04d", prefix, sequence);
-    }
-    
-    return quotationNumber;
-}
+//private String generateQuotationNumber(Supplier supplier, Rfq rfq) {
+//    String prefix = "QT-" + supplier.getCode() + "-" + 
+//                     LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+//    
+//    // Get count of existing quotations with this prefix
+//    Long count = vendorQuotationRepository.countByQuotationNumberStartingWith(prefix);
+//    int sequence = count.intValue() + 1;
+//    
+//    String quotationNumber = String.format("%s-%04d", prefix, sequence);
+//    
+//    // Safety check - if exists, increment until unique
+//    while (vendorQuotationRepository.existsByQuotationNumber(quotationNumber)) {
+//        sequence++;
+//        quotationNumber = String.format("%s-%04d", prefix, sequence);
+//    }
+//    
+//    return quotationNumber;
+//}
 
     // ============ COMPARE QUOTATIONS ============
     
@@ -303,22 +307,108 @@ private String generateQuotationNumber(Supplier supplier, Rfq rfq) {
     }
 
     // ============ CONVERT TO PO ============
-    
     @Transactional
-    public PurchaseOrderDTO convertToPO(Long quotationId) {
+    public PurchaseOrderDTO convertToPO(Long quotationId, Long userId) {
         log.info("Converting quotation to PO: {}", quotationId);
         
         VendorQuotation quotation = vendorQuotationRepository.findById(quotationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Quotation not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Quotation not found with id: " + quotationId));
         
-        // Create Purchase Order from quotation
-        // This would call your PurchaseOrderService
-        // ...
+        if (quotation.getStatus() == QuotationStatus.CONVERTED) {
+            throw new IllegalStateException("This quotation has already been converted to a PO");
+        }
         
+        Rfq rfq = quotation.getRfq();
+        Supplier supplier = quotation.getSupplier();
+        
+        // Create Purchase Order DTO
+        CreatePurchaseOrderDTO poDTO = new CreatePurchaseOrderDTO();
+        poDTO.setPoDate(LocalDate.now());
+        poDTO.setExpectedArrivalDate(quotation.getDeliveryDate());
+        poDTO.setSupplierId(supplier.getId());
+        poDTO.setSupplierName(supplier.getName());
+        poDTO.setSupplierEmail(supplier.getEmail());
+        poDTO.setSupplierPhone(supplier.getPhone());
+        poDTO.setDiscountAmount(quotation.getDiscountAmount());
+        poDTO.setShippingCharges(quotation.getShippingCharges());
+        poDTO.setRemarks("PO created from RFQ: " + rfq.getRfqNumber() + " | Quotation: " + quotation.getQuotationNumber());
+        poDTO.setTermsAndConditions(rfq.getTermsAndConditions());
+        
+        // Set shipping and billing address from supplier
+        poDTO.setShippingAddress(supplier.getAddress());
+        poDTO.setBillingAddress(supplier.getAddress());
+        
+        if (rfq.getPurchaseRequest() != null) {
+            poDTO.setPurchaseRequestId(rfq.getPurchaseRequest().getId());
+        }
+        
+        // Create PO Lines from Quotation Items
+        List<CreatePurchaseOrderLineDTO> poLines = quotation.getItems().stream()
+            .map(this::createPOLineFromQuotationItem)
+            .collect(Collectors.toList());
+        poDTO.setLines(poLines);
+        
+        // Create the Purchase Order
+        PurchaseOrderDTO createdPO = purchaseOrderService.createPurchaseOrder(poDTO, userId);
+        
+        // Update Quotation status
         quotation.setStatus(QuotationStatus.CONVERTED);
         vendorQuotationRepository.save(quotation);
         
-        return null; // Return PO DTO
+        // Update RFQ status if all quotations are converted
+        boolean allConverted = rfq.getVendorQuotations().stream()
+            .allMatch(vq -> vq.getStatus() == QuotationStatus.CONVERTED || vq.getStatus() == QuotationStatus.REJECTED);
+        
+        if (allConverted) {
+            rfq.setStatus(RfqStatus.COMPLETED);
+            rfqRepository.save(rfq);
+        }
+        
+        log.info("Quotation {} converted to PO: {}", quotationId, createdPO.getPoNumber());
+        return createdPO;
+    }
+
+    // Helper method to create PO Line from Quotation Item
+    private CreatePurchaseOrderLineDTO createPOLineFromQuotationItem(VendorQuotationItem qItem) {
+        CreatePurchaseOrderLineDTO line = new CreatePurchaseOrderLineDTO();
+        line.setItemCode(qItem.getItemCode());
+        line.setItemName(qItem.getItemName());
+        line.setDescription(qItem.getDescription());
+        line.setUom(qItem.getUom());
+        line.setQuantity(qItem.getQuantity().intValue());
+        line.setUnitPrice(qItem.getUnitPrice());
+        line.setGstRate(qItem.getGstRate());
+        line.setCgstRate(qItem.getCgstRate());
+        line.setSgstRate(qItem.getSgstRate());
+        line.setIgstRate(qItem.getIgstRate());
+        line.setDiscountPercentage(qItem.getDiscountPercentage());
+        
+        // Try to find HSN from RFQ item
+        if (qItem.getRfqItem() != null && qItem.getRfqItem().getHsnCode() != null) {
+            line.setHsnCode(qItem.getRfqItem().getHsnCode());
+        }
+        
+        return line;
+    }
+
+    // ============ ADD TO EXISTING METHODS ============
+
+    private String generateQuotationNumber(Supplier supplier, Rfq rfq) {
+        String dateStr = LocalDate.now().toString().replace("-", "");
+        String prefix = "QT-" + supplier.getCode() + "-" + dateStr + "-";
+        
+        Long count = vendorQuotationRepository.countByQuotationNumberStartingWith(prefix);
+        int sequence = count.intValue() + 1;
+        
+        String quotationNumber = prefix + String.format("%04d", sequence);
+        
+        // Ensure uniqueness
+        while (vendorQuotationRepository.existsByQuotationNumber(quotationNumber)) {
+            sequence++;
+            quotationNumber = prefix + String.format("%04d", sequence);
+        }
+        
+        return quotationNumber;
     }
 
     // ============ GET RFQ ============
