@@ -202,7 +202,7 @@ public class PurchaseRequestService {
         purchaseRequest.setPriority(requestDTO.getPriority());
         purchaseRequest.setRequiredDate(requestDTO.getRequiredDate());
         purchaseRequest.setRemarks(requestDTO.getRemarks());
-        
+        purchaseRequest.setStatus(requestDTO.getStatus());        
         // Update supplier
         if (requestDTO.getSupplierId() != null) {
             Supplier supplier = supplierRepository.findById(requestDTO.getSupplierId())
@@ -607,7 +607,8 @@ public class PurchaseRequestService {
         
         allowedTransitions.put(RequestStatus.PENDING, Arrays.asList(
                 RequestStatus.APPROVED,
-	
+                RequestStatus.REJECTED,
+
             RequestStatus.SUBMITTED
         ));
         

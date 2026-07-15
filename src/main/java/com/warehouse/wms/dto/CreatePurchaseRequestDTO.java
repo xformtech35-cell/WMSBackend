@@ -1,6 +1,8 @@
 package com.warehouse.wms.dto;
 
 import com.warehouse.wms.entity.Priority;
+import com.warehouse.wms.entity.RequestStatus;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -36,7 +38,7 @@ public class CreatePurchaseRequestDTO {
     
     @NotNull(message = "Required Date is required")
     private LocalDate requiredDate;
-    
+    private RequestStatus status;
     private String remarks;
     
     private Long supplierId;
