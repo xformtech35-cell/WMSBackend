@@ -5,8 +5,13 @@ import com.warehouse.wms.dto.SupplierDTO;
 import com.warehouse.wms.service.SupplierService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -20,10 +25,19 @@ public class SupplierController {
     private final SupplierService supplierService;
     
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SupplierDTO>>> getAllSuppliers() {
-        List<SupplierDTO> suppliers = supplierService.getAllSuppliers();
+    public ResponseEntity<ApiResponse<Page<SupplierDTO>>> getAllSuppliers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+        
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<SupplierDTO> suppliers = supplierService.getAllSuppliers(pageable);
         return ResponseEntity.ok(ApiResponse.success(suppliers));
     }
+
     
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SupplierDTO>> getSupplierById(@PathVariable Long id) {

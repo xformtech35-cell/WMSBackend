@@ -1,16 +1,17 @@
 package com.warehouse.wms.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.warehouse.wms.dto.SupplierDTO;
 import com.warehouse.wms.entity.Supplier;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.repository.SupplierRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,10 +20,9 @@ public class SupplierService {
     
     private final SupplierRepository supplierRepository;
     
-    public List<SupplierDTO> getAllSuppliers() {
-        // Get ALL suppliers (not just active ones)
-        List<Supplier> suppliers = supplierRepository.findAll();
-        return suppliers.stream().map(this::convertToDTO).collect(Collectors.toList());
+    public Page<SupplierDTO> getAllSuppliers(Pageable pageable) {
+        Page<Supplier> suppliers = supplierRepository.findAll(pageable);
+        return suppliers.map(this::convertToDTO);
     }
     
     public SupplierDTO getSupplierById(Long id) {
