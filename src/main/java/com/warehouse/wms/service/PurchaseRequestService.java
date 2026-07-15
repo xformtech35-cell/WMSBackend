@@ -655,7 +655,6 @@ public class PurchaseRequestService {
     public Page<PurchaseRequestDTO> filterPurchaseRequests(PurchaseRequestFilterDTO filter, Pageable pageable) {
         log.info("Filtering purchase requests with: {}", filter);
         
-        // Build dynamic query using Specification or JPQL
         Page<PurchaseRequest> requests = purchaseRequestRepository.filterPurchaseRequests(
             filter.getStatus(),
             filter.getStatuses(),
@@ -674,8 +673,6 @@ public class PurchaseRequestService {
             filter.getRemarks(),
             filter.getItemCode(),
             filter.getItemName(),
-        
-            filter.getIsActive(),
             filter.getHasSupplier(),
             filter.getHasItems(),
             filter.getCreatedFrom(),

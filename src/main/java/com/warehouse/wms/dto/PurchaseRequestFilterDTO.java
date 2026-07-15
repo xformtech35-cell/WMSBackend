@@ -21,7 +21,7 @@ public class PurchaseRequestFilterDTO {
     private List<RequestStatus> statuses; // Multiple statuses
     
     // Priority filters
-	private Priority priority;
+    private Priority priority;
     private List<Priority> priorities; // Multiple priorities
     
     // Date filters
@@ -43,10 +43,7 @@ public class PurchaseRequestFilterDTO {
     private String itemCode;
     private String itemName;
     
-
-    
     // Other filters
-    private Boolean isActive;
     private Boolean hasSupplier;
     private Boolean hasItems;
     

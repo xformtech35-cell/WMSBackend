@@ -69,6 +69,7 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
     
     @Query("SELECT DISTINCT pr FROM PurchaseRequest pr " +
     	       "LEFT JOIN pr.items i " +
+    	       "LEFT JOIN pr.supplier s " +
     	       "WHERE " +
     	       "(:status IS NULL OR pr.status = :status) AND " +
     	       "(:statuses IS NULL OR pr.status IN :statuses) AND " +
@@ -87,8 +88,6 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
     	       "(:remarks IS NULL OR pr.remarks LIKE CONCAT('%', :remarks, '%')) AND " +
     	       "(:itemCode IS NULL OR i.itemCode LIKE CONCAT('%', :itemCode, '%')) AND " +
     	       "(:itemName IS NULL OR i.itemName LIKE CONCAT('%', :itemName, '%')) AND " +
-    	    
-    	       "(:isActive IS NULL OR pr.status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'IN_PROGRESS', 'PARTIAL', 'PENDING')) AND " +
     	       "(:hasSupplier IS NULL OR (CASE WHEN :hasSupplier = true THEN pr.supplier IS NOT NULL ELSE pr.supplier IS NULL END)) AND " +
     	       "(:hasItems IS NULL OR (CASE WHEN :hasItems = true THEN pr.items IS NOT EMPTY ELSE pr.items IS EMPTY END)) AND " +
     	       "(:createdFrom IS NULL OR pr.createdAt >= :createdFrom) AND " +
@@ -98,8 +97,18 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
     	       "pr.requestedBy LIKE CONCAT('%', :searchTerm, '%') OR " +
     	       "pr.department LIKE CONCAT('%', :searchTerm, '%') OR " +
     	       "pr.warehouse LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.remarks LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.status LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "pr.priority LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "s.name LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "s.email LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "s.phone LIKE CONCAT('%', :searchTerm, '%') OR " +
     	       "i.itemCode LIKE CONCAT('%', :searchTerm, '%') OR " +
-    	       "i.itemName LIKE CONCAT('%', :searchTerm, '%'))")
+    	       "i.itemName LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.description LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.uom LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.reason LIKE CONCAT('%', :searchTerm, '%') OR " +
+    	       "i.itemStatus LIKE CONCAT('%', :searchTerm, '%'))")
     	Page<PurchaseRequest> filterPurchaseRequests(
     	        @Param("status") RequestStatus status,
     	        @Param("statuses") List<RequestStatus> statuses,
@@ -118,8 +127,6 @@ public interface PurchaseRequestRepository extends JpaRepository<PurchaseRequest
     	        @Param("remarks") String remarks,
     	        @Param("itemCode") String itemCode,
     	        @Param("itemName") String itemName,
-    	   
-    	        @Param("isActive") Boolean isActive,
     	        @Param("hasSupplier") Boolean hasSupplier,
     	        @Param("hasItems") Boolean hasItems,
     	        @Param("createdFrom") LocalDate createdFrom,
