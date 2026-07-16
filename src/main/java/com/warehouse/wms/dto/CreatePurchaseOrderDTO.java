@@ -33,7 +33,8 @@ public class CreatePurchaseOrderDTO {
     private Double shippingCharges = 0.0;
     private String remarks;
     private String termsAndConditions;
-    
+    private String purchaseRequestNumber; // Reference to source PR
+
     private Long purchaseRequestId;
     
     @NotEmpty(message = "At least one line item is required")

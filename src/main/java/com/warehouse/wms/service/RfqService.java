@@ -315,7 +315,7 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
         int rank = 1;
         for (VendorQuotation q : quotations) {
             q.setRank(rank++);
-//            q.setStatus(QuotationStatus.PENDING);
+           q.setStatus(QuotationStatus.PENDING);
             vendorQuotationRepository.save(q);
         }
         

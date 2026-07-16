@@ -79,6 +79,9 @@ public class PurchaseOrder {
     @Column(name = "purchase_request_id")
     private Long purchaseRequestId; // Reference to source PR
     
+    private String purchaseRequestNumber; // Reference to source PR
+
+    
     @Column(name = "created_by")
     private Long createdBy;
     

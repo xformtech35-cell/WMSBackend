@@ -1,25 +1,37 @@
 package com.warehouse.wms.service;
 
-import com.warehouse.wms.dto.*;
-import com.warehouse.wms.entity.*;
-import com.warehouse.wms.exception.ResourceNotFoundException;
-import com.warehouse.wms.repository.PurchaseOrderRepository;
-import com.warehouse.wms.repository.SupplierRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.warehouse.wms.dto.CreatePurchaseOrderDTO;
+import com.warehouse.wms.dto.CreatePurchaseOrderLineDTO;
+import com.warehouse.wms.dto.PurchaseOrderDTO;
+import com.warehouse.wms.dto.PurchaseOrderFilterDTO;
+import com.warehouse.wms.dto.PurchaseOrderLineDTO;
+import com.warehouse.wms.dto.StatusUpdateRequestDTOPO;
+import com.warehouse.wms.entity.PurchaseOrder;
+import com.warehouse.wms.entity.PurchaseOrderLine;
+import com.warehouse.wms.entity.PurchaseOrderStatus;
+import com.warehouse.wms.entity.PurchaseRequest;
+import com.warehouse.wms.entity.RequestStatus;
+import com.warehouse.wms.entity.Supplier;
+import com.warehouse.wms.exception.ResourceNotFoundException;
+import com.warehouse.wms.repository.PurchaseOrderRepository;
+import com.warehouse.wms.repository.PurchaseRequestRepository;
+import com.warehouse.wms.repository.SupplierRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +39,8 @@ import java.util.stream.Collectors;
 public class PurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final PurchaseRequestRepository purchaseRequestRepository;
+
     private final SupplierRepository supplierRepository;
     private static final String PO_PREFIX = "PO";
 
@@ -67,7 +81,25 @@ public class PurchaseOrderService {
         purchaseOrder.setShippingCharges(requestDTO.getShippingCharges() != null ? requestDTO.getShippingCharges() : 0.0);
         purchaseOrder.setRemarks(requestDTO.getRemarks());
         purchaseOrder.setTermsAndConditions(requestDTO.getTermsAndConditions());
-        purchaseOrder.setPurchaseRequestId(requestDTO.getPurchaseRequestId());
+       
+        if (requestDTO.getPurchaseRequestId() != null) {
+            PurchaseRequest purchaseRequest = purchaseRequestRepository.findById(requestDTO.getPurchaseRequestId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Purchase request not found with id: " + requestDTO.getPurchaseRequestId()
+                ));
+            
+            purchaseOrder.setPurchaseRequestId(requestDTO.getPurchaseRequestId());
+            purchaseOrder.setPurchaseRequestNumber(purchaseRequest.getPrNumber());
+
+            // Optional: Validate purchase request status (e.g., should be APPROVED)
+            if (purchaseRequest.getStatus() != RequestStatus.APPROVED) {
+                throw new IllegalStateException(
+                    "Cannot create purchase order from purchase request with status: " + 
+                    purchaseRequest.getStatus() + ". Purchase request must be APPROVED."
+                );
+            }
+            
+        }
         purchaseOrder.setCreatedBy(userId);
         
         // Set supplier details
@@ -427,6 +459,7 @@ public class PurchaseOrderService {
             .rejectionReason(entity.getRejectionReason())
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
+            .purchaseRequestNumber(entity.getPurchaseRequestNumber())
             .build();
         
         if (entity.getLines() != null) {

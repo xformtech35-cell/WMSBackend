@@ -38,6 +38,8 @@ public class PurchaseOrderDTO {
     private String billingAddress;
     
     private Long purchaseRequestId;
+    
+    private String  purchaseRequestNumber;
     private Long createdBy;
     private Long approvedBy;
     private LocalDateTime approvedAt;
