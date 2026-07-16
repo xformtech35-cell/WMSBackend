@@ -6,5 +6,6 @@ public enum QuotationStatus {
     REJECTED,       // Rejected
     COMPARED,       // Compared with others
     CONVERTED,      // Converted to PO
-    CANCELLED       // Cancelled
+    CANCELLED,       // Cancelled
+    COMPLETED
 }

@@ -315,7 +315,7 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
         int rank = 1;
         for (VendorQuotation q : quotations) {
             q.setRank(rank++);
-            q.setStatus(QuotationStatus.COMPARED);
+//            q.setStatus(QuotationStatus.PENDING);
             vendorQuotationRepository.save(q);
         }
         
@@ -332,9 +332,9 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
         VendorQuotation quotation = vendorQuotationRepository.findById(quotationId)
             .orElseThrow(() -> new ResourceNotFoundException("Quotation not found with id: " + quotationId));
         
-        if (quotation.getStatus() == QuotationStatus.CONVERTED) {
-            throw new IllegalStateException("This quotation has already been converted to a PO");
-        }
+//        if (quotation.getStatus() == QuotationStatus.CONVERTED) {
+//            throw new IllegalStateException("This quotation has already been converted to a PO");
+//        }
         
         Rfq rfq = quotation.getRfq();
         Supplier supplier = quotation.getSupplier();
@@ -370,17 +370,17 @@ public VendorQuotationDTO addVendorQuotation(Long rfqId, VendorQuotationDTO quot
         PurchaseOrderDTO createdPO = purchaseOrderService.createPurchaseOrder(poDTO, userId);
         
         // Update Quotation status
-        quotation.setStatus(QuotationStatus.CONVERTED);
+        quotation.setStatus(QuotationStatus.COMPLETED);
         vendorQuotationRepository.save(quotation);
         
-        // Update RFQ status if all quotations are converted
-        boolean allConverted = rfq.getVendorQuotations().stream()
-            .allMatch(vq -> vq.getStatus() == QuotationStatus.CONVERTED || vq.getStatus() == QuotationStatus.REJECTED);
-        
-        if (allConverted) {
+//        // Update RFQ status if all quotations are converted
+//        boolean allConverted = rfq.getVendorQuotations().stream()
+//            .allMatch(vq -> vq.getStatus() == QuotationStatus.COMPLETED );
+//        
+//        if (allConverted) {
             rfq.setStatus(RfqStatus.COMPLETED);
             rfqRepository.save(rfq);
-        }
+//        }
         
         log.info("Quotation {} converted to PO: {}", quotationId, createdPO.getPoNumber());
         return createdPO;
