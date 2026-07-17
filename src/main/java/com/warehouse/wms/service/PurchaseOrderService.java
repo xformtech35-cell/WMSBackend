@@ -305,24 +305,36 @@ public PurchaseOrderDTO updateStatus(Long id, StatusUpdateRequestDTOPO statusUpd
     allowedTransitions.put(PurchaseOrderStatus.PENDING, Arrays.asList(
         PurchaseOrderStatus.SEND,
         PurchaseOrderStatus.APPROVED,
-        PurchaseOrderStatus.REJECTED
+        PurchaseOrderStatus.REJECTED,
+        PurchaseOrderStatus.ACCEPTED
+
     ));
     
     // SEND can go to ACCEPTED, REJECTED
     allowedTransitions.put(PurchaseOrderStatus.SEND, Arrays.asList(
         PurchaseOrderStatus.ACCEPTED,
-        PurchaseOrderStatus.REJECTED
+        PurchaseOrderStatus.REJECTED,
+        PurchaseOrderStatus.APPROVED,
+        PurchaseOrderStatus.PENDING
+
+        
     ));
     
     // ACCEPTED can go to APPROVED, REJECTED
     allowedTransitions.put(PurchaseOrderStatus.ACCEPTED, Arrays.asList(
         PurchaseOrderStatus.APPROVED,
-        PurchaseOrderStatus.REJECTED
+        PurchaseOrderStatus.REJECTED,
+        PurchaseOrderStatus.PENDING,
+        PurchaseOrderStatus.SEND
     ));
     
     // APPROVED can go to REJECTED (if needed)
     allowedTransitions.put(PurchaseOrderStatus.APPROVED, Arrays.asList(
-        PurchaseOrderStatus.REJECTED
+    	        PurchaseOrderStatus.REJECTED,
+    	        PurchaseOrderStatus.ACCEPTED,
+    	        PurchaseOrderStatus.SEND,
+    	        PurchaseOrderStatus.PENDING
+
     ));
     
     // REJECTED has no further transitions (terminal state)
