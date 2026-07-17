@@ -76,7 +76,7 @@ public class PurchaseOrderService {
         purchaseOrder.setPoNumber(generatePONumber());
         purchaseOrder.setPoDate(requestDTO.getPoDate());
         purchaseOrder.setExpectedArrivalDate(requestDTO.getExpectedArrivalDate());
-        purchaseOrder.setStatus(PurchaseOrderStatus.DRAFT);
+        purchaseOrder.setStatus(PurchaseOrderStatus.PENDING);
         purchaseOrder.setDiscountAmount(requestDTO.getDiscountAmount() != null ? requestDTO.getDiscountAmount() : 0.0);
         purchaseOrder.setShippingCharges(requestDTO.getShippingCharges() != null ? requestDTO.getShippingCharges() : 0.0);
         purchaseOrder.setRemarks(requestDTO.getRemarks());
@@ -195,7 +195,7 @@ public class PurchaseOrderService {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Purchase order not found with id: " + id));
         
-        if (purchaseOrder.getStatus() != PurchaseOrderStatus.DRAFT) {
+        if (purchaseOrder.getStatus() != PurchaseOrderStatus.PENDING) {
             throw new IllegalStateException("Only draft orders can be updated");
         }
         
@@ -237,132 +237,105 @@ public class PurchaseOrderService {
     }
 
     // ============ STATUS MANAGEMENT ============
+  @Transactional
+public PurchaseOrderDTO updateStatus(Long id, StatusUpdateRequestDTOPO statusUpdateRequest, Long userId) {
+    log.info("Updating status for purchase order: {} to {}", id, statusUpdateRequest.getStatus());
     
-    @Transactional
-    public PurchaseOrderDTO updateStatus(Long id, StatusUpdateRequestDTOPO statusUpdateRequest, Long userId) {
-        log.info("Updating status for purchase order: {} to {}", id, statusUpdateRequest.getStatus());
-        
-        PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Purchase order not found with id: " + id));
-        
-        PurchaseOrderStatus newStatus = statusUpdateRequest.getStatus();
-        PurchaseOrderStatus currentStatus = purchaseOrder.getStatus();
-        
-        validateStatusTransition(currentStatus, newStatus);
-        
-        switch (newStatus) {
-            case SUBMITTED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.SUBMITTED);
-                purchaseOrder.setSubmittedAt(LocalDateTime.now());
-                break;
-            case APPROVED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.APPROVED);
-                purchaseOrder.setApprovedAt(LocalDateTime.now());
-                purchaseOrder.setApprovedBy(userId);
-                break;
-            case REJECTED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.REJECTED);
-                purchaseOrder.setRejectionReason(statusUpdateRequest.getRejectionReason());
-                break;
-            case IN_PROGRESS:
-                purchaseOrder.setStatus(PurchaseOrderStatus.IN_PROGRESS);
-                break;
-            case PARTIAL:
-                purchaseOrder.setStatus(PurchaseOrderStatus.PARTIAL);
-                break;
-            case SHIPPED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.SHIPPED);
-                break;
-            case DELIVERED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.DELIVERED);
-                purchaseOrder.setDeliveredAt(LocalDateTime.now());
-                break;
-            case COMPLETED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.COMPLETED);
-                break;
-            case CANCELLED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.CANCELLED);
-                break;
-            case CLOSED:
-                purchaseOrder.setStatus(PurchaseOrderStatus.CLOSED);
-                break;
-            case DRAFT:
-                purchaseOrder.setStatus(PurchaseOrderStatus.DRAFT);
-                purchaseOrder.setSubmittedAt(null);
-                purchaseOrder.setApprovedAt(null);
-                purchaseOrder.setRejectionReason(null);
-                break;
-            default:
-                throw new IllegalStateException("Unsupported status: " + newStatus);
-        }
-        
-        if (statusUpdateRequest.getRemarks() != null) {
-            String currentRemarks = purchaseOrder.getRemarks();
-            String newRemarks = currentRemarks != null ? 
-                currentRemarks + "\n[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks() : 
-                "[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks();
-            purchaseOrder.setRemarks(newRemarks);
-        }
-        
-        purchaseOrder = purchaseOrderRepository.save(purchaseOrder);
-        log.info("Purchase order status updated: {} -> {}", currentStatus, newStatus);
-        
-        return convertToDTO(purchaseOrder);
+    PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("Purchase order not found with id: " + id));
+    
+    PurchaseOrderStatus newStatus = statusUpdateRequest.getStatus();
+    PurchaseOrderStatus currentStatus = purchaseOrder.getStatus();
+    
+    validateStatusTransition(currentStatus, newStatus);
+    
+    switch (newStatus) {
+        case PENDING:
+            purchaseOrder.setStatus(PurchaseOrderStatus.PENDING);
+            break;
+            
+        case SEND:
+            purchaseOrder.setStatus(PurchaseOrderStatus.SEND);
+            purchaseOrder.setSubmittedAt(LocalDateTime.now());
+            break;
+            
+        case ACCEPTED:
+            purchaseOrder.setStatus(PurchaseOrderStatus.ACCEPTED);
+            purchaseOrder.setApprovedAt(LocalDateTime.now());
+            break;
+            
+        case APPROVED:
+            purchaseOrder.setStatus(PurchaseOrderStatus.APPROVED);
+            purchaseOrder.setApprovedAt(LocalDateTime.now());
+            purchaseOrder.setApprovedBy(userId);
+            break;
+            
+        case REJECTED:
+            purchaseOrder.setStatus(PurchaseOrderStatus.REJECTED);
+            purchaseOrder.setApprovedAt(LocalDateTime.now());
+            purchaseOrder.setRejectionReason(statusUpdateRequest.getRejectionReason());
+            break;
+            
+        default:
+            throw new IllegalStateException("Unsupported status: " + newStatus);
     }
     
-    private void validateStatusTransition(PurchaseOrderStatus currentStatus, PurchaseOrderStatus newStatus) {
-        if (currentStatus == newStatus) {
-            throw new IllegalStateException("Purchase order is already in " + newStatus + " status");
-        }
-        
-        Map<PurchaseOrderStatus, List<PurchaseOrderStatus>> allowedTransitions = new HashMap<>();
-        
-        allowedTransitions.put(PurchaseOrderStatus.DRAFT, Arrays.asList(
-            PurchaseOrderStatus.SUBMITTED, PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.SUBMITTED, Arrays.asList(
-            PurchaseOrderStatus.APPROVED, PurchaseOrderStatus.REJECTED, PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.APPROVED, Arrays.asList(
-            PurchaseOrderStatus.IN_PROGRESS, PurchaseOrderStatus.SHIPPED, 
-            PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.IN_PROGRESS, Arrays.asList(
-            PurchaseOrderStatus.PARTIAL, PurchaseOrderStatus.COMPLETED, 
-            PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.PARTIAL, Arrays.asList(
-            PurchaseOrderStatus.IN_PROGRESS, PurchaseOrderStatus.COMPLETED, 
-            PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.SHIPPED, Arrays.asList(
-            PurchaseOrderStatus.DELIVERED, PurchaseOrderStatus.PARTIAL, 
-            PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.CANCELLED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.DELIVERED, Arrays.asList(
-            PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.CLOSED
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.COMPLETED, Arrays.asList(
-            PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.DRAFT
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.REJECTED, Arrays.asList(
-            PurchaseOrderStatus.DRAFT
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.CANCELLED, Arrays.asList(
-            PurchaseOrderStatus.DRAFT
-        ));
-        allowedTransitions.put(PurchaseOrderStatus.CLOSED, Arrays.asList(
-            PurchaseOrderStatus.DRAFT
-        ));
-        
-        List<PurchaseOrderStatus> allowed = allowedTransitions.get(currentStatus);
-        if (allowed == null || !allowed.contains(newStatus)) {
-            throw new IllegalArgumentException(
-                "Cannot transition from " + currentStatus + " to " + newStatus + 
-                ". Allowed transitions: " + allowed
-            );
-        }
+    if (statusUpdateRequest.getRemarks() != null) {
+        String currentRemarks = purchaseOrder.getRemarks();
+        String newRemarks = currentRemarks != null ? 
+            currentRemarks + "\n[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks() : 
+            "[Status Update: " + newStatus + "] " + statusUpdateRequest.getRemarks();
+        purchaseOrder.setRemarks(newRemarks);
     }
+    
+    purchaseOrder = purchaseOrderRepository.save(purchaseOrder);
+    log.info("Purchase order status updated: {} -> {}", currentStatus, newStatus);
+    
+    return convertToDTO(purchaseOrder);
+}
+    
+  private void validateStatusTransition(PurchaseOrderStatus currentStatus, PurchaseOrderStatus newStatus) {
+    if (currentStatus == newStatus) {
+        throw new IllegalStateException("Purchase order is already in " + newStatus + " status");
+    }
+    
+    Map<PurchaseOrderStatus, List<PurchaseOrderStatus>> allowedTransitions = new HashMap<>();
+    
+    // PENDING can go to SEND, APPROVED, REJECTED
+    allowedTransitions.put(PurchaseOrderStatus.PENDING, Arrays.asList(
+        PurchaseOrderStatus.SEND,
+        PurchaseOrderStatus.APPROVED,
+        PurchaseOrderStatus.REJECTED
+    ));
+    
+    // SEND can go to ACCEPTED, REJECTED
+    allowedTransitions.put(PurchaseOrderStatus.SEND, Arrays.asList(
+        PurchaseOrderStatus.ACCEPTED,
+        PurchaseOrderStatus.REJECTED
+    ));
+    
+    // ACCEPTED can go to APPROVED, REJECTED
+    allowedTransitions.put(PurchaseOrderStatus.ACCEPTED, Arrays.asList(
+        PurchaseOrderStatus.APPROVED,
+        PurchaseOrderStatus.REJECTED
+    ));
+    
+    // APPROVED can go to REJECTED (if needed)
+    allowedTransitions.put(PurchaseOrderStatus.APPROVED, Arrays.asList(
+        PurchaseOrderStatus.REJECTED
+    ));
+    
+    // REJECTED has no further transitions (terminal state)
+    // allowedTransitions.put(PurchaseOrderStatus.REJECTED, Arrays.asList());
+    
+    List<PurchaseOrderStatus> allowed = allowedTransitions.get(currentStatus);
+    if (allowed == null || !allowed.contains(newStatus)) {
+        throw new IllegalArgumentException(
+            "Cannot transition from " + currentStatus + " to " + newStatus + 
+            ". Allowed transitions: " + allowed
+        );
+    }
+}
 
     // ============ DELETE ============
     
@@ -371,7 +344,7 @@ public class PurchaseOrderService {
         PurchaseOrder purchaseOrder = purchaseOrderRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Purchase order not found"));
         
-        if (purchaseOrder.getStatus() != PurchaseOrderStatus.DRAFT) {
+        if (purchaseOrder.getStatus() != PurchaseOrderStatus.PENDING) {
             throw new IllegalStateException("Only draft orders can be deleted");
         }
         
@@ -390,22 +363,22 @@ public class PurchaseOrderService {
 
     // ============ STATISTICS ============
     
-    public Object getStatistics() {
-        long draftCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.DRAFT).size();
-        long submittedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.SUBMITTED).size();
-        long approvedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.APPROVED).size();
-        long completedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.COMPLETED).size();
-        long cancelledCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.CANCELLED).size();
-        
-        return Map.of(
-            "draft", draftCount,
-            "submitted", submittedCount,
-            "approved", approvedCount,
-            "completed", completedCount,
-            "cancelled", cancelledCount,
-            "total", draftCount + submittedCount + approvedCount + completedCount + cancelledCount
-        );
-    }
+//    public Object getStatistics() {
+////        long draftCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.DRAFT).size();
+////        long submittedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.SUBMITTED).size();
+////        long approvedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.APPROVED).size();
+////        long completedCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.COMPLETED).size();
+////        long cancelledCount = purchaseOrderRepository.findByStatus(PurchaseOrderStatus.CANCELLED).size();
+//        
+////        return Map.of(
+////            "draft", draftCount,
+////            "submitted", submittedCount,
+////            "approved", approvedCount,
+////            "completed", completedCount,
+////            "cancelled", cancelledCount,
+////            "total", draftCount + submittedCount + approvedCount + completedCount + cancelledCount
+////        );
+//    }
 
     // ============ HELPER METHODS ============
     

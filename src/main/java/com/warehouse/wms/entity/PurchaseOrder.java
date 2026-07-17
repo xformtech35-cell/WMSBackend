@@ -34,7 +34,7 @@ public class PurchaseOrder {
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private PurchaseOrderStatus status = PurchaseOrderStatus.DRAFT;
+    private PurchaseOrderStatus status = PurchaseOrderStatus.PENDING;
     
     @Column(name = "subtotal")
     private Double subtotal = 0.0;

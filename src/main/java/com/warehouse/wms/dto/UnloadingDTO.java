@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UnloadingDTO {
     private Integer boxesUnloadedQuantity;
+    private Integer boxesInTruckQuantity;
     private String unloadedBy;
     private String remarks;
 }

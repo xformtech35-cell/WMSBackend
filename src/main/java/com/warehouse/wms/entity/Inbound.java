@@ -80,6 +80,9 @@ public class Inbound {
     @Column(name = "boxes_unloaded_quantity")
     private Integer boxesUnloadedQuantity;
     
+    private Integer boxesInTruckQuantity;
+
+    
     @Column(name = "unloaded_by")
     private String unloadedBy;
     

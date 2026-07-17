@@ -137,6 +137,7 @@ public class InboundService {
             .orElseThrow(() -> new ResourceNotFoundException("Inbound not found"));
         
         inbound.setBoxesUnloadedQuantity(unloadingDTO.getBoxesUnloadedQuantity());
+        inbound.setBoxesInTruckQuantity(unloadingDTO.getBoxesInTruckQuantity());
         inbound.setUnloadedBy(unloadingDTO.getUnloadedBy());
         inbound.setUnloadingStartTime(LocalDateTime.now());
         inbound.setUnloadingEndTime(LocalDateTime.now());
