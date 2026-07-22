@@ -185,15 +185,15 @@ public class PurchaseOrderController {
     }
 
     // ============ STATISTICS ============
-    
-    @GetMapping("/statistics")
-    public ResponseEntity<ApiResponse<Object>> getStatistics() {
-        try {
-            Object stats = purchaseOrderService.getStatistics();
-            return ResponseEntity.ok(ApiResponse.success(stats));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Error retrieving statistics"));
-        }
-    }
+//    
+//    @GetMapping("/statistics")
+//    public ResponseEntity<ApiResponse<Object>> getStatistics() {
+//        try {
+//            Object stats = purchaseOrderService.getStatistics();
+//            return ResponseEntity.ok(ApiResponse.success(stats));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(ApiResponse.error("Error retrieving statistics"));
+//        }
+//    }
 }
