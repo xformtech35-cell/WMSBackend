@@ -1,13 +1,17 @@
 package com.warehouse.wms.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,8 +19,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.CreateInboundDTO;
 import com.warehouse.wms.dto.GateEntryDTO;
@@ -24,9 +31,13 @@ import com.warehouse.wms.dto.GoodsReceivingDTO;
 import com.warehouse.wms.dto.InboundDTO;
 import com.warehouse.wms.dto.InboundFilterDTO;
 import com.warehouse.wms.dto.InboundFilterRequestDTO;
+import com.warehouse.wms.dto.InboundImageDTO;
 import com.warehouse.wms.dto.QualityInspectionDTO;
+import com.warehouse.wms.dto.QualityInspectionItemDTO;
 import com.warehouse.wms.dto.UnloadingDTO;
 import com.warehouse.wms.entity.InboundStatus;
+import com.warehouse.wms.entity.InspectionImage;
+import com.warehouse.wms.service.ImageService;
 import com.warehouse.wms.service.InboundService;
 import com.warehouse.wms.util.SecurityUtils;
 
@@ -42,6 +53,12 @@ import lombok.extern.slf4j.Slf4j;
 public class InboundController {
 
     private final InboundService inboundService;
+    private final ObjectMapper objectMapper;
+    
+    private final ImageService imageService;
+
+    
+    
 
     // ============ 1. CREATE INBOUND FROM PO ============
     @PostMapping
@@ -105,19 +122,318 @@ public class InboundController {
     }
 
     // ============ 5. QUALITY INSPECTION ============
-    @PostMapping("/{inboundId}/quality-inspection")
-    public ResponseEntity<ApiResponse<InboundDTO>> qualityInspection(
-            @PathVariable Long inboundId,
-            @Valid @RequestBody QualityInspectionDTO inspectionDTO) {
-        try {
-            InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
-            return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
-        } catch (Exception e) {
-            log.error("Error in quality inspection", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Error in quality inspection: " + e.getMessage()));
+//    @PostMapping("/{inboundId}/quality-inspection")
+//    public ResponseEntity<ApiResponse<InboundDTO>> qualityInspection(
+//            @PathVariable Long inboundId,
+//            @Valid @RequestBody QualityInspectionDTO inspectionDTO) {
+//        try {
+//            InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
+//            return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
+//        } catch (Exception e) {
+//            log.error("Error in quality inspection", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(ApiResponse.error("Error in quality inspection: " + e.getMessage()));
+//        }
+//    }
+    
+    
+    
+    
+    
+    
+    
+//    @PostMapping(value = "/{inboundId}/quality-inspection", 
+//            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//public ResponseEntity<ApiResponse<InboundDTO>> qualityInspection(
+//        @PathVariable Long inboundId,
+//        @RequestPart("inspectionData") String inspectionDataJson,
+//        @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+//    try {
+//        // Parse JSON data
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        QualityInspectionDTO inspectionDTO = objectMapper.readValue(inspectionDataJson, QualityInspectionDTO.class);
+//        
+//        // Assign images to items
+//        if (images != null && !images.isEmpty()) {
+//            int imageIndex = 0;
+//            for (QualityInspectionItemDTO item : inspectionDTO.getItems()) {
+//                List<MultipartFile> itemImages = new ArrayList<>();
+//                // Each item gets images based on some logic
+//                // For example, if you have 3 items and 6 images, each gets 2 images
+//                int imagesPerItem = images.size() / inspectionDTO.getItems().size();
+//                for (int i = 0; i < imagesPerItem && imageIndex < images.size(); i++) {
+//                    itemImages.add(images.get(imageIndex++));
+//                }
+//                item.setImageFiles(itemImages);
+//            }
+//        }
+//        
+//        InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
+//        return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
+//    } catch (Exception e) {
+//        log.error("Error in quality inspection", e);
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//            .body(ApiResponse.error("Error in quality inspection: " + e.getMessage()));
+//    }
+//}
+//
+//@GetMapping("/image/{imageId}")
+//public ResponseEntity<byte[]> getImage(@PathVariable Long imageId) {
+//    try {
+//        byte[] imageData = imageService.getImage(imageId);
+//        return ResponseEntity.ok()
+//            .contentType(MediaType.IMAGE_JPEG)
+//            .body(imageData);
+//    } catch (Exception e) {
+//        log.error("Error getting image: {}", imageId, e);
+//        return ResponseEntity.notFound().build();
+//    }
+//}
+//
+//@GetMapping("/line/{lineId}/images")
+//public ResponseEntity<ApiResponse<Object>> getImagesByLineId(@PathVariable Long lineId) {
+//    try {
+//        var images = imageService.getImagesByLineId(lineId);
+//        return ResponseEntity.ok(ApiResponse.success("Images retrieved successfully", images));
+//    } catch (Exception e) {
+//        log.error("Error getting images for line: {}", lineId, e);
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//            .body(ApiResponse.error("Failed to get images: " + e.getMessage()));
+//    }
+//}
+    
+    
+    
+    
+//    @PostMapping(value = "/{inboundId}/quality-inspection", 
+//            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//public ResponseEntity<ApiResponse<InboundDTO>> qualityInspectionAdvanced(
+//        @PathVariable Long inboundId,
+//        @RequestPart("inspectionData") String inspectionDataJson,
+//        @RequestParam(value = "images", required = false) List<MultipartFile> allImages) {
+//    
+//    try {
+//        log.info("Received advanced quality inspection for inbound: {}", inboundId);
+//        
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        QualityInspectionDTO inspectionDTO = objectMapper.readValue(inspectionDataJson, QualityInspectionDTO.class);
+//        
+//        // If we have images, distribute them to items
+//        if (allImages != null && !allImages.isEmpty()) {
+//            int imageIndex = 0;
+//            for (QualityInspectionItemDTO item : inspectionDTO.getItems()) {
+//                List<MultipartFile> itemImages = new ArrayList<>();
+//                
+//                // Calculate images per item (you can customize this logic)
+//                // Option 1: Equal distribution
+//                int imagesPerItem = allImages.size() / inspectionDTO.getItems().size();
+//                
+//                // Option 2: All images to all items (if you want each item to have all images)
+//                // int imagesPerItem = allImages.size();
+//                
+//                for (int i = 0; i < imagesPerItem && imageIndex < allImages.size(); i++) {
+//                    itemImages.add(allImages.get(imageIndex++));
+//                }
+//                item.setImageFiles(itemImages);
+//            }
+//        }
+//        
+//        InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
+//        return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
+//        
+//    } catch (Exception e) {
+//        log.error("Error in advanced quality inspection", e);
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//            .body(ApiResponse.error("Error: " + e.getMessage()));
+//    }
+//}
+
+/**
+ * Quality Inspection with Explicit Per-Item Images
+ * This method expects images for each item in separate parameters
+ */
+@PostMapping(value = "/{inboundId}/quality-inspection", 
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<ApiResponse<InboundDTO>> qualityInspectionExplicit(
+        @PathVariable Long inboundId,
+        @RequestPart("inspectionData") String inspectionDataJson,
+        @RequestParam(value = "images_item_1", required = false) List<MultipartFile> imagesItem1,
+        @RequestParam(value = "images_item_2", required = false) List<MultipartFile> imagesItem2,
+        @RequestParam(value = "images_item_3", required = false) List<MultipartFile> imagesItem3) {
+    
+    try {
+        log.info("Received explicit quality inspection for inbound: {}", inboundId);
+        
+        ObjectMapper objectMapper = new ObjectMapper();
+        QualityInspectionDTO inspectionDTO = objectMapper.readValue(inspectionDataJson, QualityInspectionDTO.class);
+        
+        // Map images to specific items
+        List<List<MultipartFile>> imageGroups = List.of(
+            imagesItem1 != null ? imagesItem1 : new ArrayList<>(),
+            imagesItem2 != null ? imagesItem2 : new ArrayList<>(),
+            imagesItem3 != null ? imagesItem3 : new ArrayList<>()
+        );
+        
+        for (int i = 0; i < inspectionDTO.getItems().size() && i < imageGroups.size(); i++) {
+            QualityInspectionItemDTO item = inspectionDTO.getItems().get(i);
+            List<MultipartFile> itemImages = imageGroups.get(i);
+            if (itemImages != null && !itemImages.isEmpty()) {
+                item.setImageFiles(itemImages);
+                log.info("Item {} has {} images", i+1, itemImages.size());
+            }
         }
+        
+        InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
+        return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
+        
+    } catch (Exception e) {
+        log.error("Error in explicit quality inspection", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("Error: " + e.getMessage()));
     }
+}
+
+/**
+ * Quality Inspection with Dynamic Per-Item Images using Map
+ * This method handles any number of items dynamically
+ */
+@PostMapping(value = "/{inboundId}/quality-inspection-dynamic", 
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<ApiResponse<InboundDTO>> qualityInspectionDynamic(
+        @PathVariable Long inboundId,
+        @RequestPart("inspectionData") String inspectionDataJson,
+        @RequestParam MultiValueMap<String, MultipartFile> allParams) {
+    
+    try {
+        log.info("Received dynamic quality inspection for inbound: {}", inboundId);
+        
+        ObjectMapper objectMapper = new ObjectMapper();
+        QualityInspectionDTO inspectionDTO = objectMapper.readValue(inspectionDataJson, QualityInspectionDTO.class);
+        
+        // Extract images for each item from the params
+        for (int i = 0; i < inspectionDTO.getItems().size(); i++) {
+            QualityInspectionItemDTO item = inspectionDTO.getItems().get(i);
+            String paramName = "images_item_" + (i + 1);
+            List<MultipartFile> itemImages = allParams.get(paramName);
+            if (itemImages != null && !itemImages.isEmpty()) {
+                item.setImageFiles(itemImages);
+                log.info("Item {} has {} images", i+1, itemImages.size());
+            }
+        }
+        
+        InboundDTO updated = inboundService.qualityInspection(inboundId, inspectionDTO);
+        return ResponseEntity.ok(ApiResponse.success("Quality inspection completed successfully", updated));
+        
+    } catch (Exception e) {
+        log.error("Error in dynamic quality inspection", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("Error: " + e.getMessage()));
+    }
+}
+
+// ========================================
+// IMAGE VIEWING ENDPOINTS
+// ========================================
+
+/**
+ * Get all images for an inbound with item details
+ */
+@GetMapping("/{inboundId}/images")
+public ResponseEntity<ApiResponse<InboundImageDTO>> getAllImagesByInbound(
+        @PathVariable Long inboundId) {
+    try {
+        InboundImageDTO result = inboundService.getInboundWithImages(inboundId);
+        return ResponseEntity.ok(ApiResponse.success("Images retrieved successfully", result));
+    } catch (Exception e) {
+        log.error("Error getting images for inbound: {}", inboundId, e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("Failed to get images: " + e.getMessage()));
+    }
+}
+
+/**
+ * Get images for a specific item
+ */
+@GetMapping("/{inboundId}/line/{lineId}/images")
+public ResponseEntity<ApiResponse<List<InspectionImage>>> getImagesByInboundAndLine(
+        @PathVariable Long inboundId,
+        @PathVariable Long lineId) {
+    try {
+        List<InspectionImage> images = imageService.getImagesByLineId(lineId);
+        return ResponseEntity.ok(ApiResponse.success("Images retrieved successfully", images));
+    } catch (Exception e) {
+        log.error("Error getting images for inbound: {} line: {}", inboundId, lineId, e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("Failed to get images: " + e.getMessage()));
+    }
+}
+
+/**
+ * View image in browser
+ */
+@GetMapping("/{inboundId}/image/{imageId}/view")
+public ResponseEntity<byte[]> viewImage(
+        @PathVariable Long inboundId,
+        @PathVariable Long imageId) {
+    try {
+        byte[] imageData = imageService.getImage(imageId);
+        InspectionImage image = imageService.getImageMetadata(imageId);
+        
+        String contentType = image.getFileType() != null ? image.getFileType() : "image/jpeg";
+        
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(contentType))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + image.getFileName() + "\"")
+            .body(imageData);
+    } catch (Exception e) {
+        log.error("Error viewing image: {}", imageId, e);
+        return ResponseEntity.notFound().build();
+    }
+}
+
+/**
+ * Get thumbnail for an image
+ */
+@GetMapping("/{inboundId}/image/{imageId}/thumbnail")
+public ResponseEntity<byte[]> getThumbnail(
+        @PathVariable Long inboundId,
+        @PathVariable Long imageId) {
+    try {
+        byte[] thumbnailData = imageService.getThumbnail(imageId);
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_JPEG)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"thumbnail_" + imageId + ".jpg\"")
+            .body(thumbnailData);
+    } catch (Exception e) {
+        log.error("Error getting thumbnail: {}", imageId, e);
+        return ResponseEntity.notFound().build();
+    }
+}
+
+/**
+ * Download image
+ */
+@GetMapping("/{inboundId}/image/{imageId}/download")
+public ResponseEntity<byte[]> downloadImage(
+        @PathVariable Long inboundId,
+        @PathVariable Long imageId) {
+    try {
+        byte[] imageData = imageService.getImage(imageId);
+        InspectionImage image = imageService.getImageMetadata(imageId);
+        
+        String contentType = image.getFileType() != null ? image.getFileType() : "application/octet-stream";
+        
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(contentType))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + image.getFileName() + "\"")
+            .body(imageData);
+    } catch (Exception e) {
+        log.error("Error downloading image: {}", imageId, e);
+        return ResponseEntity.notFound().build();
+    }
+}
+    
+    
 
     // ============ 6. GENERATE GRN ============
     @PostMapping("/{inboundId}/generate-grn")

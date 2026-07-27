@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +29,8 @@ public class InboundService {
     private final PurchaseOrderLineRepository purchaseOrderLineRepository;
     private final SupplierRepository supplierRepository;
     private final ItemRepository itemRepository;
+    private final ImageService imageService;
+
 
     private static final String INBOUND_PREFIX = "INB";
 
@@ -87,7 +90,6 @@ public class InboundService {
             line.setTotalQuantity(poLine.getQuantity());
             line.setAcceptedQuantity(0);
             line.setRejectedQuantity(0);
-            line.setDefectiveQuantity(0);
             line.setQualityStatus("PENDING");
             line.setPurchaseOrderLine(poLine);
             line.setInbound(inbound);
@@ -189,22 +191,42 @@ public class InboundService {
         log.info("Quality inspection for inbound: {}", inboundId);
         
         Inbound inbound = inboundRepository.findById(inboundId)
-            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
         
-        // Update lines with quality results
+        // Update lines with quality results and handle images
         for (QualityInspectionItemDTO itemDTO : inspectionDTO.getItems()) {
             InboundLine line = inboundLineRepository.findById(itemDTO.getLineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Line not found with id: " + itemDTO.getLineId()));
             
+            // Validate line belongs to inbound
+            if (!line.getInbound().getId().equals(inboundId)) {
+                throw new IllegalArgumentException("Line does not belong to this inbound");
+            }
+            
+            // Update line details
             line.setAcceptedQuantity(itemDTO.getAcceptedQuantity());
             line.setRejectedQuantity(itemDTO.getRejectedQuantity());
-            line.setDefectiveQuantity(itemDTO.getDefectiveQuantity());
             line.setQualityStatus(itemDTO.getQualityStatus());
             line.setReason(itemDTO.getReason());
             line.setRemarks(itemDTO.getRemarks());
             inboundLineRepository.save(line);
+            
+            // Handle images if present
+            if (itemDTO.getImageFiles() != null && !itemDTO.getImageFiles().isEmpty()) {
+                // Delete existing images for this line
+                imageService.deleteImagesByLineId(line.getId());
+                
+                // Save new images
+                imageService.saveInspectionImages(
+                    inboundId, 
+                    line.getId(), 
+                    itemDTO.getImageFiles(), 
+                    inspectionDTO.getInspectedBy()
+                );
+            }
         }
         
+        // Update inbound header
         inbound.setInspectedBy(inspectionDTO.getInspectedBy());
         inbound.setInspectionDate(LocalDateTime.now());
         inbound.setQualityRemarks(inspectionDTO.getOverallRemarks());
@@ -215,7 +237,8 @@ public class InboundService {
         boolean allAccepted = inspectionDTO.getItems().stream()
             .allMatch(item -> "GOOD".equals(item.getQualityStatus()));
         boolean anyRejected = inspectionDTO.getItems().stream()
-            .anyMatch(item -> "REJECTED".equals(item.getQualityStatus()) || item.getRejectedQuantity() > 0);
+            .anyMatch(item -> "REJECTED".equals(item.getQualityStatus()) || 
+                     (item.getRejectedQuantity() != null && item.getRejectedQuantity() > 0));
         
         if (allAccepted) {
             inbound.setQualityStatus("GOOD");
@@ -230,7 +253,6 @@ public class InboundService {
         
         return convertToDTO(inbound);
     }
-
     // ============ 6. GENERATE GRN ============
     @Transactional
     public InboundDTO generateGRN(Long inboundId) {
@@ -344,6 +366,11 @@ public class InboundService {
             .updatedAt(entity.getUpdatedAt())
             .build();
         
+        
+        
+    
+        
+        
         if (entity.getLines() != null) {
             dto.setLines(entity.getLines().stream()
                 .map(this::convertLineToDTO)
@@ -354,7 +381,7 @@ public class InboundService {
     }
     
     private InboundLineDTO convertLineToDTO(InboundLine entity) {
-        return InboundLineDTO.builder()
+        InboundLineDTO.InboundLineDTOBuilder builder = InboundLineDTO.builder()
             .id(entity.getId())
             .itemCode(entity.getItemCode())
             .itemName(entity.getItemName())
@@ -365,10 +392,93 @@ public class InboundService {
             .totalQuantity(entity.getTotalQuantity())
             .acceptedQuantity(entity.getAcceptedQuantity())
             .rejectedQuantity(entity.getRejectedQuantity())
-            .defectiveQuantity(entity.getDefectiveQuantity())
             .qualityStatus(entity.getQualityStatus())
             .reason(entity.getReason())
-            .remarks(entity.getRemarks())
+            .remarks(entity.getRemarks());
+        
+        // Get images for this line
+        List<InspectionImage> images = imageService.getImagesByLineId(entity.getId());
+        if (images != null && !images.isEmpty()) {
+            List<InspectionImageDTO> imageDTOs = images.stream()
+                .map(this::convertToImageDTO)
+                .collect(Collectors.toList());
+            builder.images(imageDTOs);
+        }
+        
+        return builder.build();
+    }
+
+    private InspectionImageDTO convertToImageDTO(InspectionImage image) {
+        return InspectionImageDTO.builder()
+            .id(image.getId())
+            .inboundLineId(image.getInboundLineId())
+            .inboundId(image.getInboundId())
+            .fileName(image.getFileName())
+            .filePath(image.getFilePath())
+            .fileSize(image.getFileSize())
+            .fileType(image.getFileType())
+            .fileExtension(image.getFileExtension())
+            .uploadedBy(image.getUploadedBy())
+            .remarks(image.getRemarks())
+            .uploadedAt(image.getUploadedAt())
             .build();
     }
+    
+    
+    
+    
+    
+    
+    public InboundImageDTO getInboundWithImages(Long inboundId) {
+        Inbound inbound = inboundRepository.findById(inboundId)
+            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
+
+        InboundImageDTO.InboundImageDTOBuilder builder = InboundImageDTO.builder()
+            .inboundId(inbound.getId())
+            .inboundNumber(inbound.getInboundNumber())
+            .supplierName(inbound.getSupplierName())
+            .qualityStatus(inbound.getQualityStatus());
+
+        List<ItemImageGroupDTO> itemGroups = new ArrayList<>();
+
+        for (InboundLine line : inbound.getLines()) {
+            List<InspectionImage> images = imageService.getImagesByLineId(line.getId());
+            
+            // FIXED: Using inline lambda to create ImageWithUrlDTO
+            List<ImageWithUrlDTO> imageDTOs = images.stream()
+                .map(image -> {
+                    String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().toUriString();
+                    return ImageWithUrlDTO.builder()
+                        .id(image.getId())
+                        .fileName(image.getFileName())
+                        .filePath(image.getFilePath())
+                        .fullUrl(baseUrl + "/api/inbound/" + image.getInboundId() + "/image/" + image.getId() + "/view")
+                        .thumbnailUrl(baseUrl + "/api/inbound/" + image.getInboundId() + "/image/" + image.getId() + "/thumbnail")
+                        .downloadUrl(baseUrl + "/api/inbound/" + image.getInboundId() + "/image/" + image.getId() + "/download")
+                        .fileSize(image.getFileSize())
+                        .fileType(image.getFileType())
+                        .uploadedAt(image.getUploadedAt())
+                        .build();
+                })
+                .collect(Collectors.toList());
+
+            ItemImageGroupDTO itemGroup = ItemImageGroupDTO.builder()
+                .lineId(line.getId())
+                .itemCode(line.getProductCode())
+                .itemName(line.getProductName())
+                .qualityStatus(line.getQualityStatus())
+                .acceptedQuantity(line.getAcceptedQuantity())
+                .rejectedQuantity(line.getRejectedQuantity())
+                .images(imageDTOs)
+                .build();
+
+            itemGroups.add(itemGroup);
+        }
+
+        builder.items(itemGroups);
+        return builder.build();
+    }
+
+  
+    
 }

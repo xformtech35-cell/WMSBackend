@@ -18,7 +18,7 @@ import com.warehouse.wms.entity.InboundStatus;
 public interface InboundRepository extends JpaRepository<Inbound, Long> {
     
     Optional<Inbound> findByInboundNumber(String inboundNumber);
-    
+
     boolean existsByPurchaseOrderId(Long purchaseOrderId);
     
     List<Inbound> findByStatus(InboundStatus status);

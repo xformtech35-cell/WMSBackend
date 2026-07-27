@@ -1,5 +1,7 @@
 package com.warehouse.wms.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,4 +26,6 @@ public class InboundLineDTO {
     private String qualityStatus;
     private String reason;
     private String remarks;
+    private List<InspectionImageDTO> images;
+
 }

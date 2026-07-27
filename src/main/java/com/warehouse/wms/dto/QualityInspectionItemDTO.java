@@ -1,5 +1,9 @@
 package com.warehouse.wms.dto;
 
+import java.util.List;
+
+import org.springframework.web.multipart.MultipartFile;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,8 +20,10 @@ public class QualityInspectionItemDTO {
     private Integer receivedQuantity;
     private Integer acceptedQuantity;
     private Integer rejectedQuantity;
-    private Integer defectiveQuantity;
     private String qualityStatus; // GOOD, PARTIAL, REJECTED
     private String reason;
     private String remarks;
+    
+    private List<MultipartFile> imageFiles;
+
 }

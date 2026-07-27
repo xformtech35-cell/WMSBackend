@@ -12,4 +12,5 @@ public interface InboundLineRepository extends JpaRepository<InboundLine, Long> 
     List<InboundLine> findByInboundId(Long inboundId);
     
     List<InboundLine> findByInboundIdAndQualityStatus(Long inboundId, String qualityStatus);
+
 }
