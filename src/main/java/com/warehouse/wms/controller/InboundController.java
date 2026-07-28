@@ -32,6 +32,7 @@ import com.warehouse.wms.dto.InboundDTO;
 import com.warehouse.wms.dto.InboundFilterDTO;
 import com.warehouse.wms.dto.InboundFilterRequestDTO;
 import com.warehouse.wms.dto.InboundImageDTO;
+import com.warehouse.wms.dto.QualityInspectionApprovalDTO;
 import com.warehouse.wms.dto.QualityInspectionDTO;
 import com.warehouse.wms.dto.QualityInspectionItemDTO;
 import com.warehouse.wms.dto.UnloadingDTO;
@@ -434,6 +435,62 @@ public ResponseEntity<byte[]> downloadImage(
 }
     
     
+
+
+
+
+
+
+
+
+
+
+
+@PostMapping("/{inboundId}/quality-inspection/approve-reject")
+public ResponseEntity<ApiResponse<InboundDTO>> approveOrRejectQualityInspection(
+        @PathVariable Long inboundId,
+        @Valid @RequestBody QualityInspectionApprovalDTO approvalDTO) {
+    try {
+        log.info("Processing quality inspection approval/rejection for inbound: {}", inboundId);
+        
+        // Validate approval status
+        String status = approvalDTO.getApprovalStatus();
+        if (!"APPROVED".equals(status) && !"REJECTED".equals(status)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Approval status must be APPROVED or REJECTED"));
+        }
+        
+        // If REJECTED, validate rejection reason
+        if ("REJECTED".equals(status)) {
+            if (approvalDTO.getRejectionReason() == null || approvalDTO.getRejectionReason().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Rejection reason is required when rejecting"));
+            }
+        }
+        
+        InboundDTO updated = inboundService.approveOrRejectQualityInspection(inboundId, approvalDTO);
+        
+        String message = "APPROVED".equals(status) ? 
+            "Quality inspection approved successfully" : 
+            "Quality inspection rejected successfully";
+        
+        return ResponseEntity.ok(ApiResponse.success(message, updated));
+        
+    } catch (IllegalStateException e) {
+        log.warn("Invalid state for approval: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(e.getMessage()));
+    } catch (IllegalArgumentException e) {
+        log.warn("Invalid argument: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse.error(e.getMessage()));
+    } catch (Exception e) {
+        log.error("Error processing quality inspection approval/rejection", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error("Error processing approval: " + e.getMessage()));
+    }
+}
+
 
     // ============ 6. GENERATE GRN ============
     @PostMapping("/{inboundId}/generate-grn")

@@ -1,5 +1,6 @@
 package com.warehouse.wms.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,23 +29,121 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     Long countByInboundNumberStartingWith(String prefix);
     
     @Query("SELECT i FROM Inbound i WHERE " +
-           "(:status IS NULL OR i.status = :status) AND " +
-           "(:stage IS NULL OR i.stage = :stage) AND " +
-           "(:poNumber IS NULL OR i.poNumber LIKE CONCAT('%', :poNumber, '%')) AND " +
-           "(:supplierName IS NULL OR i.supplierName LIKE CONCAT('%', :supplierName, '%')) AND " +
-           "(:searchTerm IS NULL OR " +
-           "i.inboundNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.poNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.supplierName LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.invoiceNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.deliveryChallan LIKE CONCAT('%', :searchTerm, '%') OR " +
-           "i.trackingNumber LIKE CONCAT('%', :searchTerm, '%'))")
-    Page<Inbound> filterInbounds(
-            @Param("status") InboundStatus status,
-            @Param("stage") InboundStage stage,
-            @Param("poNumber") String poNumber,
-            @Param("supplierName") String supplierName,
-            @Param("searchTerm") String searchTerm,
-            Pageable pageable
-    );
+            // ============================================
+            // STATUS & STAGE FILTERS
+            // ============================================
+            "(:status IS NULL OR i.status = :status) AND " +
+            "(:stage IS NULL OR i.stage = :stage) AND " +
+            "(:approvalStatus IS NULL OR i.approvalStatus = :approvalStatus) AND " +
+            
+            // ============================================
+            // TEXT FILTERS
+            // ============================================
+            "(:poNumber IS NULL OR i.poNumber LIKE CONCAT('%', :poNumber, '%')) AND " +
+            "(:supplierName IS NULL OR i.supplierName LIKE CONCAT('%', :supplierName, '%')) AND " +
+            "(:qualityStatus IS NULL OR i.qualityStatus LIKE CONCAT('%', :qualityStatus, '%')) AND " +
+            "(:grnStatus IS NULL OR i.grnStatus LIKE CONCAT('%', :grnStatus, '%')) AND " +
+            "(:searchTerm IS NULL OR " +
+            "i.inboundNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.poNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.supplierName LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.invoiceNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.deliveryChallan LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.trackingNumber LIKE CONCAT('%', :searchTerm, '%') OR " +
+            "i.grnNumber LIKE CONCAT('%', :searchTerm, '%')) AND " +
+            
+            // ============================================
+            // DATE FILTERS - Inbound Date
+            // ============================================
+            "(:inboundDateFrom IS NULL OR i.inboundDate >= :inboundDateFrom) AND " +
+            "(:inboundDateTo IS NULL OR i.inboundDate <= :inboundDateTo) AND " +
+            
+            // Expected Arrival Date
+            "(:expectedArrivalDateFrom IS NULL OR i.expectedArrivalDate >= :expectedArrivalDateFrom) AND " +
+            "(:expectedArrivalDateTo IS NULL OR i.expectedArrivalDate <= :expectedArrivalDateTo) AND " +
+            
+            // Gate Entry Date Time
+            "(:gateEntryDateTimeFrom IS NULL OR DATE(i.gateEntryDateTime) >= :gateEntryDateTimeFrom) AND " +
+            "(:gateEntryDateTimeTo IS NULL OR DATE(i.gateEntryDateTime) <= :gateEntryDateTimeTo) AND " +
+            
+            // Unloading Start Time
+            "(:unloadingStartTimeFrom IS NULL OR DATE(i.unloadingStartTime) >= :unloadingStartTimeFrom) AND " +
+            "(:unloadingStartTimeTo IS NULL OR DATE(i.unloadingStartTime) <= :unloadingStartTimeTo) AND " +
+            
+            // Received Date
+            "(:receivedDateFrom IS NULL OR DATE(i.receivedDate) >= :receivedDateFrom) AND " +
+            "(:receivedDateTo IS NULL OR DATE(i.receivedDate) <= :receivedDateTo) AND " +
+            
+            // Inspection Date
+            "(:inspectionDateFrom IS NULL OR DATE(i.inspectionDate) >= :inspectionDateFrom) AND " +
+            "(:inspectionDateTo IS NULL OR DATE(i.inspectionDate) <= :inspectionDateTo) AND " +
+            
+            // GRN Date
+            "(:grnDateFrom IS NULL OR DATE(i.grnDate) >= :grnDateFrom) AND " +
+            "(:grnDateTo IS NULL OR DATE(i.grnDate) <= :grnDateTo) AND " +
+            
+            // Approval Date
+            "(:approvalDateFrom IS NULL OR DATE(i.approvalDate) >= :approvalDateFrom) AND " +
+            "(:approvalDateTo IS NULL OR DATE(i.approvalDate) <= :approvalDateTo) AND " +
+            
+            // ============================================
+            // QUANTITY FILTERS
+            // ============================================
+            "(:minBoxesUnloaded IS NULL OR i.boxesUnloadedQuantity >= :minBoxesUnloaded) AND " +
+            "(:maxBoxesUnloaded IS NULL OR i.boxesUnloadedQuantity <= :maxBoxesUnloaded) AND " +
+            "(:minBoxesInTruck IS NULL OR i.boxesInTruckQuantity >= :minBoxesInTruck) AND " +
+            "(:maxBoxesInTruck IS NULL OR i.boxesInTruckQuantity <= :maxBoxesInTruck)")
+     Page<Inbound> filterInbounds(
+             // Status & Stage
+             @Param("status") InboundStatus status,
+             @Param("stage") InboundStage stage,
+             @Param("approvalStatus") String approvalStatus,
+             
+             // Text Filters
+             @Param("poNumber") String poNumber,
+             @Param("supplierName") String supplierName,
+             @Param("qualityStatus") String qualityStatus,
+             @Param("grnStatus") String grnStatus,
+             @Param("searchTerm") String searchTerm,
+             
+             // Date Filters - Inbound Date
+             @Param("inboundDateFrom") LocalDate inboundDateFrom,
+             @Param("inboundDateTo") LocalDate inboundDateTo,
+             
+             // Expected Arrival Date
+             @Param("expectedArrivalDateFrom") LocalDate expectedArrivalDateFrom,
+             @Param("expectedArrivalDateTo") LocalDate expectedArrivalDateTo,
+             
+             // Gate Entry Date Time
+             @Param("gateEntryDateTimeFrom") LocalDate gateEntryDateTimeFrom,
+             @Param("gateEntryDateTimeTo") LocalDate gateEntryDateTimeTo,
+             
+             // Unloading Start Time
+             @Param("unloadingStartTimeFrom") LocalDate unloadingStartTimeFrom,
+             @Param("unloadingStartTimeTo") LocalDate unloadingStartTimeTo,
+             
+             // Received Date
+             @Param("receivedDateFrom") LocalDate receivedDateFrom,
+             @Param("receivedDateTo") LocalDate receivedDateTo,
+             
+             // Inspection Date
+             @Param("inspectionDateFrom") LocalDate inspectionDateFrom,
+             @Param("inspectionDateTo") LocalDate inspectionDateTo,
+             
+             // GRN Date
+             @Param("grnDateFrom") LocalDate grnDateFrom,
+             @Param("grnDateTo") LocalDate grnDateTo,
+             
+             // Approval Date
+             @Param("approvalDateFrom") LocalDate approvalDateFrom,
+             @Param("approvalDateTo") LocalDate approvalDateTo,
+             
+             // Quantity Filters
+             @Param("minBoxesUnloaded") Integer minBoxesUnloaded,
+             @Param("maxBoxesUnloaded") Integer maxBoxesUnloaded,
+             @Param("minBoxesInTruck") Integer minBoxesInTruck,
+             @Param("maxBoxesInTruck") Integer maxBoxesInTruck,
+             
+             Pageable pageable
+     );
 }

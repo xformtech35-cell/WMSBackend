@@ -232,7 +232,7 @@ public class InboundService {
         inbound.setQualityRemarks(inspectionDTO.getOverallRemarks());
         inbound.setStatus(InboundStatus.QUALITY_INSPECTION);
         inbound.setStage(InboundStage.QUALITY_INSPECTION);
-        
+        inbound.setApprovalStatus("PENDING");
         // Determine overall quality status
         boolean allAccepted = inspectionDTO.getItems().stream()
             .allMatch(item -> "GOOD".equals(item.getQualityStatus()));
@@ -301,16 +301,60 @@ public class InboundService {
     // ============ FILTER INBOUNDS ============
     public Page<InboundDTO> filterInbounds(InboundFilterDTO filter, Pageable pageable) {
         Page<Inbound> inbounds = inboundRepository.filterInbounds(
+            // Status & Stage
             filter.getStatus(),
             filter.getStage(),
+            filter.getApprovalStatus(),
+            
+            // Text Filters
             filter.getPoNumber(),
             filter.getSupplierName(),
+            filter.getQualityStatus(),
+            filter.getGrnStatus(),
             filter.getSearchTerm(),
+            
+            // Date Filters - Inbound Date
+            filter.getInboundDateFrom(),
+            filter.getInboundDateTo(),
+            
+            // Expected Arrival Date
+            filter.getExpectedArrivalDateFrom(),
+            filter.getExpectedArrivalDateTo(),
+            
+            // Gate Entry Date Time
+            filter.getGateEntryDateTimeFrom(),
+            filter.getGateEntryDateTimeTo(),
+            
+            // Unloading Start Time
+            filter.getUnloadingStartTimeFrom(),
+            filter.getUnloadingStartTimeTo(),
+            
+            // Received Date
+            filter.getReceivedDateFrom(),
+            filter.getReceivedDateTo(),
+            
+            // Inspection Date
+            filter.getInspectionDateFrom(),
+            filter.getInspectionDateTo(),
+            
+            // GRN Date
+            filter.getGrnDateFrom(),
+            filter.getGrnDateTo(),
+            
+            // Approval Date
+            filter.getApprovalDateFrom(),
+            filter.getApprovalDateTo(),
+            
+            // Quantity Filters
+            filter.getMinBoxesUnloaded(),
+            filter.getMaxBoxesUnloaded(),
+            filter.getMinBoxesInTruck(),
+            filter.getMaxBoxesInTruck(),
+            
             pageable
         );
         return inbounds.map(this::convertToDTO);
     }
-
     // ============ GET ALL INBOUNDS ============
     public Page<InboundDTO> getAllInbounds(Pageable pageable) {
         return inboundRepository.findAll(pageable).map(this::convertToDTO);
@@ -479,6 +523,71 @@ public class InboundService {
         return builder.build();
     }
 
-  
+    @Transactional
+    public InboundDTO approveOrRejectQualityInspection(Long inboundId, QualityInspectionApprovalDTO approvalDTO) {
+        log.info("Processing quality inspection approval for inbound: {}", inboundId);
+        
+        Inbound inbound = inboundRepository.findById(inboundId)
+            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
+        
+        // Validate status
+        if (inbound.getStatus() != InboundStatus.QUALITY_INSPECTION) {
+            throw new IllegalStateException("Inbound is not in quality inspection stage. Current status: " + inbound.getStatus());
+        }
+        
+        // Validate approval status
+        String status = approvalDTO.getApprovalStatus();
+        if (!"APPROVED".equals(status) && !"REJECTED".equals(status)) {
+            throw new IllegalArgumentException("Approval status must be APPROVED or REJECTED");
+        }
+        
+        // Update approval details
+        inbound.setApprovalStatus(status);
+        inbound.setApprovedBy(approvalDTO.getApprovedBy());
+        inbound.setApprovalDate(LocalDateTime.now());
+        inbound.setApprovalRemarks(approvalDTO.getApprovalRemarks());
+        
+        if ("REJECTED".equals(status)) {
+            // Validate rejection reason
+            if (approvalDTO.getRejectionReason() == null || approvalDTO.getRejectionReason().trim().isEmpty()) {
+                throw new IllegalArgumentException("Rejection reason is required when rejecting");
+            }
+            inbound.setRejectionReason(approvalDTO.getRejectionReason());
+            inbound.setStatus(InboundStatus.REJECTED);
+            inbound.setStage(InboundStage.COMPLETED);
+            log.warn("Quality inspection REJECTED for inbound: {} with reason: {}", 
+                inbound.getInboundNumber(), approvalDTO.getRejectionReason());
+        } else if ("APPROVED".equals(status)) {
+            inbound.setRejectionReason(null);
+            inbound.setStatus(InboundStatus.COMPLETED);
+            inbound.setStage(InboundStage.COMPLETED);
+            log.info("Quality inspection APPROVED for inbound: {}", inbound.getInboundNumber());
+            
+            // Update inventory for approved items
+            updateInventoryForApprovedInbound(inbound);
+        }
+        
+        inbound = inboundRepository.save(inbound);
+        log.info("Quality inspection {} for inbound: {}", status, inbound.getInboundNumber());
+        
+        return convertToDTO(inbound);
+    }
     
+    private void updateInventoryForApprovedInbound(Inbound inbound) {
+        log.info("Updating inventory for approved inbound: {}", inbound.getInboundNumber());
+        
+        for (InboundLine line : inbound.getLines()) {
+            if (line.getAcceptedQuantity() != null && line.getAcceptedQuantity() > 0) {
+                if (line.getItem() != null) {
+                    Item item = line.getItem();
+                    int currentStock = item.getCurrentStock() != null ? item.getCurrentStock() : 0;
+                    item.setCurrentStock(currentStock + line.getAcceptedQuantity());
+                    itemRepository.save(item);
+                    log.info("Updated stock for item: {} by {}", 
+                        item.getItemCode(), line.getAcceptedQuantity());
+                }
+            }
+        }
+    
+}
 }

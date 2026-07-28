@@ -156,6 +156,18 @@ public class Inbound {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @Column(name = "approval_status", length = 20)
+    private String approvalStatus; // PENDING, APPROVED, REJECTED
+    
+    @Column(name = "approval_date")
+    private LocalDateTime approvalDate;
+    
+    @Column(name = "approval_remarks", columnDefinition = "TEXT")
+    private String approvalRemarks;
+    
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+    
     // Helper methods
     public void addLine(InboundLine line) {
         lines.add(line);
