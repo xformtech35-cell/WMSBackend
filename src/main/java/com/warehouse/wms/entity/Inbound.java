@@ -76,6 +76,9 @@ public class Inbound {
     @Column(name = "gate_entry_date_time")
     private LocalDateTime gateEntryDateTime;
     
+    
+    
+    
     // Unloading
     @Column(name = "boxes_unloaded_quantity")
     private Integer boxesUnloadedQuantity;
@@ -121,7 +124,8 @@ public class Inbound {
     
     @Column(name = "grn_status")
     private String grnStatus; // PENDING, GENERATED
-    
+    private LocalDateTime grnApprovedDate;
+
     // Status
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

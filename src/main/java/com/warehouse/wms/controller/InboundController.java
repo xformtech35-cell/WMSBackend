@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.CreateInboundDTO;
+import com.warehouse.wms.dto.GRNStatusUpdateRequest;
 import com.warehouse.wms.dto.GateEntryDTO;
 import com.warehouse.wms.dto.GoodsReceivingDTO;
 import com.warehouse.wms.dto.InboundDTO;
@@ -505,6 +507,19 @@ public ResponseEntity<ApiResponse<InboundDTO>> approveOrRejectQualityInspection(
         }
     }
 
+    
+    @PutMapping("/{inboundId}/grn-status")
+    public ResponseEntity<InboundDTO> updateGRNStatus(
+            @PathVariable Long inboundId,
+            @RequestBody GRNStatusUpdateRequest request) {
+        
+        InboundDTO updatedInbound = inboundService.updateGRNStatus(inboundId, request.getGrnStatus());
+        return ResponseEntity.ok(updatedInbound);
+    }
+    
+    
+    
+    
     // ============ GET INBOUND BY ID ============
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<InboundDTO>> getInboundById(@PathVariable Long id) {

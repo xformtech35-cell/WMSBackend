@@ -8,5 +8,6 @@ public enum InboundStatus {
     QUALITY_INSPECTION,
     COMPLETED,
     REJECTED,
-    CANCELLED
+    CANCELLED,
+    GRN_PENDING
 }

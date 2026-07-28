@@ -265,8 +265,8 @@ public class InboundService {
         String grnNumber = "GRN-" + inbound.getInboundNumber();
         inbound.setGrnNumber(grnNumber);
         inbound.setGrnDate(LocalDateTime.now());
-        inbound.setGrnStatus("GENERATED");
-        inbound.setStatus(InboundStatus.COMPLETED);
+        inbound.setGrnStatus("PENDING");
+        inbound.setStatus(InboundStatus.GRN_PENDING);
         inbound.setStage(InboundStage.GRN_GENERATED);
         
         // Update inventory for accepted items
@@ -284,6 +284,65 @@ public class InboundService {
         return convertToDTO(inbound);
     }
 
+    
+    
+    
+    
+    
+    
+    
+    
+    @Transactional
+    public InboundDTO updateGRNStatus(Long inboundId, String newStatus) {
+        log.info("Updating GRN status for inbound: {} to {}", inboundId, newStatus);
+        
+        Inbound inbound = inboundRepository.findById(inboundId)
+            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
+        
+        // Validate current state
+        if (inbound.getGrnNumber() == null) {
+            throw new IllegalStateException("GRN must be generated before updating status");
+        }
+        
+        // Store old status for audit
+        String oldStatus = inbound.getGrnStatus();
+        
+        // Update ONLY the GRN status
+        inbound.setGrnStatus(newStatus);
+        
+        // Optional: Update grnDate if status changes to APPROVED
+        if ("COMPLETED".equalsIgnoreCase(newStatus)) {
+            inbound.setGrnApprovedDate(LocalDateTime.now());
+        } else if ("REJECTED".equalsIgnoreCase(newStatus)) {
+            // If rejected, optionally reverse inventory
+            revertInventoryIfRejected(inbound);
+        }
+        
+        Inbound savedInbound = inboundRepository.save(inbound);
+        
+        log.info("GRN status updated from {} to {} for inbound: {}", 
+                 oldStatus, newStatus, inbound.getInboundNumber());
+        
+        // Optional: Audit log
+        
+        return convertToDTO(savedInbound);
+    }
+    
+    /**
+     * Reverts inventory if GRN is rejected (optional business logic)
+     */
+    private void revertInventoryIfRejected(Inbound inbound) {
+        for (InboundLine line : inbound.getLines()) {
+            if (line.getAcceptedQuantity() > 0 && line.getItem() != null) {
+                Item item = line.getItem();
+                item.setCurrentStock(item.getCurrentStock() - line.getAcceptedQuantity());
+                itemRepository.save(item);
+            }
+        }
+        log.warn("Inventory reverted for rejected GRN: {}", inbound.getGrnNumber());
+    }
+    
+    
     // ============ GET INBOUND BY ID ============
     public InboundDTO getInboundById(Long id) {
         Inbound inbound = inboundRepository.findById(id)
