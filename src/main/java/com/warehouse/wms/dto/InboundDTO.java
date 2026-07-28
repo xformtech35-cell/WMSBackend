@@ -69,4 +69,13 @@ public class InboundDTO {
     private List<InboundLineDTO> lines;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    private String approvalStatus; // PENDING, APPROVED, REJECTED
+    
+    private LocalDateTime approvalDate;
+    
+    private String approvalRemarks;
+    
+    private String rejectionReason;
+    
 }

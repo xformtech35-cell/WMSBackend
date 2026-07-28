@@ -408,7 +408,12 @@ public class InboundService {
             .createdBy(entity.getCreatedBy())
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
+            .approvalStatus(entity.getApprovalStatus())
+            .approvalDate(entity.getApprovalDate())
+            .approvalRemarks(entity.getApprovalRemarks())
+            .approvedBy(entity.getApprovedBy())
             .build();
+        	
         
         
         
