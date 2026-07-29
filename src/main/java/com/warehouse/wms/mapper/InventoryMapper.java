@@ -12,7 +12,7 @@ public interface InventoryMapper {
     @Mapping(target = "itemBarcode", source = "serialNo")
     @Mapping(target = "state", expression = "java(inventory.getState().name())")
     @Mapping(target = "binBarcode", expression = "java(inventory.getBin() != null ? inventory.getBin().getBarcode() : null)")
-    @Mapping(target = "itemCode", source = "itemCode")  // ADD THIS
-    @Mapping(target = "itemName", source = "itemName")  // ADD THIS
+    @Mapping(target = "itemCode", source = "itemCode") // ADD THIS
+    @Mapping(target = "itemName", source = "itemName") // ADD THIS
     InventoryResponse toResponse(Inventory inventory);
 }

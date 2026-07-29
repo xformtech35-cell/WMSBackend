@@ -124,6 +124,7 @@ public class Inbound {
     
     @Column(name = "grn_status")
     private String grnStatus; // PENDING, GENERATED
+    
     private LocalDateTime grnApprovedDate;
 
     // Status

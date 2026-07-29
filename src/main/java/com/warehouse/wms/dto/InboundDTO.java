@@ -59,6 +59,7 @@ public class InboundDTO {
     private String grnNumber;
     private LocalDateTime grnDate;
     private String grnStatus;
+    private LocalDateTime grnApprovedDate;
     
     // Status
     private InboundStatus status;
