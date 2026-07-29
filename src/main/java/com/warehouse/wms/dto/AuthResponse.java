@@ -11,6 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public class AuthResponse {
     private String token;
+    private Long id;
     private String username;
     private String role;
     private List<String> permissions;
