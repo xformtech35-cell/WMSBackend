@@ -118,7 +118,6 @@ public class DataInitializer implements CommandLineRunner {
             seedGoodsReceipts();
             seedSalesOrdersAndShipments();
             seedInventory();
-            seedPutawayTasks();
             seedPickTasks();
         }
     }
@@ -573,34 +572,6 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("[DataInitializer] Seeded 60 AVAILABLE + 20 SHIPPED inventory items");
     }
 
-    private void seedPutawayTasks() {
-        Warehouse wh = warehouseRepository.findAll().get(0);
-        List<Bin> bins = binRepository.findAll();
-        GoodsReceipt gr2 = goodsReceiptRepository.findByGrnNo("GRN-2026-002").orElseThrow();
-        List<GoodsReceiptLine> grLines = gr2.getLines();
-
-        int taskCount = 0;
-        for (GoodsReceiptLine grLine : grLines) {
-            Inventory inv = new Inventory();
-            inv.setSku(grLine.getSkuId());
-            inv.setQuantity(grLine.getQuantityReceived());
-            inv.setState(Inventory.InventoryState.IN_PUTAWAY);
-            inv.setBatchNo(grLine.getBatchNo());
-            inv.setSerialNo("SN-PUTAWAY-" + grLine.getId());
-            inv.setGoodsReceiptLine(grLine);
-            inv = inventoryRepository.save(inv);
-
-            PutawayTask task = new PutawayTask();
-            task.setInventory(inv);
-            task.setSuggestedBin(bins.get(30 + taskCount));
-            task.setStatus(PutawayTask.PutawayTaskStatus.PENDING);
-            task.setPriority(1);
-            task.setWarehouse(wh);
-            putawayTaskRepository.save(task);
-            taskCount++;
-        }
-        System.out.println("[DataInitializer] Seeded " + taskCount + " pending putaway tasks");
-    }
 
     private void seedPickTasks() {
         SalesOrder so4 = salesOrderRepository.findBySoNumber("SO-2026-004").orElseThrow();

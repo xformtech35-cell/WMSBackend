@@ -640,4 +640,38 @@ public class InboundService {
         }
 
     }
+    
+    public InboundDTO getInboundByGrnNumber(String grnNumber) {
+        log.info("Fetching inbound by GRN number: {}", grnNumber);
+        Inbound inbound = inboundRepository.findByGrnNumber(grnNumber)
+            .orElseThrow(() -> new RuntimeException("GRN not found: " + grnNumber));
+        return convertToDTO(inbound);
+    }
+    
+    
+    
+    @Transactional(readOnly = true)
+    public InboundDTO getInboundByIds(Long id) {
+        log.info("Fetching inbound by ID: {}", id);
+        
+        Inbound inbound = inboundRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + id));
+        
+        return convertToDTO(inbound);
+    }
+
+    // ====== GET INBOUND BY GRN NUMBER ======
+    @Transactional(readOnly = true)
+    public InboundDTO getInboundByGrnNumbers(String grnNumber) {
+        log.info("Fetching inbound by GRN number: {}", grnNumber);
+        
+        Inbound inbound = inboundRepository.findByGrnNumber(grnNumber)
+            .orElseThrow(() -> new ResourceNotFoundException("GRN not found: " + grnNumber));
+        
+        return convertToDTO(inbound);
+    }
+
+    
+    
+    
 }

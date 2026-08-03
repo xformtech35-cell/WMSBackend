@@ -81,8 +81,15 @@ public class AuthController {
                 .map(Enum::name)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new AuthResponse(token, user.getUsername(), user.getRole().getName(), permissions));
-    }
+        return ResponseEntity.ok(
+        	    new AuthResponse(
+        	        token,
+        	        user.getId(),
+        	        user.getUsername(),
+        	        user.getRole().getName(),
+        	        permissions
+        	    )
+        	);    }
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")

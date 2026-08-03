@@ -24,6 +24,10 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
     
     List<Inbound> findByStatus(InboundStatus status);
     
+    Optional<Inbound> findByGrnNumber(String grnNumber);
+
+    
+    
     Page<Inbound> findByStatus(InboundStatus status, Pageable pageable);
     
     Long countByInboundNumberStartingWith(String prefix);

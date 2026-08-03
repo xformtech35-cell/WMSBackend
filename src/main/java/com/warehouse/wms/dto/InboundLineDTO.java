@@ -27,5 +27,6 @@ public class InboundLineDTO {
     private String reason;
     private String remarks;
     private List<InspectionImageDTO> images;
+    private String batchNumber;
 
 }

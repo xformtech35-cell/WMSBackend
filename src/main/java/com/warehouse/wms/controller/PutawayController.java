@@ -1,110 +1,119 @@
+// ====== FILE: src/main/java/com/warehouse/wms/controller/PutawayController.java ======
 package com.warehouse.wms.controller;
 
-import com.warehouse.wms.dto.ExecutionResult;
-import com.warehouse.wms.dto.PutawayExecutionRequest;
-import com.warehouse.wms.dto.PutawayHistoryEntry;
-import com.warehouse.wms.dto.PutawayTaskResponse;
-import com.warehouse.wms.entity.MovementLog;
-import com.warehouse.wms.entity.PutawayTask;
-import com.warehouse.wms.entity.User;
-import com.warehouse.wms.repository.MovementLogRepository;
-import com.warehouse.wms.repository.PutawayTaskRepository;
-import com.warehouse.wms.repository.UserRepository;
-import com.warehouse.wms.service.PutawayEngineService;
-import com.warehouse.wms.service.PutawayExecutionService;
+import com.warehouse.wms.dto.request.PutawayInitiateRequest;
+import com.warehouse.wms.dto.request.PutawayExecuteRequest;
+import com.warehouse.wms.dto.request.PutawayConfirmRequest;
+import com.warehouse.wms.dto.request.LocationSuggestionRequest;
+import com.warehouse.wms.dto.response.PutawayTaskResponse;
+import com.warehouse.wms.dto.response.LocationSuggestionResponse;
+import com.warehouse.wms.service.PutawayService;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.persistence.EntityNotFoundException;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.Builder;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/putaway")
+@RequestMapping("/api/v1/putaway")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('PUTAWAY_VIEW')")
+@Tag(name = "Putaway Management", description = "APIs for Putaway process management")
 public class PutawayController {
 
-    private final PutawayEngineService putawayEngineService;
-    private final PutawayExecutionService putawayExecutionService;
-    private final PutawayTaskRepository putawayTaskRepository;
-    private final MovementLogRepository movementLogRepository;
-    private final UserRepository userRepository;
+    private final PutawayService putawayService;
 
-    @Operation(summary = "Generate putaway tasks from a GRN")
-    @PostMapping("/tasks/generate/{grnId}")
-    public ResponseEntity<List<PutawayTaskResponse>> generate(@PathVariable Long grnId) {
-        return ResponseEntity.ok(putawayEngineService.generatePutawayTasks(grnId));
+    @PostMapping("/initiate")
+    @Operation(summary = "Initiate Putaway task")
+    public ResponseEntity<PutawayTaskResponse> initiatePutaway(@Valid @RequestBody PutawayInitiateRequest request) {
+        log.info("Received request to initiate putaway");
+        PutawayTaskResponse response = putawayService.initiatePutaway(request);
+        return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Execute putaway scan")
     @PostMapping("/execute")
-    public ResponseEntity<ExecutionResult> execute(
-            @Valid @RequestBody PutawayExecutionRequest request,
-            Authentication authentication) {
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + authentication.getName()));
-        return ResponseEntity.ok(putawayExecutionService.executeScan(
-                request.getItemBarcode(), request.getBinBarcode(), user.getId()));
+    @Operation(summary = "Execute putaway stage")
+    public ResponseEntity<PutawayTaskResponse> executePutawayStage(@Valid @RequestBody PutawayExecuteRequest request) {
+        log.info("Received request to execute putaway stage: {}", request.getStage());
+        PutawayTaskResponse response = putawayService.executePutawayStage(request);
+        return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Get putaway history by item barcode/serial number")
-    @GetMapping("/history")
-    public ResponseEntity<List<PutawayHistoryEntry>> history(@RequestParam String serialNo) {
-        List<MovementLog> logs = movementLogRepository.findByInventorySerialNo(serialNo);
-        Set<Long> userIds = logs.stream()
-                .map(MovementLog::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, User> users = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
-        List<PutawayHistoryEntry> history = logs.stream().map(log -> {
-            User actor = log.getUserId() != null ? users.get(log.getUserId()) : null;
-            PutawayTask task = putawayTaskRepository.findByInventoryIdAndStatus(
-                    log.getInventory() != null ? log.getInventory().getId() : null,
-                    PutawayTask.PutawayTaskStatus.COMPLETED
-            ).orElse(null);
-            return PutawayHistoryEntry.builder()
-                    .id(log.getId())
-                    .serialNo(log.getInventory() != null ? log.getInventory().getSerialNo() : null)
-                    .fromState(log.getFromState() != null ? log.getFromState().name() : null)
-                    .toState(log.getToState() != null ? log.getToState().name() : null)
-                    .binBarcode(log.getBin() != null ? log.getBin().getBarcode() : null)
-                    .suggestedBinBarcode(task != null && task.getSuggestedBin() != null ? task.getSuggestedBin().getBarcode() : null)
-                    .action(log.getAction())
-                    .userId(log.getUserId())
-                    .userName(actor != null ? actor.getUsername() : null)
-                    .userRole(actor != null && actor.getRole() != null ? actor.getRole().getName() : null)
-                    .createdAt(log.getCreatedAt())
-                    .build();
-        }).collect(Collectors.toList());
-        return ResponseEntity.ok(history);
+    @PostMapping("/confirm")
+    @Operation(summary = "Confirm putaway")
+    public ResponseEntity<PutawayTaskResponse> confirmPutaway(@Valid @RequestBody PutawayConfirmRequest request) {
+        log.info("Received request to confirm putaway");
+        PutawayTaskResponse response = putawayService.confirmPutaway(request);
+        return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "List pending putaway tasks")
-    @GetMapping("/tasks/pending")
-    public ResponseEntity<List<PutawayTaskResponse>> pending() {
-        List<PutawayTask> tasks = putawayTaskRepository.findByStatusOrderByPriorityAscIdAsc(PutawayTask.PutawayTaskStatus.PENDING);
-        List<PutawayTaskResponse> responses = tasks.stream().map(t -> PutawayTaskResponse.builder()
-                .taskId(t.getId())
-                .inventoryId(t.getInventory() != null ? t.getInventory().getId() : null)
-                .itemBarcode(t.getInventory() != null ? t.getInventory().getSerialNo() : null)
-                .suggestedBinBarcode(t.getSuggestedBin() != null ? t.getSuggestedBin().getBarcode() : null)
-                .priority(t.getPriority())
-                .state(t.getStatus().name())
-                .build()
-        ).toList();
+    @PostMapping("/suggest-location")
+    @Operation(summary = "Suggest location for putaway")
+    public ResponseEntity<LocationSuggestionResponse> suggestLocation(@Valid @RequestBody LocationSuggestionRequest request) {
+        log.info("Received request to suggest location for item: {}", request.getItemCode());
+        LocationSuggestionResponse response = putawayService.suggestLocation(
+                request.getItemCode(), 
+                request.getQuantity(), 
+                request.getWarehouseId()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/task/{taskNumber}")
+    @Operation(summary = "Get Putaway task by number")
+    public ResponseEntity<PutawayTaskResponse> getPutawayTaskByNumber(@PathVariable String taskNumber) {
+        PutawayTaskResponse response = putawayService.getPutawayTaskByNumber(taskNumber);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/grn/{grnNumber}")
+    @Operation(summary = "Get Putaway task by GRN number")
+    public ResponseEntity<PutawayTaskResponse> getPutawayTaskByGrnNumber(@PathVariable String grnNumber) {
+        PutawayTaskResponse response = putawayService.getPutawayTaskByGrnNumber(grnNumber);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/status/{status}")
+    @Operation(summary = "Get Putaway tasks by status")
+    public ResponseEntity<List<PutawayTaskResponse>> getPutawayTasksByStatus(@PathVariable String status) {
+        List<PutawayTaskResponse> responses = putawayService.getPutawayTasksByStatus(status);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/assigned-to/{assignedTo}")
+    @Operation(summary = "Get Putaway tasks assigned to operator")
+    public ResponseEntity<List<PutawayTaskResponse>> getPutawayTasksByAssignedTo(@PathVariable String assignedTo) {
+        List<PutawayTaskResponse> responses = putawayService.getPutawayTasksByAssignedTo(assignedTo);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping
+    @Operation(summary = "Get all Putaway tasks with pagination")
+    public ResponseEntity<Page<PutawayTaskResponse>> getAllPutawayTasks(@PageableDefault(size = 20) Pageable pageable) {
+        Page<PutawayTaskResponse> responses = putawayService.getAllPutawayTasks(pageable);
+        return ResponseEntity.ok(responses);
+    }
+
+    @PutMapping("/cancel/{taskNumber}")
+    @Operation(summary = "Cancel Putaway task")
+    public ResponseEntity<Void> cancelPutawayTask(@PathVariable String taskNumber, @RequestParam String reason) {
+        log.info("Received request to cancel task: {}", taskNumber);
+        putawayService.cancelPutawayTask(taskNumber, reason);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/update-inventory/{confirmationNumber}")
+    @Operation(summary = "Update inventory after putaway")
+    public ResponseEntity<Void> updateInventoryAfterPutaway(@PathVariable String confirmationNumber) {
+        log.info("Received request to update inventory for confirmation: {}", confirmationNumber);
+        putawayService.updateInventoryAfterPutaway(confirmationNumber);
+        return ResponseEntity.ok().build();
     }
 }
