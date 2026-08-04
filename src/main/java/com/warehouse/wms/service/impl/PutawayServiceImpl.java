@@ -24,6 +24,7 @@ import com.warehouse.wms.dto.response.LocationSuggestionResponse;
 import com.warehouse.wms.dto.response.PutawayTaskResponse;
 import com.warehouse.wms.dto.response.QRCodeResponse;
 import com.warehouse.wms.entity.BinLocation;
+import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.InventoryStock;
 import com.warehouse.wms.entity.PutawayConfirmation;
 import com.warehouse.wms.entity.PutawayLine;
@@ -32,6 +33,7 @@ import com.warehouse.wms.exception.InvalidOperationException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.PutawayTaskMapper;
 import com.warehouse.wms.repository.BinLocationRepository;
+import com.warehouse.wms.repository.InboundLineRepository;
 import com.warehouse.wms.repository.InventoryStockRepository;
 import com.warehouse.wms.repository.PutawayConfirmationRepository;
 import com.warehouse.wms.repository.PutawayLineRepository;
@@ -53,6 +55,7 @@ public class PutawayServiceImpl implements PutawayService {
     private final PutawayConfirmationRepository putawayConfirmationRepository;
     private final BinLocationRepository binLocationRepository;
     private final InventoryStockRepository inventoryStockRepository;
+    private final InboundLineRepository inboundLineRepository; // ✅ ADD THIS
     private final QRCodeService qrCodeService;
     private final PutawayTaskMapper putawayTaskMapper;
 
@@ -84,7 +87,6 @@ public class PutawayServiceImpl implements PutawayService {
                 .build();
 
         int totalQuantity = 0;
-        List<PutawayLine> lines = new ArrayList<>();
 
         // Process each line
         for (PutawayInitiateRequest.PutawayLineRequest lineRequest : request.getLines()) {
@@ -95,34 +97,43 @@ public class PutawayServiceImpl implements PutawayService {
                 request.getWarehouseId()
             );
 
-            PutawayLine line = PutawayLine.builder()
-                    .lineNumber(lines.size() + 1)
+            // ✅ FIX: Build line with proper fields
+            PutawayLine.PutawayLineBuilder lineBuilder = PutawayLine.builder()
+                    .lineNumber(task.getLines().size() + 1)
                     .itemCode(lineRequest.getItemCode())
                     .itemName(lineRequest.getItemName())
                     .uom(lineRequest.getUom())
                     .quantity(lineRequest.getQuantity())
                     .putawayQuantity(0)
                     .remainingQuantity(lineRequest.getQuantity())
-//                    .inboundLineId(lineRequest.getInboundLineId())
                     .batchNumber(lineRequest.getBatchNumber())
                     .serialNumber(lineRequest.getSerialNumber())
                     .remarks(lineRequest.getRemarks())
-                    .status(PutawayLineStatus.PENDING)
-                    .build();
+                    .status(PutawayLineStatus.PENDING);
+
+            // ✅ FIX: Set InboundLine if inboundLineId is provided
+            if (lineRequest.getInboundLineId() != null) {
+                InboundLine inboundLine = inboundLineRepository.findById(lineRequest.getInboundLineId())
+                        .orElse(null);
+                if (inboundLine != null) {
+                    lineBuilder.inboundLine(inboundLine);
+                }
+            }
 
             // Set suggested location
             if (suggestion != null && suggestion.getSuggestedLocations() != null 
                 && !suggestion.getSuggestedLocations().isEmpty()) {
                 LocationSuggestionResponse.SuggestedLocation suggested = 
                     suggestion.getSuggestedLocations().get(0);
-                line.setSuggestedWarehouse(suggested.getWarehouseId());
-                line.setSuggestedZone(suggested.getZone());
-                line.setSuggestedAisle(suggested.getAisle());
-                line.setSuggestedRack(suggested.getRack());
-                line.setSuggestedShelf(suggested.getShelf());
-                line.setSuggestedBin(suggested.getBinId());
+                lineBuilder.suggestedWarehouse(suggested.getWarehouseId())
+                           .suggestedZone(suggested.getZone())
+                           .suggestedAisle(suggested.getAisle())
+                           .suggestedRack(suggested.getRack())
+                           .suggestedShelf(suggested.getShelf())
+                           .suggestedBin(suggested.getBinId());
             }
 
+            PutawayLine line = lineBuilder.build();
             task.addLine(line);
             totalQuantity += lineRequest.getQuantity();
         }
@@ -131,7 +142,7 @@ public class PutawayServiceImpl implements PutawayService {
         task.setPendingQuantity(totalQuantity);
 
         PutawayTask savedTask = putawayTaskRepository.save(task);
-        log.info("Putaway task created: {}", savedTask.getTaskNumber());
+        log.info("✅ Putaway task created: {}", savedTask.getTaskNumber());
 
         // Generate QR Codes for the task
         generateQRCodesForTask(savedTask);
@@ -290,97 +301,101 @@ public class PutawayServiceImpl implements PutawayService {
         // Update QR Code status
         updateQRCodeStatusForTask(task.getId());
 
-        log.info("Putaway confirmed with number: {}", confirmationNumber);
+        log.info("✅ Putaway confirmed with number: {}", confirmationNumber);
         return putawayTaskMapper.toResponse(updatedTask);
     }
 
-    @Override
-    @Transactional
-    public void updateInventoryAfterPutaway(String confirmationNumber) {
-        log.info("Updating inventory for confirmation: {}", confirmationNumber);
+@Override
+@Transactional
+public void updateInventoryAfterPutaway(String confirmationNumber) {
+    log.info("Updating inventory for confirmation: {}", confirmationNumber);
 
-        PutawayConfirmation confirmation = putawayConfirmationRepository
-                .findByConfirmationNumber(confirmationNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
+    PutawayConfirmation confirmation = putawayConfirmationRepository
+            .findByConfirmationNumber(confirmationNumber)
+            .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
 
-        if (confirmation.getInventoryUpdated()) {
-            log.info("Inventory already updated for confirmation: {}", confirmationNumber);
-            return;
-        }
-
-        PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
-                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-
-        // Update inventory for each line
-        for (PutawayLine line : task.getLines()) {
-            if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
-                continue;
-            }
-
-            // Check if stock exists in this bin
-            Optional<InventoryStock> existingStock = inventoryStockRepository
-                    .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
-
-            InventoryStock stock;
-            if (existingStock.isPresent()) {
-                stock = existingStock.get();
-                stock.addQuantity(line.getPutawayQuantity());
-            } else {
-                // Create new stock entry
-                stock = InventoryStock.builder()
-                        .inventoryNumber(generateInventoryNumber())
-                        .itemCode(line.getItemCode())
-                        .itemName(line.getItemName())
-                        .uom(line.getUom())
-                        .quantity(line.getPutawayQuantity())
-                        .availableQuantity(line.getPutawayQuantity())
-                        .warehouseId(line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId())
-                        .zone(line.getActualZone())
-                        .aisle(line.getActualAisle())
-                        .rack(line.getActualRack())
-                        .shelf(line.getActualShelf())
-                        .binId(line.getActualBin())
-                        .binBarcode(line.getBinBarcode())
-                        .batchNumber(line.getBatchNumber())
-                        .serialNumbers(line.getSerialNumber())
-                        .grnNumber(task.getGrnNumber())
-                        .putawayTaskNumber(task.getTaskNumber())
-                        .confirmationNumber(confirmationNumber)
-                        .status(InventoryStatus.ACTIVE)
-                        .isAvailable(true)
-                        .receivedDate(LocalDateTime.now())
-                        .lastUpdatedDate(LocalDateTime.now())
-                        .build();
-            }
-
-            inventoryStockRepository.save(stock);
-
-            // Update bin capacity
-            if (line.getActualBin() != null) {
-                binLocationRepository.allocateBinCapacity(line.getActualBin(), line.getPutawayQuantity());
-            }
-        }
-
-        // Update confirmation
-        confirmation.setInventoryUpdated(true);
-        confirmation.setInventoryUpdatedAt(LocalDateTime.now());
-        putawayConfirmationRepository.save(confirmation);
-
-        // Update task status
-        task.setStage(PutawayStage.COMPLETED);
-        task.setStatus(PutawayStatus.COMPLETED);
-        task.setCompletedAt(LocalDateTime.now());
-        putawayTaskRepository.save(task);
-
-        log.info("Inventory updated successfully for confirmation: {}", confirmationNumber);
+    if (confirmation.getInventoryUpdated()) {
+        log.info("Inventory already updated for confirmation: {}", confirmationNumber);
+        return;
     }
+
+    PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
+            .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+    // Update inventory for each line
+    for (PutawayLine line : task.getLines()) {
+        if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
+            continue;
+        }
+
+        // Check if stock exists in this bin
+        Optional<InventoryStock> existingStock = inventoryStockRepository
+                .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
+
+        InventoryStock stock;
+        if (existingStock.isPresent()) {
+            stock = existingStock.get();
+            stock.addQuantity(line.getPutawayQuantity());
+        } else {
+            // Create new stock entry
+            String serialNumbers = line.getSerialNumber() != null ? 
+                                   line.getSerialNumber() : null;
+            
+            stock = InventoryStock.builder()
+                    .inventoryNumber(generateInventoryNumber())
+                    .itemCode(line.getItemCode())
+                    .itemName(line.getItemName())
+                    .uom(line.getUom())
+                    .quantity(line.getPutawayQuantity())
+                    .availableQuantity(line.getPutawayQuantity())
+                    .warehouseId(line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId())
+                    .zone(line.getActualZone())
+                    .aisle(line.getActualAisle())
+                    .rack(line.getActualRack())
+                    .shelf(line.getActualShelf())
+                    .binId(line.getActualBin())
+                    .binBarcode(line.getBinBarcode())
+                    .batchNumber(line.getBatchNumber())
+                    .serialNumbers(serialNumbers)
+                    .grnNumber(task.getGrnNumber())
+                    .putawayTaskNumber(task.getTaskNumber())
+                    .confirmationNumber(confirmationNumber)
+                    .status(InventoryStatus.ACTIVE)
+                    .isAvailable(true)
+                    .receivedDate(LocalDateTime.now())
+                    .lastUpdatedDate(LocalDateTime.now())
+                    .build();
+        }
+
+        inventoryStockRepository.save(stock);
+
+        // ✅ FIX: Update bin capacity using the simple method
+        if (line.getActualBin() != null) {
+            binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), line.getPutawayQuantity());
+            binLocationRepository.updateLastPutaway(line.getActualBin());
+        }
+    }
+
+    // Update confirmation
+    confirmation.setInventoryUpdated(true);
+    confirmation.setInventoryUpdatedAt(LocalDateTime.now());
+    putawayConfirmationRepository.save(confirmation);
+
+    // Update task status
+    task.setStage(PutawayStage.COMPLETED);
+    task.setStatus(PutawayStatus.COMPLETED);
+    task.setCompletedAt(LocalDateTime.now());
+    putawayTaskRepository.save(task);
+
+    log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
+}
 
     @Override
     public LocationSuggestionResponse suggestLocation(String itemCode, Integer quantity, String warehouseId) {
         log.info("Suggesting location for item: {}, quantity: {}", itemCode, quantity);
 
         List<BinLocation> availableBins = binLocationRepository.findBestAvailableLocation(
-                warehouseId, null, quantity);
+                warehouseId, quantity);
 
         LocationSuggestionResponse response = LocationSuggestionResponse.builder()
                 .itemCode(itemCode)
@@ -488,10 +503,10 @@ public class PutawayServiceImpl implements PutawayService {
         task.setStatus(PutawayStatus.CANCELLED);
         task.setRejectionReason(reason);
         putawayTaskRepository.save(task);
-        log.info("Task cancelled: {}", taskNumber);
+        log.info("✅ Task cancelled: {}", taskNumber);
     }
 
-    // Private Helper Methods
+    // ====== Private Helper Methods ======
 
     private String generateTaskNumber() {
         return String.format("%s-%d", TASK_PREFIX, System.currentTimeMillis() % 1000000);

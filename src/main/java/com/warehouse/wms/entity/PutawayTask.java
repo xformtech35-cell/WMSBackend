@@ -120,6 +120,8 @@ public class PutawayTask {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
+    // ✅ FIX: Initialize with @Builder.Default to work with Lombok builder
+    @Builder.Default
     @OneToMany(mappedBy = "putawayTask", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<PutawayLine> lines = new ArrayList<>();
 
@@ -137,13 +139,19 @@ public class PutawayTask {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    // ✅ Helper methods with null safety
     public void addLine(PutawayLine line) {
-        lines.add(line);
+        if (this.lines == null) {
+            this.lines = new ArrayList<>();
+        }
+        this.lines.add(line);
         line.setPutawayTask(this);
     }
 
     public void removeLine(PutawayLine line) {
-        lines.remove(line);
-        line.setPutawayTask(null);
+        if (this.lines != null) {
+            this.lines.remove(line);
+            line.setPutawayTask(null);
+        }
     }
 }

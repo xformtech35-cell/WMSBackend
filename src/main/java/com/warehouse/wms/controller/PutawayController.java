@@ -23,7 +23,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/putaway")
+@RequestMapping("/api/putaway")
 @RequiredArgsConstructor
 @Tag(name = "Putaway Management", description = "APIs for Putaway process management")
 public class PutawayController {

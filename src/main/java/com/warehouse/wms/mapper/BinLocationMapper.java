@@ -1,21 +1,21 @@
 // ====== FILE: src/main/java/com/warehouse/wms/mapper/BinLocationMapper.java ======
 package com.warehouse.wms.mapper;
 
-import com.warehouse.wms.dto.response.LocationSuggestionResponse;
+import com.warehouse.wms.dto.request.BinLocationRequest;
+import com.warehouse.wms.dto.response.BinLocationResponse;
 import com.warehouse.wms.entity.BinLocation;
-import org.mapstruct.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface BinLocationMapper {
 
     @Mapping(target = "fullLocation", expression = "java(binLocation.getFullLocation())")
-    @Mapping(target = "suggestedQuantity", expression = "java(calculateSuggestedQuantity(binLocation, quantity))")
-    LocationSuggestionResponse.SuggestedLocation toSuggestedLocation(BinLocation binLocation, @Context Integer quantity);
+    BinLocationResponse toResponse(BinLocation binLocation);
 
-    default Integer calculateSuggestedQuantity(BinLocation binLocation, Integer quantity) {
-        if (binLocation.getAvailableCapacity() == null || quantity == null) {
-            return 0;
-        }
-        return Math.min(binLocation.getAvailableCapacity(), quantity);
-    }
+    BinLocation toEntity(BinLocationRequest request);
+
+    void updateEntity(@MappingTarget BinLocation binLocation, BinLocationRequest request);
 }

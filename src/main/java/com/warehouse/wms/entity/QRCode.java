@@ -166,4 +166,7 @@ public class QRCode {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    
+    
 }

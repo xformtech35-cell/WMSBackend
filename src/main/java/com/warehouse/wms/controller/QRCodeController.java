@@ -22,7 +22,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/qr-codes")
+@RequestMapping("/api/qr-codes")
 @RequiredArgsConstructor
 @Tag(name = "QR Code Management", description = "APIs for QR Code and Barcode generation")
 public class QRCodeController {
