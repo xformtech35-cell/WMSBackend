@@ -1,8 +1,18 @@
 // ====== FILE: src/main/java/com/warehouse/wms/service/impl/BinServiceImpl.java ======
 package com.warehouse.wms.service.impl;
 
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.warehouse.wms.dto.BinCreateRequest;
-import com.warehouse.wms.dto.BinResponse;
+import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.Bin.BinStatus;
 import com.warehouse.wms.entity.Rack;
@@ -12,16 +22,9 @@ import com.warehouse.wms.mapper.BinMapper;
 import com.warehouse.wms.repository.BinRepository;
 import com.warehouse.wms.repository.RackRepository;
 import com.warehouse.wms.service.BinService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service

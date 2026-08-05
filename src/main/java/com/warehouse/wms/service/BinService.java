@@ -1,13 +1,14 @@
 // ====== FILE: src/main/java/com/warehouse/wms/service/BinService.java ======
 package com.warehouse.wms.service;
 
-import com.warehouse.wms.dto.BinCreateRequest;
-import com.warehouse.wms.dto.BinResponse;
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
-import java.util.List;
+import com.warehouse.wms.dto.BinCreateRequest;
+import com.warehouse.wms.dto.response.BinResponse;
 
 public interface BinService {
 

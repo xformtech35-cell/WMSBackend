@@ -253,64 +253,7 @@ public class MasterDataController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Create bin")
-    @PostMapping("/bins")
-    public ResponseEntity<BinResponse> createBin(@Valid @RequestBody BinCreateRequest request) {
-        if (binRepository.existsByBarcode(request.getBarcode())) {
-            throw new ResponseStatusException(CONFLICT, "Bin barcode already exists: " + request.getBarcode());
-        }
-        Rack rack = rackRepository.findById(request.getRackId())
-                .orElseThrow(() -> new EntityNotFoundException("Rack not found: " + request.getRackId()));
-        Bin bin = binMapper.toEntity(request);
-        bin.setRack(rack);
-        return ResponseEntity.ok(binMapper.toResponse(binRepository.save(bin)));
-    }
-
-    @Operation(summary = "Get bin by barcode with utilization")
-    @GetMapping("/bins/{barcode}")
-    public ResponseEntity<BinResponse> getBin(@PathVariable String barcode) {
-        Bin bin = binRepository.findByBarcode(barcode)
-                .orElseThrow(() -> new EntityNotFoundException("Bin not found: " + barcode));
-        return ResponseEntity.ok(binMapper.toResponse(bin));
-    }
-
-    @Operation(summary = "List bins")
-    @GetMapping("/bins")
-    public ResponseEntity<List<BinResponse>> listBins() {
-        return ResponseEntity.ok(binRepository.findAll().stream().map(binMapper::toResponse).toList());
-    }
-
-    @Operation(summary = "Update bin")
-    @PutMapping("/bins/{id}")
-    public ResponseEntity<BinResponse> updateBin(@PathVariable Long id, @Valid @RequestBody BinCreateRequest request) {
-        Bin bin = binRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bin not found: " + id));
-        Rack rack = rackRepository.findById(request.getRackId())
-                .orElseThrow(() -> new EntityNotFoundException("Rack not found: " + request.getRackId()));
-
-        if (!bin.getBarcode().equals(request.getBarcode()) && binRepository.existsByBarcode(request.getBarcode())) {
-            throw new ResponseStatusException(CONFLICT, "Bin barcode already exists: " + request.getBarcode());
-        }
-
-        bin.setRack(rack);
-        bin.setBarcode(request.getBarcode());
-        bin.setLengthCm(request.getLengthCm());
-        bin.setWidthCm(request.getWidthCm());
-        bin.setHeightCm(request.getHeightCm());
-        bin.setMaxWeightG(request.getMaxWeightG());
-      //  bin.setStatus(request.getStatus());
-        return ResponseEntity.ok(binMapper.toResponse(binRepository.save(bin)));
-    }
-
-    @Operation(summary = "Update bin status")
-    @PutMapping("/bins/{id}/status")
-    public ResponseEntity<BinResponse> updateBinStatus(@PathVariable Long id, @Valid @RequestBody BinStatusUpdateRequest request) {
-        Bin bin = binRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bin not found: " + id));
-        bin.setStatus(request.getStatus());
-        return ResponseEntity.ok(binMapper.toResponse(binRepository.save(bin)));
-    }
-
+    
     @Operation(summary = "Delete bin")
     @DeleteMapping("/bins/{id}")
     public ResponseEntity<Void> deleteBin(@PathVariable Long id) {
