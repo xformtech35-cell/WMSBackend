@@ -1,3 +1,4 @@
+// ====== FILE: src/main/java/com/warehouse/wms/mapper/BinMapper.java ======
 package com.warehouse.wms.mapper;
 
 import com.warehouse.wms.dto.BinCreateRequest;
@@ -12,20 +13,43 @@ import java.math.RoundingMode;
 @Mapper(componentModel = "spring")
 public interface BinMapper {
 
+    // ✅ Map from CreateRequest to Entity
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "rack", ignore = true)
     @Mapping(target = "volumeCm3", ignore = true)
     @Mapping(target = "occupiedVolumeCm3", constant = "0")
     @Mapping(target = "occupiedWeightG", constant = "0")
+    @Mapping(target = "status", constant = "AVAILABLE")
+    @Mapping(target = "isActive", constant = "true")
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "remarks", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
     Bin toEntity(BinCreateRequest request);
 
-    @Mapping(target = "status", expression = "java(bin.getStatus().name())")
-    @Mapping(target = "rackId", expression = "java(bin.getRack() != null ? bin.getRack().getId() : null)")
-    @Mapping(target = "utilizationPct", expression = "java(calculateUtilization(bin))")
+    // ✅ Map from Entity to Response
+    @Mapping(target = "fullLocation", expression = "java(getFullLocation(bin))")
+    @Mapping(target = "utilizationPercentage", expression = "java(calculateUtilization(bin))")
     BinResponse toResponse(Bin bin);
 
+    // ✅ Helper methods
+    default String getFullLocation(Bin bin) {
+        if (bin == null || bin.getRack() == null || bin.getRack().getAisle() == null || 
+            bin.getRack().getAisle().getZone() == null || 
+            bin.getRack().getAisle().getZone().getWarehouse() == null) {
+            return null;
+        }
+        return String.format("%s-%s-%s-%s-%s",
+                bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+                bin.getRack().getAisle().getZone().getZoneId(),
+                bin.getRack().getAisle().getAisleId(),
+                bin.getRack().getRackId(),
+                bin.getBarcode());
+    }
+
     default BigDecimal calculateUtilization(Bin bin) {
-        if (bin.getVolumeCm3() == null || BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) == 0) {
+        if (bin == null || bin.getVolumeCm3() == null || 
+            BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) == 0) {
             return BigDecimal.ZERO;
         }
         BigDecimal occupied = bin.getOccupiedVolumeCm3() == null ? BigDecimal.ZERO : bin.getOccupiedVolumeCm3();

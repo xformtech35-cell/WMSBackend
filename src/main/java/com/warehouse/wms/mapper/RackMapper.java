@@ -11,14 +11,16 @@ import org.mapstruct.ReportingPolicy;
 import com.warehouse.wms.dto.request.RackRequest;
 import com.warehouse.wms.dto.response.RackResponse;
 import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.dto.BinResponse;
+import com.warehouse.wms.entity.Bin;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        uses = {BinMapper.class})  // ✅ Remove RackCompartmentMapper
+        uses = {RackCompartmentMapper.class, BinMapper.class})  // ✅ Add BinMapper
 public interface RackMapper {
 
-    @Mapping(target = "aisle", ignore = true)
-    @Mapping(target = "bins", source = "bins")
-    @Mapping(target = "compartments", ignore = true)  // ✅ Ignore compartments
+    @Mapping(target = "aisle", ignore = true)  // Ignore to avoid circular dependency
+    @Mapping(target = "bins", source = "bins")  // ✅ Let MapStruct use BinMapper
+    @Mapping(target = "compartments", ignore = true)  // Ignore to avoid circular dependency
     RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)

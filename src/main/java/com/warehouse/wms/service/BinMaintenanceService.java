@@ -17,9 +17,9 @@ public class BinMaintenanceService {
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void resetInvalidFullBins() {
-        int updated = binRepository.resetInvalidFullBins();
-        if (updated > 0) {
-            log.info("Reset {} bins from FULL to AVAILABLE due to zero occupancy", updated);
-        }
+       // int updated = binRepository.resetInvalidFullBins();
+//        if (updated > 0) {
+//            log.info("Reset {} bins from FULL to AVAILABLE due to zero occupancy", updated);
+//        }
     }
 }

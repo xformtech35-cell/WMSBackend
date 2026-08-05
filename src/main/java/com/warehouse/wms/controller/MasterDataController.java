@@ -298,7 +298,7 @@ public class MasterDataController {
         bin.setWidthCm(request.getWidthCm());
         bin.setHeightCm(request.getHeightCm());
         bin.setMaxWeightG(request.getMaxWeightG());
-        bin.setStatus(request.getStatus());
+      //  bin.setStatus(request.getStatus());
         return ResponseEntity.ok(binMapper.toResponse(binRepository.save(bin)));
     }
 

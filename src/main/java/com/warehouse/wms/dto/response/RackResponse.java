@@ -1,5 +1,7 @@
+// ====== FILE: src/main/java/com/warehouse/wms/dto/response/RackResponse.java ======
 package com.warehouse.wms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,9 +29,11 @@ public class RackResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @JsonIgnoreProperties({"racks", "zone"})  // ✅ Ignore backward references
     private AisleResponse aisle;
+    
     private List<BinResponse> bins;
+    
+    @JsonIgnoreProperties({"rack"})  // ✅ Ignore backward references
     private List<RackCompartmentResponse> compartments;
 }
-
-// ====== FILE: src/main/java/com/warehouse/wms/dto/response/TrolleyResponse.java ======

@@ -1,21 +1,32 @@
+// ====== FILE: src/main/java/com/warehouse/wms/entity/Bin.java ======
 package com.warehouse.wms.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import org.hibernate.annotations.Formula;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "wms_bins")
 public class Bin {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @JsonIgnore
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rack_id")
     private Rack rack;
 
@@ -31,26 +42,76 @@ public class Bin {
     @Column(nullable = false)
     private BigDecimal heightCm;
 
-    @Formula("length_cm * width_cm * height_cm")
+    @Column(name = "volume_cm3")
     private BigDecimal volumeCm3;
 
-    @Column(nullable = false, name = "max_weight_g")
+    @Column(name = "max_weight_g", nullable = false)
     private BigDecimal maxWeightG;
 
-    @Column(columnDefinition = "DECIMAL(10, 2) DEFAULT 0", name = "occupied_volume_cm3")
+    @Column(name = "occupied_volume_cm3", columnDefinition = "DECIMAL(10, 2) DEFAULT 0")
     private BigDecimal occupiedVolumeCm3;
 
-    @Column(columnDefinition = "DECIMAL(10, 2) DEFAULT 0", name = "occupied_weight_g")
+    @Column(name = "occupied_weight_g", columnDefinition = "DECIMAL(10, 2) DEFAULT 0")
     private BigDecimal occupiedWeightG;
-    
-    @Column(name = "capacity")
-    private Integer capacity;  
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BinStatus status;
+    private BinStatus status = BinStatus.AVAILABLE;
+
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
+    @Column(columnDefinition = "TEXT")
+    private String remarks;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
 
     public enum BinStatus {
         AVAILABLE, FULL, BLOCKED
+    }
+
+    // Helper methods
+    public String getFullLocation() {
+        if (rack == null || rack.getAisle() == null || rack.getAisle().getZone() == null || 
+            rack.getAisle().getZone().getWarehouse() == null) {
+            return null;
+        }
+        return String.format("%s-%s-%s-%s-%s",
+                rack.getAisle().getZone().getWarehouse().getWarehouseId(),
+                rack.getAisle().getZone().getZoneId(),
+                rack.getAisle().getAisleId(),
+                rack.getRackId(),
+                barcode);
+    }
+
+    public BigDecimal getAvailableVolume() {
+        if (volumeCm3 == null || occupiedVolumeCm3 == null) {
+            return volumeCm3;
+        }
+        return volumeCm3.subtract(occupiedVolumeCm3);
+    }
+
+    public BigDecimal getAvailableWeight() {
+        if (maxWeightG == null || occupiedWeightG == null) {
+            return maxWeightG;
+        }
+        return maxWeightG.subtract(occupiedWeightG);
+    }
+
+    public boolean hasAvailableSpace(BigDecimal volume, BigDecimal weight) {
+        if (getAvailableVolume() == null || getAvailableWeight() == null) {
+            return false;
+        }
+        return getAvailableVolume().compareTo(volume) >= 0 && 
+               getAvailableWeight().compareTo(weight) >= 0;
     }
 }
