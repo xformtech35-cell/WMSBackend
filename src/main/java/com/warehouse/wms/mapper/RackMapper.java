@@ -11,19 +11,27 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 import com.warehouse.wms.dto.request.RackRequest;
+import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.dto.response.RackResponse;
+import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.Rack;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class RackMapper {
 
-    @Mapping(target = "aisle", ignore = true)  // ✅ Ignore aisle to avoid circular dependency
+    @Autowired
+    @Lazy
+    protected AisleMapper aisleMapper;
+
+    @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")  // ✅ Map aisle
     @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
-    @Mapping(target = "compartments", ignore = true)
+    @Mapping(target = "compartments", ignore = true)  // ✅ Ignore compartments for now
     public abstract RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)
@@ -39,6 +47,29 @@ public abstract class RackMapper {
     @Mapping(target = "totalShelves", ignore = true)
     public abstract void updateEntity(@MappingTarget Rack rack, RackRequest request);
 
+    // ✅ Map aisle without circular dependency
+    protected AisleResponse mapAisle(Aisle aisle) {
+        if (aisle == null) {
+            return null;
+        }
+        return AisleResponse.builder()
+                .id(aisle.getId())
+                .aisleId(aisle.getAisleId())
+                .name(aisle.getName())
+                .description(aisle.getDescription())
+                .isActive(aisle.getIsActive())
+                .width(aisle.getWidth())
+                .length(aisle.getLength())
+                .totalRacks(aisle.getTotalRacks())
+                .remarks(aisle.getRemarks())
+                .createdBy(aisle.getCreatedBy())
+                .createdAt(aisle.getCreatedAt())
+                .updatedAt(aisle.getUpdatedAt())
+                .zone(null)  // ✅ Set to null to avoid circular reference
+                .racks(null)  // ✅ Set to null to avoid circular reference
+                .build();
+    }
+
     // ✅ Custom mapping for bins - NO circular dependency
     protected List<BinResponse> mapBins(List<Bin> bins) {
         if (bins == null || bins.isEmpty()) {
@@ -49,16 +80,14 @@ public abstract class RackMapper {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Map single bin - NO rack reference (set to null)
+    // ✅ Map single bin - NO rack reference
     protected BinResponse mapBin(Bin bin) {
         if (bin == null) {
             return null;
         }
         
-        // Get status as string
         String status = bin.getStatus() != null ? bin.getStatus().name() : null;
         
-        // Calculate utilization percentage
         BigDecimal utilizationPercentage = BigDecimal.ZERO;
         if (bin.getVolumeCm3() != null && 
             BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) != 0 &&
@@ -70,7 +99,7 @@ public abstract class RackMapper {
         
         return BinResponse.builder()
                 .id(bin.getId())
-                .binId(bin.getBarcode())  // Using barcode as binId
+                .binId(bin.getBarcode())
                 .binBarcode(bin.getBarcode())
                 .warehouseId(bin.getRack() != null && bin.getRack().getAisle() != null && 
                             bin.getRack().getAisle().getZone() != null && 
@@ -81,9 +110,9 @@ public abstract class RackMapper {
                       bin.getRack().getAisle().getZone().getZoneId() : null)
                 .aisle(bin.getRack() != null && bin.getRack().getAisle() != null ? 
                        bin.getRack().getAisle().getAisleId() : null)
-                .shelf(null)  // Not available in Bin entity
-                .level(null)  // Not available in Bin entity
-                .position(null)  // Not available in Bin entity
+                .shelf(null)
+                .level(null)
+                .position(null)
                 .capacity(bin.getVolumeCm3() != null ? bin.getVolumeCm3().intValue() : null)
                 .availableCapacity(bin.getAvailableVolume() != null ? bin.getAvailableVolume().intValue() : null)
                 .usedCapacity(bin.getOccupiedVolumeCm3() != null ? bin.getOccupiedVolumeCm3().intValue() : null)
@@ -111,7 +140,7 @@ public abstract class RackMapper {
                 .createdBy(bin.getCreatedBy())
                 .createdAt(bin.getCreatedAt())
                 .updatedAt(bin.getUpdatedAt())
-                .rack(null)  // ✅ Explicitly set rack to null to break cycle
+                .rack(null)  // ✅ Set to null to break cycle
                 .build();
     }
 
