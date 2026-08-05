@@ -1,6 +1,7 @@
 // ====== FILE: src/main/java/com/warehouse/wms/dto/response/ZoneResponse.java ======
 package com.warehouse.wms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,6 +28,9 @@ public class ZoneResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @JsonIgnoreProperties({"zones"})  // ✅ Break circular reference
     private WarehouseResponse warehouse;
+    
+    @JsonIgnoreProperties({"zone"})  // ✅ Break circular reference
     private List<AisleResponse> aisles;
 }

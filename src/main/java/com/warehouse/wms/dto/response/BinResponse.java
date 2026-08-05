@@ -1,11 +1,13 @@
 // ====== FILE: src/main/java/com/warehouse/wms/dto/response/BinResponse.java ======
 package com.warehouse.wms.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,7 +21,6 @@ public class BinResponse {
     private String warehouseId;
     private String zone;
     private String aisle;
-   // private String rack;
     private String shelf;
     private String level;
     private String position;
@@ -41,6 +42,7 @@ public class BinResponse {
     private Integer priority;
     private Integer distanceFromDispatch;
     private String fullLocation;
+    private String status;  // ✅ Add status field
     private LocalDateTime lastAccessedAt;
     private LocalDateTime lastPutawayAt;
     private LocalDateTime lastPickAt;
@@ -48,6 +50,9 @@ public class BinResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private BigDecimal utilizationPercentage;
 
+
+    @JsonIgnore  // ✅ Ignore rack to break circular reference
     private RackResponse rack;
 }

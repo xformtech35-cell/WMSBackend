@@ -1,6 +1,10 @@
 // ====== FILE: src/main/java/com/warehouse/wms/mapper/RackMapper.java ======
 package com.warehouse.wms.mapper;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -9,30 +13,115 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 import com.warehouse.wms.dto.request.RackRequest;
+import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.dto.response.RackResponse;
-import com.warehouse.wms.entity.Rack;
-import com.warehouse.wms.dto.BinResponse;
 import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.Rack;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        uses = {RackCompartmentMapper.class, BinMapper.class})  // ✅ Add BinMapper
-public interface RackMapper {
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public abstract class RackMapper {
 
-    @Mapping(target = "aisle", ignore = true)  // Ignore to avoid circular dependency
-    @Mapping(target = "bins", source = "bins")  // ✅ Let MapStruct use BinMapper
-    @Mapping(target = "compartments", ignore = true)  // Ignore to avoid circular dependency
-    RackResponse toResponse(Rack rack);
+    @Mapping(target = "aisle", ignore = true)  // ✅ Ignore aisle to avoid circular dependency
+    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
+    @Mapping(target = "compartments", ignore = true)
+    public abstract RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)
     @Mapping(target = "bins", ignore = true)
     @Mapping(target = "compartments", ignore = true)
     @Mapping(target = "totalShelves", ignore = true)
-    Rack toEntity(RackRequest request);
+    public abstract Rack toEntity(RackRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "aisle", ignore = true)
     @Mapping(target = "bins", ignore = true)
     @Mapping(target = "compartments", ignore = true)
     @Mapping(target = "totalShelves", ignore = true)
-    void updateEntity(@MappingTarget Rack rack, RackRequest request);
+    public abstract void updateEntity(@MappingTarget Rack rack, RackRequest request);
+
+    // ✅ Custom mapping for bins - NO circular dependency
+    protected List<BinResponse> mapBins(List<Bin> bins) {
+        if (bins == null || bins.isEmpty()) {
+            return null;
+        }
+        return bins.stream()
+                .map(this::mapBin)
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Map single bin - NO rack reference (set to null)
+    protected BinResponse mapBin(Bin bin) {
+        if (bin == null) {
+            return null;
+        }
+        
+        // Get status as string
+        String status = bin.getStatus() != null ? bin.getStatus().name() : null;
+        
+        // Calculate utilization percentage
+        BigDecimal utilizationPercentage = BigDecimal.ZERO;
+        if (bin.getVolumeCm3() != null && 
+            BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) != 0 &&
+            bin.getOccupiedVolumeCm3() != null) {
+            utilizationPercentage = bin.getOccupiedVolumeCm3()
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(bin.getVolumeCm3(), 2, java.math.RoundingMode.HALF_UP);
+        }
+        
+        return BinResponse.builder()
+                .id(bin.getId())
+                .binId(bin.getBarcode())  // Using barcode as binId
+                .binBarcode(bin.getBarcode())
+                .warehouseId(bin.getRack() != null && bin.getRack().getAisle() != null && 
+                            bin.getRack().getAisle().getZone() != null && 
+                            bin.getRack().getAisle().getZone().getWarehouse() != null ? 
+                            bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId() : null)
+                .zone(bin.getRack() != null && bin.getRack().getAisle() != null && 
+                      bin.getRack().getAisle().getZone() != null ? 
+                      bin.getRack().getAisle().getZone().getZoneId() : null)
+                .aisle(bin.getRack() != null && bin.getRack().getAisle() != null ? 
+                       bin.getRack().getAisle().getAisleId() : null)
+                .shelf(null)  // Not available in Bin entity
+                .level(null)  // Not available in Bin entity
+                .position(null)  // Not available in Bin entity
+                .capacity(bin.getVolumeCm3() != null ? bin.getVolumeCm3().intValue() : null)
+                .availableCapacity(bin.getAvailableVolume() != null ? bin.getAvailableVolume().intValue() : null)
+                .usedCapacity(bin.getOccupiedVolumeCm3() != null ? bin.getOccupiedVolumeCm3().intValue() : null)
+                .minThreshold(null)
+                .maxThreshold(null)
+                .itemCode(null)
+                .itemName(null)
+                .uom(null)
+                .isOccupied(bin.getStatus() == Bin.BinStatus.FULL)
+                .isActive(bin.getIsActive())
+                .isReserved(bin.getStatus() == Bin.BinStatus.BLOCKED)
+                .reservedFor(null)
+                .locationType(null)
+                .zoneType(null)
+                .movementType(null)
+                .priority(null)
+                .distanceFromDispatch(null)
+                .fullLocation(bin.getFullLocation())
+                .status(status)
+                .utilizationPercentage(utilizationPercentage)
+                .lastAccessedAt(null)
+                .lastPutawayAt(null)
+                .lastPickAt(null)
+                .remarks(bin.getRemarks())
+                .createdBy(bin.getCreatedBy())
+                .createdAt(bin.getCreatedAt())
+                .updatedAt(bin.getUpdatedAt())
+                .rack(null)  // ✅ Explicitly set rack to null to break cycle
+                .build();
+    }
+
+    // ✅ Method for list mapping
+    public List<RackResponse> toResponseList(List<Rack> racks) {
+        if (racks == null) {
+            return null;
+        }
+        return racks.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
 }
