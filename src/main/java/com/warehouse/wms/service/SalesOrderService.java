@@ -49,7 +49,7 @@ public class SalesOrderService {
         List<SalesOrderLine> lines = new ArrayList<>();
         List<Long> pickTaskIds = new ArrayList<>();
 
-        for (SalesOrderLineRequest lineRequest : request.getLines()) {
+        for (com.warehouse.wms.dto.SalesOrderRequest.SalesOrderLineRequest lineRequest : request.getLines()) {
             Sku sku = skuRepository.findBySkuCode(lineRequest.getSkuCode())
                     .orElseThrow(() -> new EntityNotFoundException("SKU not found: " + lineRequest.getSkuCode()));
 

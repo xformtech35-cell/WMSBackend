@@ -132,7 +132,7 @@ public class MasterDataController {
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new EntityNotFoundException("Zone not found: " + request.getZoneId()));
         Aisle aisle = new Aisle();
-        aisle.setAisleNumber(request.getAisleNumber());
+        aisle.setAisleId(request.getAisleNumber());
         aisle.setZone(zone);
         return ResponseEntity.ok(toAisleView(aisleRepository.save(aisle)));
     }
@@ -158,7 +158,7 @@ public class MasterDataController {
                 .orElseThrow(() -> new EntityNotFoundException("Aisle not found: " + id));
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new EntityNotFoundException("Zone not found: " + request.getZoneId()));
-        aisle.setAisleNumber(request.getAisleNumber());
+        aisle.setAisleId(request.getAisleNumber());
         aisle.setZone(zone);
         return ResponseEntity.ok(toAisleView(aisleRepository.save(aisle)));
     }
@@ -179,7 +179,7 @@ public class MasterDataController {
         Aisle aisle = aisleRepository.findById(request.getAisleId())
                 .orElseThrow(() -> new EntityNotFoundException("Aisle not found: " + request.getAisleId()));
         Rack rack = new Rack();
-        rack.setRackIdentifier(request.getRackIdentifier());
+        rack.setRackId(request.getRackIdentifier());
         rack.setAisle(aisle);
         return ResponseEntity.ok(toRackView(rackRepository.save(rack)));
     }
@@ -205,7 +205,7 @@ public class MasterDataController {
                 .orElseThrow(() -> new EntityNotFoundException("Rack not found: " + id));
         Aisle aisle = aisleRepository.findById(request.getAisleId())
                 .orElseThrow(() -> new EntityNotFoundException("Aisle not found: " + request.getAisleId()));
-        rack.setRackIdentifier(request.getRackIdentifier());
+        rack.setRackId(request.getRackIdentifier());
         rack.setAisle(aisle);
         return ResponseEntity.ok(toRackView(rackRepository.save(rack)));
     }
@@ -228,7 +228,7 @@ public class MasterDataController {
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("id", aisle.getId());
-        out.put("aisleNumber", aisle.getAisleNumber());
+        out.put("aisleNumber", aisle.getAisleId());
         out.put("zone", zone);
         return out;
     }
@@ -238,7 +238,7 @@ public class MasterDataController {
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("id", rack.getId());
-        out.put("rackIdentifier", rack.getRackIdentifier());
+        out.put("rackIdentifier", rack.getRackId());
         out.put("aisle", aisle);
         return out;
     }

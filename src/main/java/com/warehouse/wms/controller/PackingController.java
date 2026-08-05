@@ -19,18 +19,18 @@ public class PackingController {
 
     private final PackingService packingService;
 
-    @Operation(summary = "Start packing and fetch manifest")
-    @PostMapping("/start")
-    public ResponseEntity<PackingManifest> startPacking(@RequestParam String trolleyBarcode,
-                                                        @RequestParam String compartmentBarcode) {
-        return ResponseEntity.ok(packingService.startPacking(trolleyBarcode, compartmentBarcode));
-    }
-
-    @Operation(summary = "Scan packed item")
-    @PostMapping("/scan")
-    public ResponseEntity<PackScanResult> scanItem(@Valid @RequestBody PackingScanRequest request) {
-        return ResponseEntity.ok(packingService.scanItem(request.getItemBarcode(), request.getCompartmentBarcode()));
-    }
+//    @Operation(summary = "Start packing and fetch manifest")
+//    @PostMapping("/start")
+//    public ResponseEntity<PackingManifest> startPacking(@RequestParam String trolleyBarcode,
+//                                                        @RequestParam String compartmentBarcode) {
+//        return ResponseEntity.ok(packingService.startPacking(trolleyBarcode, compartmentBarcode));
+//    }
+//
+//    @Operation(summary = "Scan packed item")
+//    @PostMapping("/scan")
+//    public ResponseEntity<PackScanResult> scanItem(@Valid @RequestBody PackingScanRequest request) {
+//        return ResponseEntity.ok(packingService.scanItem(request.getItemBarcode(), request.getCompartmentBarcode()));
+//    }
 
     @Operation(summary = "Get packing status for order")
     @GetMapping("/status/{orderId}")

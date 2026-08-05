@@ -42,6 +42,9 @@ public class Bin {
 
     @Column(columnDefinition = "DECIMAL(10, 2) DEFAULT 0", name = "occupied_weight_g")
     private BigDecimal occupiedWeightG;
+    
+    @Column(name = "capacity")
+    private Integer capacity;  
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

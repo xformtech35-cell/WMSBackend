@@ -1,20 +1,63 @@
 package com.warehouse.wms.config;
 
-import com.warehouse.wms.entity.*;
-import com.warehouse.wms.repository.*;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.warehouse.wms.entity.Aisle;
+import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.GoodsReceipt;
+import com.warehouse.wms.entity.GoodsReceiptLine;
+import com.warehouse.wms.entity.Inventory;
+import com.warehouse.wms.entity.Permission;
+import com.warehouse.wms.entity.PickTask;
+import com.warehouse.wms.entity.PurchaseOrder;
+import com.warehouse.wms.entity.PurchaseOrderLine;
+import com.warehouse.wms.entity.PurchaseOrderStatus;
+import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.entity.RackCompartment;
+import com.warehouse.wms.entity.Role;
+import com.warehouse.wms.entity.SalesOrder;
+import com.warehouse.wms.entity.SalesOrderLine;
+import com.warehouse.wms.entity.ShipmentRecord;
+import com.warehouse.wms.entity.Sku;
+import com.warehouse.wms.entity.SkuDimension;
+import com.warehouse.wms.entity.Trolley;
+import com.warehouse.wms.entity.User;
+import com.warehouse.wms.entity.Warehouse;
+import com.warehouse.wms.entity.Zone;
+import com.warehouse.wms.repository.AisleRepository;
+import com.warehouse.wms.repository.BinRepository;
+import com.warehouse.wms.repository.GoodsReceiptLineRepository;
+import com.warehouse.wms.repository.GoodsReceiptRepository;
+import com.warehouse.wms.repository.InventoryRepository;
+import com.warehouse.wms.repository.PickTaskRepository;
+import com.warehouse.wms.repository.PurchaseOrderLineRepository;
+import com.warehouse.wms.repository.PurchaseOrderRepository;
+import com.warehouse.wms.repository.PutawayTaskRepository;
+import com.warehouse.wms.repository.RackCompartmentRepository;
+import com.warehouse.wms.repository.RackRepository;
+import com.warehouse.wms.repository.RoleRepository;
+import com.warehouse.wms.repository.SalesOrderLineRepository;
+import com.warehouse.wms.repository.SalesOrderRepository;
+import com.warehouse.wms.repository.ShipmentRecordRepository;
+import com.warehouse.wms.repository.SkuDimensionRepository;
+import com.warehouse.wms.repository.SkuRepository;
+import com.warehouse.wms.repository.TrolleyRepository;
+import com.warehouse.wms.repository.UserRepository;
+import com.warehouse.wms.repository.WarehouseRepository;
+import com.warehouse.wms.repository.ZoneRepository;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -114,11 +157,10 @@ public class DataInitializer implements CommandLineRunner {
             seedRackCompartments();
             seedTrolleys();
             seedSkus();
-//            seedPurchaseOrders();
+            seedPurchaseOrders();
             seedGoodsReceipts();
             seedSalesOrdersAndShipments();
             seedInventory();
-            seedPickTasks();
         }
     }
 
@@ -258,7 +300,7 @@ public class DataInitializer implements CommandLineRunner {
             zone = zoneRepository.save(zone);
             for (int i = 1; i < za.length; i++) {
                 Aisle aisle = new Aisle();
-                aisle.setAisleNumber(za[i]);
+                aisle.setAisleId(za[i]);
                 aisle.setZone(zone);
                 aisles[aisleIdx++] = aisleRepository.save(aisle);
             }
@@ -269,7 +311,7 @@ public class DataInitializer implements CommandLineRunner {
         for (Aisle aisle : aisles) {
             for (int r = 1; r <= 2; r++) {
                 Rack rack = new Rack();
-                rack.setRackIdentifier(rackLabels[rIdx]);
+                rack.setRackId(rackLabels[rIdx]);
                 rack.setAisle(aisle);
                 rack = rackRepository.save(rack);
                 for (int b = 1; b <= 5; b++) {
@@ -297,40 +339,42 @@ public class DataInitializer implements CommandLineRunner {
             for (int i = 1; i <= 3; i++) {
                 RackCompartment comp = new RackCompartment();
                 comp.setRack(rack);
-                comp.setCompartmentIdentifier(String.format("COMP-%s-%02d", rack.getRackIdentifier(), i));
+                comp.setCompartmentId(String.format("COMP-%s-%02d", rack.getRackId(), i));
                 rackCompartmentRepository.save(comp);
             }
         }
         System.out.println("[DataInitializer] Seeded 24 rack compartments");
     }
 
-    private void seedTrolleys() {
-        Trolley t1 = new Trolley();
-        t1.setTrolleyIdentifier("TROLLEY-01");
-        t1 = trolleyRepository.save(t1);
+private void seedTrolleys() {
+    // Define which racks belong to which trolley
+    Map<String, String> trolleyAssignments = Map.of(
+        "TROLLEY-01", "A1-R1",
+        "TROLLEY-02", "A2-R1"
+    );
+
+    trolleyAssignments.forEach((trolleyId, rackId) -> {
+        Trolley trolley = new Trolley();
+        trolley.setTrolleyIdentifier(trolleyId);
+        trolley = trolleyRepository.save(trolley);
 
         for (int i = 1; i <= 3; i++) {
-            RackCompartment comp = rackCompartmentRepository.findByCompartmentIdentifier(String.format("COMP-A1-R1-%02d", i)).orElseThrow();
-            comp.setTrolley(t1);
+            String compartmentId = String.format("COMP-%s-%02d", rackId, i);
+            RackCompartment comp = rackCompartmentRepository
+                .findByCompartmentId(compartmentId)
+                .orElseThrow(() -> new RuntimeException("Compartment not found: " + compartmentId));
+            comp.setTrolley(trolley);
             rackCompartmentRepository.save(comp);
         }
+    });
 
-        Trolley t2 = new Trolley();
-        t2.setTrolleyIdentifier("TROLLEY-02");
-        t2 = trolleyRepository.save(t2);
+    // Create Trolley 3 (unassigned)
+    Trolley t3 = new Trolley();
+    t3.setTrolleyIdentifier("TROLLEY-03");
+    t3 = trolleyRepository.save(t3);
 
-        for (int i = 1; i <= 3; i++) {
-            RackCompartment comp = rackCompartmentRepository.findByCompartmentIdentifier(String.format("COMP-A2-R1-%02d", i)).orElseThrow();
-            comp.setTrolley(t2);
-            rackCompartmentRepository.save(comp);
-        }
-
-        Trolley t3 = new Trolley();
-        t3.setTrolleyIdentifier("TROLLEY-03");
-        t3 = trolleyRepository.save(t3);
-
-        System.out.println("[DataInitializer] Seeded 3 trolleys");
-    }
+    System.out.println("[DataInitializer] Seeded 3 trolleys");
+}
 
     // ── SKUs ──────────────────────────────────────────────────────────────────
     private static final Object[][] SKU_DATA = {
@@ -365,42 +409,42 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     // ── Purchase Orders ────────────────────────────────────────────────────────
-//    private void seedPurchaseOrders() {
-//        List<Sku> skus = skuRepository.findAll();
-//        if (skus.size() < 10) return;
-//
-//        PurchaseOrder po1 = new PurchaseOrder();
-//        po1.setPoNumber("PO-2026-001");
-//        po1.setSupplier("TechSupply Co.");
-//        po1.setExpectedArrivalDate(LocalDate.now().minusDays(5));
-//        po1.setStatus("RECEIVED");
-//        po1 = purchaseOrderRepository.save(po1);
-//
-//        int[][] po1Lines = {{0,50},{1,200},{2,100},{3,80},{4,20}};
-//        for (int[] l : po1Lines) savePOLine(po1, skus.get(l[0]), l[1]);
-//
-//        PurchaseOrder po2 = new PurchaseOrder();
-//        po2.setPoNumber("PO-2026-002");
-//        po2.setSupplier("Global Parts Ltd.");
-//        po2.setExpectedArrivalDate(LocalDate.now().minusDays(3));
-//        po2.setStatus("PARTIALLY_RECEIVED");
-//        po2 = purchaseOrderRepository.save(po2);
-//
-//        int[][] po2Lines = {{5,150},{6,100},{7,80},{8,200},{9,60}};
-//        for (int[] l : po2Lines) savePOLine(po2, skus.get(l[0]), l[1]);
-//
-//        PurchaseOrder po3 = new PurchaseOrder();
-//        po3.setPoNumber("PO-2026-003");
-//        po3.setSupplier("FutureTech Inc.");
-//        po3.setExpectedArrivalDate(LocalDate.now().plusDays(5));
-//        po3.setStatus("OPEN");
-//        po3 = purchaseOrderRepository.save(po3);
-//
-//        int[][] po3Lines = {{0,10},{2,30},{4,5}};
-//        for (int[] l : po3Lines) savePOLine(po3, skus.get(l[0]), l[1]);
-//
-//        System.out.println("[DataInitializer] Seeded 3 purchase orders with lines");
-//    }
+    private void seedPurchaseOrders() {
+        List<Sku> skus = skuRepository.findAll();
+        if (skus.size() < 10) return;
+
+        PurchaseOrder po1 = new PurchaseOrder();
+        po1.setPoNumber("PO-2026-001");
+        po1.setSupplierName("TechSupply Co.");
+        po1.setExpectedArrivalDate(LocalDate.now().minusDays(5));
+        po1.setStatus(PurchaseOrderStatus.ACCEPTED);
+        po1 = purchaseOrderRepository.save(po1);
+
+        int[][] po1Lines = {{0,50},{1,200},{2,100},{3,80},{4,20}};
+        for (int[] l : po1Lines) savePOLine(po1, skus.get(l[0]), l[1]);
+
+        PurchaseOrder po2 = new PurchaseOrder();
+        po2.setPoNumber("PO-2026-002");
+        po2.setSupplierName("Global Parts Ltd.");
+        po2.setExpectedArrivalDate(LocalDate.now().minusDays(3));
+        po2.setStatus(PurchaseOrderStatus.ACCEPTED);
+        po2 = purchaseOrderRepository.save(po2);
+
+        int[][] po2Lines = {{5,150},{6,100},{7,80},{8,200},{9,60}};
+        for (int[] l : po2Lines) savePOLine(po2, skus.get(l[0]), l[1]);
+
+        PurchaseOrder po3 = new PurchaseOrder();
+        po3.setPoNumber("PO-2026-003");
+        po3.setSupplierName("FutureTech Inc.");
+        po3.setExpectedArrivalDate(LocalDate.now().plusDays(5));
+        po3.setStatus(PurchaseOrderStatus.ACCEPTED);
+        po3 = purchaseOrderRepository.save(po3);
+
+        int[][] po3Lines = {{0,10},{2,30},{4,5}};
+        for (int[] l : po3Lines) savePOLine(po3, skus.get(l[0]), l[1]);
+
+        System.out.println("[DataInitializer] Seeded 3 purchase orders with lines");
+    }
 
     private void savePOLine(PurchaseOrder po, Sku sku, int qty) {
         PurchaseOrderLine line = new PurchaseOrderLine();
@@ -572,7 +616,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("[DataInitializer] Seeded 60 AVAILABLE + 20 SHIPPED inventory items");
     }
 
-
+    // ── Pick Tasks ─────────────────────────────────────────────────────────────
     private void seedPickTasks() {
         SalesOrder so4 = salesOrderRepository.findBySoNumber("SO-2026-004").orElseThrow();
         SalesOrder so5 = salesOrderRepository.findBySoNumber("SO-2026-005").orElseThrow();

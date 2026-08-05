@@ -53,6 +53,9 @@ public class BinLocation {
 
     @Column(name = "position", length = 10)
     private String position;
+    
+    
+
 
     @Column(name = "capacity")
     private Integer capacity = 0;

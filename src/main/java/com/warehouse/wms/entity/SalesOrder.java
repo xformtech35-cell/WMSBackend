@@ -1,14 +1,22 @@
 package com.warehouse.wms.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.hibernate.annotations.CreationTimestamp;
-
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @Entity
@@ -27,6 +35,11 @@ public class SalesOrder {
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+    
+    
+ // ====== FILE: src/main/java/com/warehouse/wms/entity/SalesOrder.java ======
+    @Column(name = "total_amount", precision = 10, scale = 2)
+    private BigDecimal totalAmount;  // ✅ Already BigDecimal
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

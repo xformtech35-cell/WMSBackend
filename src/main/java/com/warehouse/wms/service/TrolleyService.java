@@ -1,105 +1,47 @@
+// ====== FILE: src/main/java/com/warehouse/wms/service/TrolleyService.java ======
 package com.warehouse.wms.service;
 
-import com.warehouse.wms.dto.CompartmentContentsResponse;
-import com.warehouse.wms.dto.TrolleyAssignRequest;
-import com.warehouse.wms.dto.TrolleyCreateRequest;
-import com.warehouse.wms.entity.PickTask;
-import com.warehouse.wms.entity.RackCompartment;
-import com.warehouse.wms.entity.SalesOrder;
-import com.warehouse.wms.entity.Trolley;
-import com.warehouse.wms.exception.InventoryStateException;
-import com.warehouse.wms.repository.PickTaskRepository;
-import com.warehouse.wms.repository.RackCompartmentRepository;
-import com.warehouse.wms.repository.SalesOrderRepository;
-import com.warehouse.wms.repository.TrolleyRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.warehouse.wms.dto.request.TrolleyRequest;
+import com.warehouse.wms.dto.response.TrolleyResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
-@Service
-@RequiredArgsConstructor
-public class TrolleyService {
+public interface TrolleyService {
 
-    private final TrolleyRepository trolleyRepository;
-    private final RackCompartmentRepository rackCompartmentRepository;
-    private final SalesOrderRepository salesOrderRepository;
-    private final PickTaskRepository pickTaskRepository;
+    // ====== Create ======
+    TrolleyResponse createTrolley(TrolleyRequest request);
 
-    public List<Trolley> getAllTrolleys() {
-        return trolleyRepository.findAll();
-    }
+    // ====== Read ======
+    TrolleyResponse getTrolleyById(Long id);
 
-    @Transactional
-    public Trolley createTrolley(TrolleyCreateRequest request) {
-        Trolley trolley = trolleyRepository.findByTrolleyIdentifier(request.getTrolleyBarcode())
-                .orElseGet(() -> {
-                    Trolley t = new Trolley();
-                    t.setTrolleyIdentifier(request.getTrolleyBarcode());
-                    return trolleyRepository.save(t);
-                });
+    TrolleyResponse getTrolleyByIdentifier(String trolleyIdentifier);
 
-        for (String compartmentBarcode : request.getCompartmentBarcodes()) {
-            RackCompartment compartment = rackCompartmentRepository.findByCompartmentIdentifier(compartmentBarcode)
-                    .orElseThrow(() -> new EntityNotFoundException("Compartment not found: " + compartmentBarcode));
-            compartment.setTrolley(trolley);
-            rackCompartmentRepository.save(compartment);
-        }
+    Page<TrolleyResponse> getAllTrolleys(Pageable pageable, String search, String status);
 
-        return trolley;
-    }
+    List<TrolleyResponse> getTrolleysByStatus(String status);
 
-    @Transactional
-    public RackCompartment assignCompartmentToOrder(TrolleyAssignRequest request) {
-        RackCompartment compartment = rackCompartmentRepository.findByCompartmentIdentifier(request.getCompartmentBarcode())
-                .orElseThrow(() -> new EntityNotFoundException("Compartment not found: " + request.getCompartmentBarcode()));
+    List<TrolleyResponse> getTrolleysByType(String trolleyType);
 
-        if (compartment.getSalesOrder() != null && !compartment.getSalesOrder().getId().equals(request.getSalesOrderId())) {
-            throw new InventoryStateException("Compartment is already assigned to another order");
-        }
+    List<TrolleyResponse> getAvailableTrolleys(Integer requiredWeight);
 
-        SalesOrder order = salesOrderRepository.findById(request.getSalesOrderId())
-                .orElseThrow(() -> new EntityNotFoundException("Sales order not found: " + request.getSalesOrderId()));
+    List<TrolleyResponse> getTrolleysDueForMaintenance();
 
-        compartment.setSalesOrder(order);
-        return rackCompartmentRepository.save(compartment);
-    }
+    // ====== Update ======
+    TrolleyResponse updateTrolley(Long id, TrolleyRequest request);
 
-    public CompartmentContentsResponse getCompartmentContents(String compartmentBarcode) {
-        RackCompartment compartment = rackCompartmentRepository.findByCompartmentIdentifier(compartmentBarcode)
-                .orElseThrow(() -> new EntityNotFoundException("Compartment not found: " + compartmentBarcode));
+    TrolleyResponse updateTrolleyStatus(Long id, String status);
 
-        if (compartment.getSalesOrder() == null) {
-            return CompartmentContentsResponse.builder()
-                    .compartmentBarcode(compartmentBarcode)
-                    .salesOrderId(null)
-                    .orderNumber(null)
-                    .pickedItemBarcodes(List.of())
-                    .build();
-        }
+    TrolleyResponse addTrolleyLoad(Long id, Integer weight);
 
-        List<String> pickedItems = pickTaskRepository.findBySalesOrderLineSalesOrderId(compartment.getSalesOrder().getId()).stream()
-                .filter(t -> "COMPLETED".equalsIgnoreCase(t.getStatus()))
-                .map(PickTask::getInventory)
-                .map(inv -> inv.getSerialNo())
-                .toList();
+    TrolleyResponse removeTrolleyLoad(Long id, Integer weight);
 
-        return CompartmentContentsResponse.builder()
-                .compartmentBarcode(compartmentBarcode)
-                .salesOrderId(compartment.getSalesOrder().getId())
-                .orderNumber(compartment.getSalesOrder().getSoNumber())
-                .pickedItemBarcodes(pickedItems)
-                .build();
-    }
+    TrolleyResponse toggleTrolleyStatus(Long id, Boolean isActive);
 
-    public List<CompartmentContentsResponse> getTrolleyCompartmentContents(String trolleyBarcode) {
-        Trolley trolley = trolleyRepository.findByTrolleyIdentifier(trolleyBarcode)
-                .orElseThrow(() -> new EntityNotFoundException("Trolley not found: " + trolleyBarcode));
+    // ====== Delete ======
+    void deleteTrolley(Long id);
 
-        return rackCompartmentRepository.findByTrolleyId(trolley.getId()).stream()
-                .map(compartment -> getCompartmentContents(compartment.getCompartmentIdentifier()))
-                .toList();
-    }
+    void deleteTrolleyByIdentifier(String trolleyIdentifier);
 }

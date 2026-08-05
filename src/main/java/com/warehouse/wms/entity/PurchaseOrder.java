@@ -54,6 +54,8 @@ public class PurchaseOrder {
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
     
+
+    
     @Column(name = "terms_and_conditions", columnDefinition = "TEXT")
     private String termsAndConditions;
     
