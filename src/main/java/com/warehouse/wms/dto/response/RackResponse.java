@@ -23,7 +23,6 @@ public class RackResponse {
     private Double height;
     private Double width;
     private String unit;
-
     private Double depth;
     private Integer totalShelves;
     private String remarks;
@@ -31,17 +30,11 @@ public class RackResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @JsonIgnoreProperties({"racks", "zone"})  // ✅ Ignore backward references
-    private AisleResponse aisle;
+    @JsonIgnoreProperties({"racks"})  // ✅ Break circular reference
+    private AisleResponse aisle;  // ✅ This will have zone → warehouse
     
     private List<BinResponse> bins;
     
-    @JsonIgnoreProperties({"rack"})  // ✅ Ignore backward references
+    @JsonIgnoreProperties({"rack"})
     private List<RackCompartmentResponse> compartments;
-    
-    
-    
-    // ✅ Add Warehouse directly
-    @JsonIgnoreProperties({"zones"})
-    private WarehouseResponse warehouse;
 }

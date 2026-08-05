@@ -28,9 +28,9 @@ public class ZoneResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @JsonIgnoreProperties({"zones"})  // ✅ Break circular reference
-    private WarehouseResponse warehouse;
+    @JsonIgnoreProperties({"zones"})
+    private WarehouseResponse warehouse;  // ✅ This will show warehouse details
     
-    @JsonIgnoreProperties({"zone"})  // ✅ Break circular reference
+    @JsonIgnoreProperties({"zone"})
     private List<AisleResponse> aisles;
 }

@@ -11,31 +11,28 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 
 import com.warehouse.wms.dto.request.RackRequest;
 import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.dto.response.RackResponse;
 import com.warehouse.wms.dto.response.WarehouseResponse;
-import com.warehouse.wms.entity.Aisle;
-import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.dto.response.ZoneResponse;
 import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.Aisle;
+import com.warehouse.wms.entity.Zone;
 import com.warehouse.wms.entity.Warehouse;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class RackMapper {
 
-	   @Autowired
-	    @Lazy
-	    protected AisleMapper aisleMapper;
-
-	   @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")
-	    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
-	    @Mapping(target = "compartments", ignore = true)
-	    @Mapping(target = "warehouse", expression = "java(mapWarehouse(rack.getAisle().getZone().getWarehouse()))")  // ✅ Add warehouse
-	    public abstract RackResponse toResponse(Rack rack);
+    // ====== Main Mapping ======
+    
+    @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")
+    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
+    @Mapping(target = "compartments", ignore = true)
+    public abstract RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)
     @Mapping(target = "bins", ignore = true)
@@ -50,7 +47,8 @@ public abstract class RackMapper {
     @Mapping(target = "totalShelves", ignore = true)
     public abstract void updateEntity(@MappingTarget Rack rack, RackRequest request);
 
-    // ✅ Map aisle without circular dependency
+    // ====== Aisle Mapping with Full Hierarchy ======
+    
     protected AisleResponse mapAisle(Aisle aisle) {
         if (aisle == null) {
             return null;
@@ -64,18 +62,43 @@ public abstract class RackMapper {
                 .width(aisle.getWidth())
                 .length(aisle.getLength())
                 .totalRacks(aisle.getTotalRacks())
+                .unit(aisle.getUnit())
                 .remarks(aisle.getRemarks())
                 .createdBy(aisle.getCreatedBy())
                 .createdAt(aisle.getCreatedAt())
                 .updatedAt(aisle.getUpdatedAt())
-                .zone(null)  // ✅ Set to null to avoid circular reference
-                .racks(null)  // ✅ Set to null to avoid circular reference
+                .zone(mapZone(aisle.getZone()))  // ✅ Zone with Warehouse
+                .racks(null)  // Prevent circular reference
                 .build();
     }
+
+    // ====== Zone Mapping with Warehouse ======
     
+    protected ZoneResponse mapZone(Zone zone) {
+        if (zone == null) {
+            return null;
+        }
+        return ZoneResponse.builder()
+                .id(zone.getId())
+                .zoneId(zone.getZoneId())
+                .name(zone.getName())
+                .description(zone.getDescription())
+                .zoneType(zone.getZoneType())
+                .isActive(zone.getIsActive())
+                .priority(zone.getPriority())
+                .totalAisles(zone.getTotalAisles())
+                .remarks(zone.getRemarks())
+                .createdBy(zone.getCreatedBy())
+                .createdAt(zone.getCreatedAt())
+                .updatedAt(zone.getUpdatedAt())
+                .warehouse(mapWarehouse(zone.getWarehouse()))  // ✅ Warehouse
+                .aisles(null)  // Prevent circular reference
+                .build();
+    }
+
+    // ====== Warehouse Mapping ======
     
-    
-    public WarehouseResponse mapWarehouse(Warehouse warehouse) {
+    protected WarehouseResponse mapWarehouse(Warehouse warehouse) {
         if (warehouse == null) {
             return null;
         }
@@ -95,11 +118,12 @@ public abstract class RackMapper {
                 .createdBy(warehouse.getCreatedBy())
                 .createdAt(warehouse.getCreatedAt())
                 .updatedAt(warehouse.getUpdatedAt())
-                .zones(null)
+                .zones(null)  // Prevent circular reference
                 .build();
     }
 
-    // ✅ Custom mapping for bins - NO circular dependency
+    // ====== Bin Mapping ======
+    
     protected List<BinResponse> mapBins(List<Bin> bins) {
         if (bins == null || bins.isEmpty()) {
             return null;
@@ -109,7 +133,6 @@ public abstract class RackMapper {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Map single bin - NO rack reference
     protected BinResponse mapBin(Bin bin) {
         if (bin == null) {
             return null;
@@ -126,19 +149,27 @@ public abstract class RackMapper {
                     .divide(bin.getVolumeCm3(), 2, java.math.RoundingMode.HALF_UP);
         }
         
+        // Safely get location info
+        String warehouseId = null;
+        String zoneId = null;
+        String aisleId = null;
+        if (bin.getRack() != null && bin.getRack().getAisle() != null) {
+            if (bin.getRack().getAisle().getZone() != null) {
+                if (bin.getRack().getAisle().getZone().getWarehouse() != null) {
+                    warehouseId = bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId();
+                }
+                zoneId = bin.getRack().getAisle().getZone().getZoneId();
+            }
+            aisleId = bin.getRack().getAisle().getAisleId();
+        }
+        
         return BinResponse.builder()
                 .id(bin.getId())
                 .binId(bin.getBarcode())
                 .binBarcode(bin.getBarcode())
-                .warehouseId(bin.getRack() != null && bin.getRack().getAisle() != null && 
-                            bin.getRack().getAisle().getZone() != null && 
-                            bin.getRack().getAisle().getZone().getWarehouse() != null ? 
-                            bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId() : null)
-                .zone(bin.getRack() != null && bin.getRack().getAisle() != null && 
-                      bin.getRack().getAisle().getZone() != null ? 
-                      bin.getRack().getAisle().getZone().getZoneId() : null)
-                .aisle(bin.getRack() != null && bin.getRack().getAisle() != null ? 
-                       bin.getRack().getAisle().getAisleId() : null)
+                .warehouseId(warehouseId)
+                .zone(zoneId)
+                .aisle(aisleId)
                 .shelf(null)
                 .level(null)
                 .position(null)
@@ -169,11 +200,12 @@ public abstract class RackMapper {
                 .createdBy(bin.getCreatedBy())
                 .createdAt(bin.getCreatedAt())
                 .updatedAt(bin.getUpdatedAt())
-                .rack(null)  // ✅ Set to null to break cycle
+                .rack(null)  // Prevent circular reference
                 .build();
     }
 
-    // ✅ Method for list mapping
+    // ====== List Mapping Helper ======
+    
     public List<RackResponse> toResponseList(List<Rack> racks) {
         if (racks == null) {
             return null;

@@ -3,9 +3,11 @@ package com.warehouse.wms.mapper;
 
 import com.warehouse.wms.dto.request.AisleRequest;
 import com.warehouse.wms.dto.response.AisleResponse;
-import com.warehouse.wms.dto.response.RackResponse;
+import com.warehouse.wms.dto.response.ZoneResponse;
+import com.warehouse.wms.dto.response.WarehouseResponse;
 import com.warehouse.wms.entity.Aisle;
-import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.entity.Zone;
+import com.warehouse.wms.entity.Warehouse;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -16,16 +18,8 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class AisleMapper {
 
-    @Autowired
-    @Lazy
-    protected ZoneMapper zoneMapper;
-
-    @Autowired
-    @Lazy
-    protected RackMapper rackMapper;
-
-    @Mapping(target = "zone", expression = "java(zoneMapper.toResponse(aisle.getZone()))")
-    @Mapping(target = "racks", expression = "java(mapRacks(aisle.getRacks()))")
+    @Mapping(target = "zone", expression = "java(mapZone(aisle.getZone()))")
+    @Mapping(target = "racks", ignore = true)  // ✅ IGNORE racks to break circular dependency
     public abstract AisleResponse toResponse(Aisle aisle);
 
     @Mapping(target = "zone", ignore = true)
@@ -39,14 +33,52 @@ public abstract class AisleMapper {
     @Mapping(target = "totalRacks", ignore = true)
     public abstract void updateEntity(@MappingTarget Aisle aisle, AisleRequest request);
 
-    // ✅ Helper method to map racks
-    protected List<RackResponse> mapRacks(List<Rack> racks) {
-        if (racks == null || racks.isEmpty()) {
+    // ✅ Map Zone with Warehouse
+    protected ZoneResponse mapZone(Zone zone) {
+        if (zone == null) {
             return null;
         }
-        return racks.stream()
-                .map(rack -> rackMapper.toResponse(rack))
-                .collect(Collectors.toList());
+        return ZoneResponse.builder()
+                .id(zone.getId())
+                .zoneId(zone.getZoneId())
+                .name(zone.getName())
+                .description(zone.getDescription())
+                .zoneType(zone.getZoneType())
+                .isActive(zone.getIsActive())
+                .priority(zone.getPriority())
+                .totalAisles(zone.getTotalAisles())
+                .remarks(zone.getRemarks())
+                .createdBy(zone.getCreatedBy())
+                .createdAt(zone.getCreatedAt())
+                .updatedAt(zone.getUpdatedAt())
+                .warehouse(mapWarehouse(zone.getWarehouse()))
+                .aisles(null)
+                .build();
+    }
+
+    // ✅ Map Warehouse
+    protected WarehouseResponse mapWarehouse(Warehouse warehouse) {
+        if (warehouse == null) {
+            return null;
+        }
+        return WarehouseResponse.builder()
+                .id(warehouse.getId())
+                .warehouseId(warehouse.getWarehouseId())
+                .name(warehouse.getName())
+                .location(warehouse.getLocation())
+                .address(warehouse.getAddress())
+                .contactPerson(warehouse.getContactPerson())
+                .contactPhone(warehouse.getContactPhone())
+                .contactEmail(warehouse.getContactEmail())
+                .isActive(warehouse.getIsActive())
+                .capacity(warehouse.getCapacity())
+                .totalZones(warehouse.getTotalZones())
+                .remarks(warehouse.getRemarks())
+                .createdBy(warehouse.getCreatedBy())
+                .createdAt(warehouse.getCreatedAt())
+                .updatedAt(warehouse.getUpdatedAt())
+                .zones(null)
+                .build();
     }
 
     // ✅ Method for list mapping

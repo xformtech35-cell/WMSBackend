@@ -16,8 +16,6 @@ import java.util.List;
 @AllArgsConstructor
 public class AisleResponse {
     private Long id;
-    private String unit;
-
     private String aisleId;
     private String name;
     private String description;
@@ -25,14 +23,15 @@ public class AisleResponse {
     private Double width;
     private Double length;
     private Integer totalRacks;
+    private String unit;
     private String remarks;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @JsonIgnoreProperties({"aisles"})  // ✅ Break circular reference
-    private ZoneResponse zone;
+    @JsonIgnoreProperties({"aisles"})
+    private ZoneResponse zone;  // ✅ This will have warehouse
     
-    @JsonIgnoreProperties({"aisle"})  // ✅ Break circular reference
+    @JsonIgnoreProperties({"aisle"})
     private List<RackResponse> racks;
 }
