@@ -1,12 +1,15 @@
 // ====== FILE: src/main/java/com/warehouse/wms/dto/BinResponse.java ======
 package com.warehouse.wms.dto;
 
+import java.math.BigDecimal;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.warehouse.wms.dto.response.RackResponse;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -26,10 +29,10 @@ public class BinResponse {
     private String status;
     private String fullLocation;
     
-    // ✅ Add rack information (optional)
+    // ✅ Add rack information
     private Long rackId;
     private String rackName;
     
-    // ✅ Or include full rack object (but this may cause circular dependency)
-    // private RackResponse rack;
+    @JsonIgnore  // ✅ Ignore full rack object to avoid circular reference
+    private RackResponse rack;
 }

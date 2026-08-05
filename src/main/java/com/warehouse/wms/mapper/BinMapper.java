@@ -4,6 +4,7 @@ package com.warehouse.wms.mapper;
 import com.warehouse.wms.dto.BinCreateRequest;
 import com.warehouse.wms.dto.BinResponse;
 import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.Rack;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -13,7 +14,6 @@ import java.math.RoundingMode;
 @Mapper(componentModel = "spring")
 public interface BinMapper {
 
-    // ✅ Map from CreateRequest to Entity
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "rack", ignore = true)
     @Mapping(target = "volumeCm3", ignore = true)
@@ -27,12 +27,14 @@ public interface BinMapper {
     @Mapping(target = "createdBy", ignore = true)
     Bin toEntity(BinCreateRequest request);
 
-    // ✅ Map from Entity to Response
     @Mapping(target = "fullLocation", expression = "java(getFullLocation(bin))")
     @Mapping(target = "utilizationPercentage", expression = "java(calculateUtilization(bin))")
+    @Mapping(target = "rackId", source = "rack.id")  // ✅ Map rack ID
+    @Mapping(target = "rackName", source = "rack.name")  // ✅ Map rack name
+    @Mapping(target = "rack", ignore = true)  // ✅ Ignore full rack object
     BinResponse toResponse(Bin bin);
 
-    // ✅ Helper methods
+    // Helper methods
     default String getFullLocation(Bin bin) {
         if (bin == null || bin.getRack() == null || bin.getRack().getAisle() == null || 
             bin.getRack().getAisle().getZone() == null || 
@@ -52,7 +54,8 @@ public interface BinMapper {
             BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) == 0) {
             return BigDecimal.ZERO;
         }
-        BigDecimal occupied = bin.getOccupiedVolumeCm3() == null ? BigDecimal.ZERO : bin.getOccupiedVolumeCm3();
+        BigDecimal occupied = bin.getOccupiedVolumeCm3() == null ? 
+                               BigDecimal.ZERO : bin.getOccupiedVolumeCm3();
         return occupied.multiply(BigDecimal.valueOf(100))
                 .divide(bin.getVolumeCm3(), 2, RoundingMode.HALF_UP);
     }
