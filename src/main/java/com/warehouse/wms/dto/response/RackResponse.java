@@ -22,6 +22,8 @@ public class RackResponse {
     private Boolean isActive;
     private Double height;
     private Double width;
+    private String unit;
+
     private Double depth;
     private Integer totalShelves;
     private String remarks;
@@ -36,4 +38,10 @@ public class RackResponse {
     
     @JsonIgnoreProperties({"rack"})  // ✅ Ignore backward references
     private List<RackCompartmentResponse> compartments;
+    
+    
+    
+    // ✅ Add Warehouse directly
+    @JsonIgnoreProperties({"zones"})
+    private WarehouseResponse warehouse;
 }

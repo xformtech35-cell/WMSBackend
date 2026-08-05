@@ -43,6 +43,9 @@ public class Rack {
 
     @Column(name = "width")
     private Double width; // in meters
+    
+    private String unit;
+
 
     @Column(name = "depth")
     private Double depth; // in meters

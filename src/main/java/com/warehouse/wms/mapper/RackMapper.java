@@ -18,21 +18,24 @@ import com.warehouse.wms.dto.request.RackRequest;
 import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.dto.response.RackResponse;
+import com.warehouse.wms.dto.response.WarehouseResponse;
 import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.entity.Warehouse;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class RackMapper {
 
-    @Autowired
-    @Lazy
-    protected AisleMapper aisleMapper;
+	   @Autowired
+	    @Lazy
+	    protected AisleMapper aisleMapper;
 
-    @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")  // ✅ Map aisle
-    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
-    @Mapping(target = "compartments", ignore = true)  // ✅ Ignore compartments for now
-    public abstract RackResponse toResponse(Rack rack);
+	   @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")
+	    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
+	    @Mapping(target = "compartments", ignore = true)
+	    @Mapping(target = "warehouse", expression = "java(mapWarehouse(rack.getAisle().getZone().getWarehouse()))")  // ✅ Add warehouse
+	    public abstract RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)
     @Mapping(target = "bins", ignore = true)
@@ -67,6 +70,32 @@ public abstract class RackMapper {
                 .updatedAt(aisle.getUpdatedAt())
                 .zone(null)  // ✅ Set to null to avoid circular reference
                 .racks(null)  // ✅ Set to null to avoid circular reference
+                .build();
+    }
+    
+    
+    
+    public WarehouseResponse mapWarehouse(Warehouse warehouse) {
+        if (warehouse == null) {
+            return null;
+        }
+        return WarehouseResponse.builder()
+                .id(warehouse.getId())
+                .warehouseId(warehouse.getWarehouseId())
+                .name(warehouse.getName())
+                .location(warehouse.getLocation())
+                .address(warehouse.getAddress())
+                .contactPerson(warehouse.getContactPerson())
+                .contactPhone(warehouse.getContactPhone())
+                .contactEmail(warehouse.getContactEmail())
+                .isActive(warehouse.getIsActive())
+                .capacity(warehouse.getCapacity())
+                .totalZones(warehouse.getTotalZones())
+                .remarks(warehouse.getRemarks())
+                .createdBy(warehouse.getCreatedBy())
+                .createdAt(warehouse.getCreatedAt())
+                .updatedAt(warehouse.getUpdatedAt())
+                .zones(null)
                 .build();
     }
 

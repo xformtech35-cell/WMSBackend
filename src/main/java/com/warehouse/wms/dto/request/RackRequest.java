@@ -24,6 +24,8 @@ public class RackRequest {
     private Boolean isActive = true;
     private Double height;
     private Double width;
+    private String unit;
+
     private Double depth;
     private String createdBy;
     private String remarks;
