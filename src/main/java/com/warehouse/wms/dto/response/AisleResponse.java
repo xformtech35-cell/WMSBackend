@@ -16,6 +16,8 @@ import java.util.List;
 @AllArgsConstructor
 public class AisleResponse {
     private Long id;
+    private String unit;
+
     private String aisleId;
     private String name;
     private String description;

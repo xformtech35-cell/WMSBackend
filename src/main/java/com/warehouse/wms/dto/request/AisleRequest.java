@@ -24,6 +24,8 @@ public class AisleRequest {
     private Boolean isActive = true;
     private Double width;
     private Double length;
+    private String unit;
+
     private String createdBy;
     private String remarks;
 

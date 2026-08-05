@@ -49,6 +49,9 @@ public class Aisle {
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
+    
+    private String unit;
+
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
