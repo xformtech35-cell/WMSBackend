@@ -671,7 +671,23 @@ public class InboundService {
         return convertToDTO(inbound);
     }
 
-    
-    
-    
-}
+    @Transactional(readOnly = true)
+    public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Pageable pageable) {
+        log.info("Fetching inbounds with GRN status APPROVED - search: {}, page: {}, size: {}", 
+                 search, pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<Inbound> inbounds;
+        
+        if (search != null && !search.trim().isEmpty()) {
+            // Search by multiple fields
+            inbounds = inboundRepository.findByGrnStatusAndSearch(
+                "APPROVED", 
+                search.trim(), 
+                pageable
+            );
+        } else {
+            inbounds = inboundRepository.findByGrnStatus("APPROVED", pageable);
+        }
+        
+        return inbounds.map(this::convertToDTO);
+    }}

@@ -150,4 +150,33 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
              
              Pageable pageable
      );
+    
+    Page<Inbound> findByGrnStatus(String grnStatus, Pageable pageable);
+
+ // ============ FIND BY GRN STATUS WITH FILTERS ============
+ @Query("SELECT i FROM Inbound i WHERE i.grnStatus = :grnStatus AND " +
+        "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')))")
+ Page<Inbound> findByGrnStatusAndSearch(@Param("grnStatus") String grnStatus,
+                                         @Param("search") String search,
+                                         Pageable pageable);
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+ /**
+  * Find all inbounds with GRN status APPROVED and search by multiple fields
+  */
+ @Query("SELECT i FROM Inbound i WHERE i.grnStatus = 'APPROVED' AND " +
+        "(LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')))")
+ Page<Inbound> findByGrnStatusAndSearch(@Param("search") String search, Pageable pageable);
 }

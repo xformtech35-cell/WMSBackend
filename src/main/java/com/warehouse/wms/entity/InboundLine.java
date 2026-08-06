@@ -25,6 +25,9 @@ public class InboundLine {
     @Column(name = "uom", nullable = false)
     private String uom;
     
+    private String status;
+
+    
     @Column(name = "ordered_quantity")
     private Integer orderedQuantity = 0;
     

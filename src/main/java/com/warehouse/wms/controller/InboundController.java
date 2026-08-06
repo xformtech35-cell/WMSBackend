@@ -609,4 +609,36 @@ public ResponseEntity<ApiResponse<InboundDTO>> approveOrRejectQualityInspection(
                 .body(ApiResponse.error("Error getting inbounds: " + e.getMessage()));
         }
     }
+    
+    
+ // ====== FILE: src/main/java/com/warehouse/wms/controller/InboundController.java ======
+ // Add this endpoint
+
+ /**
+  * Get all inbounds with GRN status APPROVED with search and pagination
+  */
+ @GetMapping("/grn-status/APPROVED")
+ public ResponseEntity<ApiResponse<Page<InboundDTO>>> getInboundsByGrnStatusApproved(
+         @RequestParam(required = false) String search,
+         @RequestParam(defaultValue = "0") int page,
+         @RequestParam(defaultValue = "10") int size,
+         @RequestParam(defaultValue = "createdAt") String sortBy,
+         @RequestParam(defaultValue = "desc") String sortDir) {
+     try {
+         log.info("📦 Fetching inbounds with GRN status APPROVED - search: {}, page: {}, size: {}", 
+                  search, page, size);
+         
+         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? 
+             Sort.Direction.DESC : Sort.Direction.ASC;
+         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+         
+         Page<InboundDTO> inbounds = inboundService.getInboundsByGrnStatusApproved(search, pageable);
+         
+         return ResponseEntity.ok(ApiResponse.success("GRN APPROVED inbounds fetched successfully", inbounds));
+     } catch (Exception e) {
+         log.error("Error fetching GRN APPROVED inbounds", e);
+         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+             .body(ApiResponse.error("Error fetching GRN APPROVED inbounds: " + e.getMessage()));
+     }
+ }
 }
