@@ -8,13 +8,15 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.warehouse.wms.dto.BinCreateRequest;
-import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
+import com.warehouse.wms.dto.response.AisleResponse;
+import com.warehouse.wms.dto.response.LevelResponse;
 import com.warehouse.wms.dto.response.RackResponse;
 import com.warehouse.wms.dto.response.WarehouseResponse;
 import com.warehouse.wms.dto.response.ZoneResponse;
 import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.Level;
 import com.warehouse.wms.entity.Rack;
 import com.warehouse.wms.entity.Warehouse;
 import com.warehouse.wms.entity.Zone;
@@ -24,6 +26,7 @@ public interface BinMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "rack", ignore = true)
+    @Mapping(target = "level", ignore = true)
     @Mapping(target = "volumeCm3", ignore = true)
     @Mapping(target = "occupiedVolumeCm3", constant = "0")
     @Mapping(target = "occupiedWeightG", constant = "0")
@@ -37,8 +40,37 @@ public interface BinMapper {
 
     @Mapping(target = "fullLocation", expression = "java(getFullLocation(bin))")
     @Mapping(target = "utilizationPercentage", expression = "java(calculateUtilization(bin))")
-    @Mapping(target = "rack", expression = "java(mapRack(bin.getRack()))")
+    @Mapping(target = "rackId", source = "rack.id")
+    @Mapping(target = "rackName", source = "rack.name")
+    @Mapping(target = "levelId", source = "level.id")
+    @Mapping(target = "levelName", source = "level.name")
+    // ❌ REMOVE: @Mapping(target = "rack", expression = "java(mapRack(bin.getRack()))")
+    @Mapping(target = "level", expression = "java(mapLevel(bin.getLevel()))")
     BinResponse toResponse(Bin bin);
+
+    // ✅ Map Level with full hierarchy (including rack)
+    default LevelResponse mapLevel(Level level) {
+        if (level == null) {
+            return null;
+        }
+        return LevelResponse.builder()
+                .id(level.getId())
+                .levelId(level.getLevelId())
+                .name(level.getName())
+                .description(level.getDescription())
+                .levelNumber(level.getLevelNumber())
+                .heightCm(level.getHeightCm())
+                .maxWeightKg(level.getMaxWeightKg())
+                .maxItems(level.getMaxItems())
+                .isActive(level.getIsActive())
+                .remarks(level.getRemarks())
+                .createdBy(level.getCreatedBy())
+                .createdAt(level.getCreatedAt())
+                .updatedAt(level.getUpdatedAt())
+                .rack(mapRack(level.getRack()))  // ✅ Rack is here
+                .bins(null)
+                .build();
+    }
 
     // ✅ Map Rack with full hierarchy
     default RackResponse mapRack(Rack rack) {
@@ -60,7 +92,7 @@ public interface BinMapper {
                 .createdAt(rack.getCreatedAt())
                 .updatedAt(rack.getUpdatedAt())
                 .aisle(mapAisle(rack.getAisle()))
-                .bins(null)
+                .levels(null)
                 .compartments(null)
                 .build();
     }
@@ -138,16 +170,18 @@ public interface BinMapper {
 
     // ✅ Helper methods
     default String getFullLocation(Bin bin) {
-        if (bin == null || bin.getRack() == null || bin.getRack().getAisle() == null || 
-            bin.getRack().getAisle().getZone() == null || 
-            bin.getRack().getAisle().getZone().getWarehouse() == null) {
+        if (bin == null || bin.getLevel() == null || bin.getLevel().getRack() == null || 
+            bin.getLevel().getRack().getAisle() == null || 
+            bin.getLevel().getRack().getAisle().getZone() == null || 
+            bin.getLevel().getRack().getAisle().getZone().getWarehouse() == null) {
             return null;
         }
-        return String.format("%s-%s-%s-%s-%s",
-                bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
-                bin.getRack().getAisle().getZone().getZoneId(),
-                bin.getRack().getAisle().getAisleId(),
-                bin.getRack().getRackId(),
+        return String.format("%s-%s-%s-%s-%s-%s",
+                bin.getLevel().getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+                bin.getLevel().getRack().getAisle().getZone().getZoneId(),
+                bin.getLevel().getRack().getAisle().getAisleId(),
+                bin.getLevel().getRack().getRackId(),
+                bin.getLevel().getLevelId(),
                 bin.getBarcode());
     }
 

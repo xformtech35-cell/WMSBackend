@@ -31,6 +31,6 @@ public class BinCreateRequest {
     @NotNull(message = "Max weight is required")
     private BigDecimal maxWeightG;
 
-    @NotNull(message = "Rack ID is required")
-    private Long rackId;
+    @NotNull(message = "Level ID is required")  // ✅ Changed from rackId to levelId
+    private Long levelId;
 }

@@ -30,6 +30,12 @@ public class Bin {
     @JoinColumn(name = "rack_id")
     private Rack rack;
 
+    // ✅ ADD LEVEL RELATIONSHIP
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "level_id")
+    private Level level;
+
     @Column(unique = true, nullable = false)
     private String barcode;
 
@@ -79,17 +85,19 @@ public class Bin {
         AVAILABLE, FULL, BLOCKED
     }
 
-    // Helper methods
+    // ✅ UPDATED Helper methods with Level
     public String getFullLocation() {
-        if (rack == null || rack.getAisle() == null || rack.getAisle().getZone() == null || 
-            rack.getAisle().getZone().getWarehouse() == null) {
+        if (level == null || level.getRack() == null || level.getRack().getAisle() == null || 
+            level.getRack().getAisle().getZone() == null || 
+            level.getRack().getAisle().getZone().getWarehouse() == null) {
             return null;
         }
-        return String.format("%s-%s-%s-%s-%s",
-                rack.getAisle().getZone().getWarehouse().getWarehouseId(),
-                rack.getAisle().getZone().getZoneId(),
-                rack.getAisle().getAisleId(),
-                rack.getRackId(),
+        return String.format("%s-%s-%s-%s-%s-%s",
+                level.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+                level.getRack().getAisle().getZone().getZoneId(),
+                level.getRack().getAisle().getAisleId(),
+                level.getRack().getRackId(),
+                level.getLevelId(),
                 barcode);
     }
 

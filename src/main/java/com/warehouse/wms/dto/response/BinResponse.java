@@ -16,43 +16,30 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class BinResponse {
     private Long id;
-    private String binId;
-    private String binBarcode;
-    private String warehouseId;
-    private String zone;
-    private String aisle;
-    private String shelf;
-    private String level;
-    private String position;
-    private Integer capacity;
-    private Integer availableCapacity;
-    private Integer usedCapacity;
-    private Integer minThreshold;
-    private Integer maxThreshold;
-    private String itemCode;
-    private String itemName;
-    private String uom;
-    private Boolean isOccupied;
-    private Boolean isActive;
-    private Boolean isReserved;
-    private String reservedFor;
-    private String locationType;
-    private String zoneType;
-    private String movementType;
-    private Integer priority;
-    private Integer distanceFromDispatch;
-    private String fullLocation;
-    private String status;
+    private String barcode;
+    private BigDecimal lengthCm;
+    private BigDecimal widthCm;
+    private BigDecimal heightCm;
+    private BigDecimal volumeCm3;
+    private BigDecimal maxWeightG;
+    private BigDecimal occupiedVolumeCm3;
+    private BigDecimal occupiedWeightG;
     private BigDecimal utilizationPercentage;
-    private LocalDateTime lastAccessedAt;
-    private LocalDateTime lastPutawayAt;
-    private LocalDateTime lastPickAt;
-    private String remarks;
-    private String createdBy;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    // ✅ Full Hierarchy: Rack → Aisle → Zone → Warehouse
-    @JsonIgnoreProperties({"bins", "compartments"})
-    private RackResponse rack;
+    private String status;
+    private String fullLocation;
+    
+    // Rack information (only ID and Name, not full object)
+    private Long rackId;
+    private String rackName;
+    
+    // Level information
+    private Long levelId;
+    private String levelName;
+    
+    // ❌ REMOVE this - duplicate rack object
+    // private RackResponse rack;
+    
+    // ✅ Keep only level with full hierarchy
+    @JsonIgnoreProperties({"bins"})
+    private LevelResponse level;
 }

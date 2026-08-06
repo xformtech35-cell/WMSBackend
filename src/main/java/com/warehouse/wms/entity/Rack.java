@@ -27,7 +27,7 @@ public class Rack {
     private Long id;
 
     @Column(name = "rack_id", nullable = false, unique = true, length = 10)
-    private String rackId; // R-01, R-02, R-03
+    private String rackId;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
@@ -39,16 +39,15 @@ public class Rack {
     private Boolean isActive = true;
 
     @Column(name = "height")
-    private Double height; // in meters
+    private Double height;
 
     @Column(name = "width")
-    private Double width; // in meters
+    private Double width;
     
     private String unit;
 
-
     @Column(name = "depth")
-    private Double depth; // in meters
+    private Double depth;
 
     @Column(name = "total_shelves")
     private Integer totalShelves = 0;
@@ -71,28 +70,32 @@ public class Rack {
     @JoinColumn(name = "aisle_id")
     private Aisle aisle;
 
+    // ✅ ADD LEVELS (replaces direct bins)
     @JsonIgnore
     @OneToMany(mappedBy = "rack", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
-    private List<Bin> bins = new ArrayList<>();
+    private List<Level> levels = new ArrayList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "rack", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private List<RackCompartment> compartments = new ArrayList<>();
 
-    public void addBin(Bin bin) {
-        if (this.bins == null) {
-            this.bins = new ArrayList<>();
+    // Helper methods for Levels
+    public void addLevel(Level level) {
+        if (this.levels == null) {
+            this.levels = new ArrayList<>();
         }
-        this.bins.add(bin);
-        bin.setRack(this);
+        this.levels.add(level);
+        level.setRack(this);
+        this.totalShelves = this.levels.size();
     }
 
-    public void removeBin(Bin bin) {
-        if (this.bins != null) {
-            this.bins.remove(bin);
-            bin.setRack(null);
+    public void removeLevel(Level level) {
+        if (this.levels != null) {
+            this.levels.remove(level);
+            level.setRack(null);
+            this.totalShelves = this.levels.size();
         }
     }
 }

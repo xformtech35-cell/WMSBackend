@@ -15,6 +15,7 @@ import org.mapstruct.ReportingPolicy;
 import com.warehouse.wms.dto.request.RackRequest;
 import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
+import com.warehouse.wms.dto.response.LevelResponse;
 import com.warehouse.wms.dto.response.RackResponse;
 import com.warehouse.wms.dto.response.WarehouseResponse;
 import com.warehouse.wms.dto.response.ZoneResponse;
@@ -23,6 +24,7 @@ import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Zone;
 import com.warehouse.wms.entity.Warehouse;
+import com.warehouse.wms.entity.Level;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public abstract class RackMapper {
@@ -30,24 +32,24 @@ public abstract class RackMapper {
     // ====== Main Mapping ======
     
     @Mapping(target = "aisle", expression = "java(mapAisle(rack.getAisle()))")
-    @Mapping(target = "bins", expression = "java(mapBins(rack.getBins()))")
+    @Mapping(target = "levels", expression = "java(mapLevels(rack.getLevels()))")
     @Mapping(target = "compartments", ignore = true)
     public abstract RackResponse toResponse(Rack rack);
 
     @Mapping(target = "aisle", ignore = true)
-    @Mapping(target = "bins", ignore = true)
+    @Mapping(target = "levels", ignore = true)
     @Mapping(target = "compartments", ignore = true)
     @Mapping(target = "totalShelves", ignore = true)
     public abstract Rack toEntity(RackRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "aisle", ignore = true)
-    @Mapping(target = "bins", ignore = true)
+    @Mapping(target = "levels", ignore = true)
     @Mapping(target = "compartments", ignore = true)
     @Mapping(target = "totalShelves", ignore = true)
     public abstract void updateEntity(@MappingTarget Rack rack, RackRequest request);
 
-    // ====== Aisle Mapping with Full Hierarchy ======
+    // ====== Aisle Mapping ======
     
     protected AisleResponse mapAisle(Aisle aisle) {
         if (aisle == null) {
@@ -67,12 +69,12 @@ public abstract class RackMapper {
                 .createdBy(aisle.getCreatedBy())
                 .createdAt(aisle.getCreatedAt())
                 .updatedAt(aisle.getUpdatedAt())
-                .zone(mapZone(aisle.getZone()))  // ✅ Zone with Warehouse
-                .racks(null)  // Prevent circular reference
+                .zone(mapZone(aisle.getZone()))
+                .racks(null)
                 .build();
     }
 
-    // ====== Zone Mapping with Warehouse ======
+    // ====== Zone Mapping ======
     
     protected ZoneResponse mapZone(Zone zone) {
         if (zone == null) {
@@ -91,8 +93,8 @@ public abstract class RackMapper {
                 .createdBy(zone.getCreatedBy())
                 .createdAt(zone.getCreatedAt())
                 .updatedAt(zone.getUpdatedAt())
-                .warehouse(mapWarehouse(zone.getWarehouse()))  // ✅ Warehouse
-                .aisles(null)  // Prevent circular reference
+                .warehouse(mapWarehouse(zone.getWarehouse()))
+                .aisles(null)
                 .build();
     }
 
@@ -118,89 +120,42 @@ public abstract class RackMapper {
                 .createdBy(warehouse.getCreatedBy())
                 .createdAt(warehouse.getCreatedAt())
                 .updatedAt(warehouse.getUpdatedAt())
-                .zones(null)  // Prevent circular reference
+                .zones(null)
                 .build();
     }
 
-    // ====== Bin Mapping ======
+    // ====== Level Mapping (Manual mapping - NO circular dependency) ======
     
-    protected List<BinResponse> mapBins(List<Bin> bins) {
-        if (bins == null || bins.isEmpty()) {
+    protected List<LevelResponse> mapLevels(List<Level> levels) {
+        if (levels == null || levels.isEmpty()) {
             return null;
         }
-        return bins.stream()
-                .map(this::mapBin)
+        return levels.stream()
+                .map(this::mapLevel)
                 .collect(Collectors.toList());
     }
 
-    protected BinResponse mapBin(Bin bin) {
-        if (bin == null) {
+    // ✅ Manual mapping for Level - NO LevelMapper dependency
+    protected LevelResponse mapLevel(Level level) {
+        if (level == null) {
             return null;
         }
-        
-        String status = bin.getStatus() != null ? bin.getStatus().name() : null;
-        
-        BigDecimal utilizationPercentage = BigDecimal.ZERO;
-        if (bin.getVolumeCm3() != null && 
-            BigDecimal.ZERO.compareTo(bin.getVolumeCm3()) != 0 &&
-            bin.getOccupiedVolumeCm3() != null) {
-            utilizationPercentage = bin.getOccupiedVolumeCm3()
-                    .multiply(BigDecimal.valueOf(100))
-                    .divide(bin.getVolumeCm3(), 2, java.math.RoundingMode.HALF_UP);
-        }
-        
-        // Safely get location info
-        String warehouseId = null;
-        String zoneId = null;
-        String aisleId = null;
-        if (bin.getRack() != null && bin.getRack().getAisle() != null) {
-            if (bin.getRack().getAisle().getZone() != null) {
-                if (bin.getRack().getAisle().getZone().getWarehouse() != null) {
-                    warehouseId = bin.getRack().getAisle().getZone().getWarehouse().getWarehouseId();
-                }
-                zoneId = bin.getRack().getAisle().getZone().getZoneId();
-            }
-            aisleId = bin.getRack().getAisle().getAisleId();
-        }
-        
-        return BinResponse.builder()
-                .id(bin.getId())
-                .binId(bin.getBarcode())
-                .binBarcode(bin.getBarcode())
-                .warehouseId(warehouseId)
-                .zone(zoneId)
-                .aisle(aisleId)
-                .shelf(null)
-                .level(null)
-                .position(null)
-                .capacity(bin.getVolumeCm3() != null ? bin.getVolumeCm3().intValue() : null)
-                .availableCapacity(bin.getAvailableVolume() != null ? bin.getAvailableVolume().intValue() : null)
-                .usedCapacity(bin.getOccupiedVolumeCm3() != null ? bin.getOccupiedVolumeCm3().intValue() : null)
-                .minThreshold(null)
-                .maxThreshold(null)
-                .itemCode(null)
-                .itemName(null)
-                .uom(null)
-                .isOccupied(bin.getStatus() == Bin.BinStatus.FULL)
-                .isActive(bin.getIsActive())
-                .isReserved(bin.getStatus() == Bin.BinStatus.BLOCKED)
-                .reservedFor(null)
-                .locationType(null)
-                .zoneType(null)
-                .movementType(null)
-                .priority(null)
-                .distanceFromDispatch(null)
-                .fullLocation(bin.getFullLocation())
-                .status(status)
-                .utilizationPercentage(utilizationPercentage)
-                .lastAccessedAt(null)
-                .lastPutawayAt(null)
-                .lastPickAt(null)
-                .remarks(bin.getRemarks())
-                .createdBy(bin.getCreatedBy())
-                .createdAt(bin.getCreatedAt())
-                .updatedAt(bin.getUpdatedAt())
+        return LevelResponse.builder()
+                .id(level.getId())
+                .levelId(level.getLevelId())
+                .name(level.getName())
+                .description(level.getDescription())
+                .levelNumber(level.getLevelNumber())
+                .heightCm(level.getHeightCm())
+                .maxWeightKg(level.getMaxWeightKg())
+                .maxItems(level.getMaxItems())
+                .isActive(level.getIsActive())
+                .remarks(level.getRemarks())
+                .createdBy(level.getCreatedBy())
+                .createdAt(level.getCreatedAt())
+                .updatedAt(level.getUpdatedAt())
                 .rack(null)  // Prevent circular reference
+                .bins(null)  // Prevent circular reference
                 .build();
     }
 

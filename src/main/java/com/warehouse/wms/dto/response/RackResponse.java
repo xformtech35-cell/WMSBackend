@@ -30,10 +30,12 @@ public class RackResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @JsonIgnoreProperties({"racks"})  // ✅ Break circular reference
-    private AisleResponse aisle;  // ✅ This will have zone → warehouse
+    @JsonIgnoreProperties({"racks"})
+    private AisleResponse aisle;
     
-    private List<BinResponse> bins;
+    // ✅ Replace bins with levels (since bins are now under levels)
+    @JsonIgnoreProperties({"rack"})
+    private List<LevelResponse> levels;
     
     @JsonIgnoreProperties({"rack"})
     private List<RackCompartmentResponse> compartments;

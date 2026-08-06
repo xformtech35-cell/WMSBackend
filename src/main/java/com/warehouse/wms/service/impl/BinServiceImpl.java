@@ -2,6 +2,8 @@
 package com.warehouse.wms.service.impl;
 
 
+
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,11 +17,12 @@ import com.warehouse.wms.dto.BinCreateRequest;
 import com.warehouse.wms.dto.response.BinResponse;
 import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.Bin.BinStatus;
-import com.warehouse.wms.entity.Rack;
+import com.warehouse.wms.entity.Level;
 import com.warehouse.wms.exception.InvalidOperationException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.BinMapper;
 import com.warehouse.wms.repository.BinRepository;
+import com.warehouse.wms.repository.LevelRepository;
 import com.warehouse.wms.repository.RackRepository;
 import com.warehouse.wms.service.BinService;
 
@@ -35,38 +38,43 @@ public class BinServiceImpl implements BinService {
     private final BinRepository binRepository;
     private final RackRepository rackRepository;
     private final BinMapper binMapper;
+    private final LevelRepository levelRepository;  // ✅ ADD THIS
 
-    @Override
-    public BinResponse createBin(BinCreateRequest request) {
-        log.info("📦 Creating bin with barcode: {}", request.getBarcode());
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/BinServiceImpl.java ======
+ // Update the createBin method
 
-        // Validate barcode uniqueness
-        if (binRepository.existsByBarcode(request.getBarcode())) {
-            throw new InvalidOperationException("Bin barcode already exists: " + request.getBarcode());
-        }
+ @Override
+ public BinResponse createBin(BinCreateRequest request) {
+     log.info("📦 Creating bin with barcode: {}", request.getBarcode());
 
-        // Validate rack exists
-        Rack rack = rackRepository.findById(request.getRackId())
-                .orElseThrow(() -> new ResourceNotFoundException("Rack not found with ID: " + request.getRackId()));
+     // Validate barcode uniqueness
+     if (binRepository.existsByBarcode(request.getBarcode())) {
+         throw new InvalidOperationException("Bin barcode already exists: " + request.getBarcode());
+     }
 
-        // Create bin
-        Bin bin = binMapper.toEntity(request);
-        bin.setRack(rack);
-        
-        // Calculate volume
-        BigDecimal volume = request.getLengthCm()
-                .multiply(request.getWidthCm())
-                .multiply(request.getHeightCm());
-        bin.setVolumeCm3(volume);
-        bin.setOccupiedVolumeCm3(BigDecimal.ZERO);
-        bin.setOccupiedWeightG(BigDecimal.ZERO);
-        bin.setStatus(BinStatus.AVAILABLE);
+     // ✅ Validate level exists (instead of rack)
+     Level level = levelRepository.findById(request.getLevelId())
+             .orElseThrow(() -> new ResourceNotFoundException("Level not found with ID: " + request.getLevelId()));
 
-        Bin savedBin = binRepository.save(bin);
-        log.info("✅ Bin created: {}", savedBin.getBarcode());
+     // Create bin
+     Bin bin = binMapper.toEntity(request);
+     bin.setLevel(level);  // ✅ Set level
+     bin.setRack(level.getRack());  // ✅ Set rack from level
+     
+     // Calculate volume
+     BigDecimal volume = request.getLengthCm()
+             .multiply(request.getWidthCm())
+             .multiply(request.getHeightCm());
+     bin.setVolumeCm3(volume);
+     bin.setOccupiedVolumeCm3(BigDecimal.ZERO);
+     bin.setOccupiedWeightG(BigDecimal.ZERO);
+     bin.setStatus(BinStatus.AVAILABLE);
 
-        return binMapper.toResponse(savedBin);
-    }
+     Bin savedBin = binRepository.save(bin);
+     log.info("✅ Bin created: {}", savedBin.getBarcode());
+
+     return binMapper.toResponse(savedBin);
+ }
 
     @Override
     public BinResponse getBinById(Long id) {
@@ -124,11 +132,15 @@ public class BinServiceImpl implements BinService {
             throw new InvalidOperationException("Bin barcode already exists: " + request.getBarcode());
         }
 
-        // Update rack if changed
-        if (!request.getRackId().equals(bin.getRack().getId())) {
-            Rack newRack = rackRepository.findById(request.getRackId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Rack not found with ID: " + request.getRackId()));
-            bin.setRack(newRack);
+        // ✅ Update level if changed (instead of rack)
+        if (request.getLevelId() != null && !request.getLevelId().equals(bin.getLevel().getId())) {
+            Level newLevel = levelRepository.findById(request.getLevelId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Level not found with ID: " + request.getLevelId()));
+            
+            // Update bin's level
+            bin.setLevel(newLevel);
+            // Update bin's rack from the new level
+            bin.setRack(newLevel.getRack());
         }
 
         // Update fields
