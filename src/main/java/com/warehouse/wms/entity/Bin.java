@@ -35,6 +35,9 @@ public class Bin {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id")
     private Level level;
+    
+    private String unit;
+
 
     @Column(unique = true, nullable = false)
     private String barcode;

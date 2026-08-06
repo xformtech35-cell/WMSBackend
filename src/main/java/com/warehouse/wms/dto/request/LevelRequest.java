@@ -21,6 +21,9 @@ public class LevelRequest {
     private String name;
 
     private String description;
+    
+    private String unit;
+
 
     @NotNull(message = "Level number is required")
     private Integer levelNumber;

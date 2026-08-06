@@ -33,4 +33,8 @@ public class BinCreateRequest {
 
     @NotNull(message = "Level ID is required")  // ✅ Changed from rackId to levelId
     private Long levelId;
+    
+    
+    private String unit;
+
 }

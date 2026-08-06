@@ -28,6 +28,8 @@ public class BinResponse {
     private String status;
     private String fullLocation;
     
+    private String unit;
+
     // Rack information (only ID and Name, not full object)
     private Long rackId;
     private String rackName;

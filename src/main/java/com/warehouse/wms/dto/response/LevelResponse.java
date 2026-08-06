@@ -19,6 +19,8 @@ public class LevelResponse {
     private String levelId;
     private String name;
     private String description;
+    private String unit;
+
     private Integer levelNumber;
     private Double heightCm;
     private Double maxWeightKg;

@@ -37,6 +37,9 @@ public class Level {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+    
+    private String unit;
+
 
     @Column(name = "level_number")
     private Integer levelNumber;  // 1, 2, 3 (for sorting)
