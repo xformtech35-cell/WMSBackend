@@ -36,6 +36,8 @@ public class RockRequest {
 
     private BigDecimal densityGcm3;  // ✅ Changed to BigDecimal
 
+    private String unit;
+
     private String color;
 
     private Integer hardness;

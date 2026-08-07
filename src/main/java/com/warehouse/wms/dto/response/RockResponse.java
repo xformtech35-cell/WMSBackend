@@ -26,6 +26,8 @@ public class RockResponse {
     private BigDecimal heightCm;      // ✅ Changed to BigDecimal
     private BigDecimal volumeCm3;     // ✅ Changed to BigDecimal
     private BigDecimal densityGcm3;   // ✅ Changed to BigDecimal
+    private String unit;
+
     private String color;
     private Integer hardness;
     private Boolean isActive;

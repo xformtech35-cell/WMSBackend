@@ -53,6 +53,10 @@ public class Rock {
 
     @Column(name = "height_cm", precision = 10, scale = 2)
     private BigDecimal heightCm;
+    
+    private String unit;
+
+    
 
     @Column(name = "density_g_cm3", precision = 10, scale = 2)
     private BigDecimal densityGcm3;
