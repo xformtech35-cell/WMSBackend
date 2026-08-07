@@ -620,6 +620,8 @@ public ResponseEntity<ApiResponse<InboundDTO>> approveOrRejectQualityInspection(
  @GetMapping("/grn-status/APPROVED")
  public ResponseEntity<ApiResponse<Page<InboundDTO>>> getInboundsByGrnStatusApproved(
          @RequestParam(required = false) String search,
+         @RequestParam(required = false) Boolean barcodeGenerate,
+         @RequestParam(required = false) Boolean taskAssigned,
          @RequestParam(defaultValue = "0") int page,
          @RequestParam(defaultValue = "10") int size,
          @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -632,7 +634,7 @@ public ResponseEntity<ApiResponse<InboundDTO>> approveOrRejectQualityInspection(
              Sort.Direction.DESC : Sort.Direction.ASC;
          Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
          
-         Page<InboundDTO> inbounds = inboundService.getInboundsByGrnStatusApproved(search, pageable);
+         Page<InboundDTO> inbounds = inboundService.getInboundsByGrnStatusApproved(search,barcodeGenerate, taskAssigned, pageable);
          
          return ResponseEntity.ok(ApiResponse.success("GRN APPROVED inbounds fetched successfully", inbounds));
      } catch (Exception e) {

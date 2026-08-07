@@ -179,4 +179,58 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
         "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
         "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')))")
  Page<Inbound> findByGrnStatusAndSearch(@Param("search") String search, Pageable pageable);
+ 
+ 
+ 
+ 
+ 
+
+
+
+ // ====== With barcodeGenerate Filter ======
+ 
+ @Query("SELECT i FROM Inbound i WHERE i.grnStatus = :grnStatus AND " +
+        "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+        "EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i AND il.barcodeGenerate = :barcodeGenerate)")
+ Page<Inbound> findByGrnStatusAndSearchWithBarcodeGenerate(
+         @Param("grnStatus") String grnStatus,
+         @Param("search") String search,
+         @Param("barcodeGenerate") Boolean barcodeGenerate,
+         Pageable pageable);
+
+ // ====== With taskAssigned Filter ======
+ 
+ @Query("SELECT i FROM Inbound i WHERE i.grnStatus = :grnStatus AND " +
+        "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+        "EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i AND il.taskAssinged = :taskAssigned)")
+ Page<Inbound> findByGrnStatusAndSearchWithTaskAssigned(
+         @Param("grnStatus") String grnStatus,
+         @Param("search") String search,
+         @Param("taskAssigned") Boolean taskAssigned,
+         Pageable pageable);
+
+ // ====== With Both Filters ======
+ 
+ @Query("SELECT i FROM Inbound i WHERE i.grnStatus = :grnStatus AND " +
+        "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+        "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+        "EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i AND il.barcodeGenerate = :barcodeGenerate) AND " +
+        "EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i AND il.taskAssinged = :taskAssigned)")
+ Page<Inbound> findByGrnStatusAndSearchWithBothFlags(
+         @Param("grnStatus") String grnStatus,
+         @Param("search") String search,
+         @Param("barcodeGenerate") Boolean barcodeGenerate,
+         @Param("taskAssigned") Boolean taskAssigned,
+         Pageable pageable);
 }
