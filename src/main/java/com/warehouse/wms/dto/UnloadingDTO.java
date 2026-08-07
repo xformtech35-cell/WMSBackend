@@ -14,4 +14,5 @@ public class UnloadingDTO {
     private Integer boxesInTruckQuantity;
     private String unloadedBy;
     private String remarks;
+    private Long rockId;
 }

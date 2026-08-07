@@ -173,6 +173,12 @@ public class Inbound {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
     
+    
+    // ✅ ADD ROCK RELATIONSHIP
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rock_id")
+    private Rock rock;
+    
     // Helper methods
     public void addLine(InboundLine line) {
         lines.add(line);

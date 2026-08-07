@@ -1,22 +1,53 @@
 package com.warehouse.wms.service;
 
-import com.warehouse.wms.dto.*;
-import com.warehouse.wms.entity.*;
-import com.warehouse.wms.exception.ResourceNotFoundException;
-import com.warehouse.wms.repository.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.warehouse.wms.dto.CreateInboundDTO;
+import com.warehouse.wms.dto.GateEntryDTO;
+import com.warehouse.wms.dto.GoodsReceivingDTO;
+import com.warehouse.wms.dto.GoodsReceivingItemDTO;
+import com.warehouse.wms.dto.ImageWithUrlDTO;
+import com.warehouse.wms.dto.InboundDTO;
+import com.warehouse.wms.dto.InboundFilterDTO;
+import com.warehouse.wms.dto.InboundImageDTO;
+import com.warehouse.wms.dto.InboundLineDTO;
+import com.warehouse.wms.dto.InspectionImageDTO;
+import com.warehouse.wms.dto.ItemImageGroupDTO;
+import com.warehouse.wms.dto.QualityInspectionApprovalDTO;
+import com.warehouse.wms.dto.QualityInspectionDTO;
+import com.warehouse.wms.dto.QualityInspectionItemDTO;
+import com.warehouse.wms.dto.UnloadingDTO;
+import com.warehouse.wms.entity.Inbound;
+import com.warehouse.wms.entity.InboundLine;
+import com.warehouse.wms.entity.InboundStage;
+import com.warehouse.wms.entity.InboundStatus;
+import com.warehouse.wms.entity.InspectionImage;
+import com.warehouse.wms.entity.Item;
+import com.warehouse.wms.entity.PurchaseOrder;
+import com.warehouse.wms.entity.PurchaseOrderLine;
+import com.warehouse.wms.entity.Rock;
+import com.warehouse.wms.exception.ResourceNotFoundException;
+import com.warehouse.wms.mapper.RockMapper;
+import com.warehouse.wms.repository.InboundLineRepository;
+import com.warehouse.wms.repository.InboundRepository;
+import com.warehouse.wms.repository.ItemRepository;
+import com.warehouse.wms.repository.PurchaseOrderLineRepository;
+import com.warehouse.wms.repository.PurchaseOrderRepository;
+import com.warehouse.wms.repository.RockRepository;
+import com.warehouse.wms.repository.SupplierRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +61,10 @@ public class InboundService {
     private final SupplierRepository supplierRepository;
     private final ItemRepository itemRepository;
     private final ImageService imageService;
+    private final RockMapper rockMapper;
+
+    private final RockRepository rockRepository;
+
 
     private static final String INBOUND_PREFIX = "INB";
 
@@ -130,6 +165,8 @@ public class InboundService {
     }
 
     // ============ 3. TRUCK UNLOADING ============
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
+
     @Transactional
     public InboundDTO unloading(Long inboundId, UnloadingDTO unloadingDTO) {
         log.info("Unloading for inbound: {}", inboundId);
@@ -137,6 +174,17 @@ public class InboundService {
         Inbound inbound = inboundRepository.findById(inboundId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inbound not found"));
 
+        // ✅ Update Rock if rockId is provided
+        if (unloadingDTO.getRockId() != null) 
+        {
+        	
+            Rock rock = rockRepository.findById(unloadingDTO.getRockId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Rock not found with ID: " + unloadingDTO.getRockId()));
+            inbound.setRock(rock);
+            log.info("✅ Rock assigned to inbound: {}", rock.getRockId());
+        }
+
+        // Update unloading details
         inbound.setBoxesUnloadedQuantity(unloadingDTO.getBoxesUnloadedQuantity());
         inbound.setBoxesInTruckQuantity(unloadingDTO.getBoxesInTruckQuantity());
         inbound.setUnloadedBy(unloadingDTO.getUnloadedBy());
@@ -151,7 +199,6 @@ public class InboundService {
 
         return convertToDTO(inbound);
     }
-
     // ============ 4. GOODS RECEIVING ============
     @Transactional
     public InboundDTO goodsReceiving(Long inboundId, GoodsReceivingDTO receivingDTO) {
@@ -465,6 +512,20 @@ public class InboundService {
                 .approvalRemarks(entity.getApprovalRemarks())
                 .approvedBy(entity.getApprovedBy())
                 .build();
+        
+        
+        
+        
+        
+        // ✅ ADD ROCK MAPPING
+        if (entity.getRock() != null) {
+            dto.setRock(rockMapper.toResponse(entity.getRock()));
+        }
+
+      
+        
+        
+        
 
         if (entity.getLines() != null) {
             dto.setLines(entity.getLines().stream()
