@@ -28,8 +28,10 @@ public class InboundLineDTO {
     private String remarks;
     private List<InspectionImageDTO> images;
     private String batchNumber;
- private Boolean barcodeGenerate;
+    @Builder.Default  // ✅ Default value false
+    private Boolean barcodeGenerate = false;
     
-    private Boolean taskAssinged;
+    @Builder.Default  // ✅ Default value false
+    private Boolean taskAssinged = false;
 
 }
