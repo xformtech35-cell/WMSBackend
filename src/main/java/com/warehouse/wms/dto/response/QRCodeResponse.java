@@ -40,6 +40,8 @@ public class QRCodeResponse {
     private String aisle;
     private String rack;
     private String shelf;
+    private String level;
+
     private String binId;
     private String palletNumber;
     private String status;

@@ -55,6 +55,9 @@ public class QRCodeGenerateRequest {
     private String rack;
 
     private String shelf;
+    
+    private String level;
+
 
     private String generatedBy;
 

@@ -117,6 +117,10 @@ public class QRCode {
     @Column(name = "shelf", length = 10)
     private String shelf;
     
+    
+    private String level;
+
+    
     @Column(name = "bin_id", length = 50)
     private String binId;
     

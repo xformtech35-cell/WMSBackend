@@ -105,6 +105,7 @@ public class QRCodeServiceImpl implements QRCodeService {
                 .aisle(request.getAisle())
                 .rack(request.getRack())
                 .shelf(request.getShelf())
+                .level(request.getLevel())
                 .binId(request.getBinId())
                 .status(QRStatus.GENERATED)
                 .generatedBy(request.getGeneratedBy())
