@@ -675,59 +675,49 @@ public class InboundService {
 
 // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
 
-@Transactional(readOnly = true)
-public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean barcodeGenerate, Boolean taskAssigned, Pageable pageable) {
-    log.info("Fetching inbounds with GRN status APPROVED - search: {}, barcodeGenerate: {}, taskAssigned: {}, page: {}, size: {}", 
-             search, barcodeGenerate, taskAssigned, pageable.getPageNumber(), pageable.getPageSize());
-    
-    Page<Inbound> inbounds;
-    
-    // Build search condition
-    String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
-    
-    // Check which filters are applied
-    boolean hasSearch = searchTerm != null;
-    boolean hasBarcodeGenerate = barcodeGenerate != null;
-    boolean hasTaskAssigned = taskAssigned != null;
-    
-    if (hasSearch && hasBarcodeGenerate && hasTaskAssigned) {
-        // All three filters
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithBothFlags(
-            "APPROVED", searchTerm, barcodeGenerate, taskAssigned, pageable);
-    } else if (hasSearch && hasBarcodeGenerate) {
-        // Search + barcodeGenerate
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithBarcodeGenerate(
-            "APPROVED", searchTerm, barcodeGenerate, pageable);
-    } else if (hasSearch && hasTaskAssigned) {
-        // Search + taskAssigned
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithTaskAssigned(
-            "APPROVED", searchTerm, taskAssigned, pageable);
-    } else if (hasSearch) {
-        // Only search
-        inbounds = inboundRepository.findByGrnStatusAndSearch("APPROVED", searchTerm, pageable);
-    } else if (hasBarcodeGenerate && hasTaskAssigned) {
-        // Both flags without search
-        // You need to add this method or handle separately
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithBothFlags(
-            "APPROVED", null, barcodeGenerate, taskAssigned, pageable);
-    } else if (hasBarcodeGenerate) {
-        // Only barcodeGenerate
-        // You need to add this method or handle separately
-        // For now, we'll use a workaround with search
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithBarcodeGenerate(
-            "APPROVED", null, barcodeGenerate, pageable);
-    } else if (hasTaskAssigned) {
-        // Only taskAssigned
-        // You need to add this method or handle separately
-        inbounds = inboundRepository.findByGrnStatusAndSearchWithTaskAssigned(
-            "APPROVED", null, taskAssigned, pageable);
-    } else {
-        // No filters
-        inbounds = inboundRepository.findByGrnStatus("APPROVED", pageable);
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
+
+    @Transactional(readOnly = true)
+    public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean barcodeGenerate, Boolean taskAssigned, Pageable pageable) {
+        log.info("Fetching inbounds with GRN status APPROVED - search: {}, barcodeGenerate: {}, taskAssigned: {}, page: {}, size: {}", 
+                 search, barcodeGenerate, taskAssigned, pageable.getPageNumber(), pageable.getPageSize());
+        
+        String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        Page<Inbound> inbounds;
+        
+        // Check which filters are applied
+        boolean hasSearch = searchTerm != null;
+        boolean hasBarcodeGenerate = barcodeGenerate != null && barcodeGenerate;
+        boolean hasTaskAssigned = taskAssigned != null && taskAssigned;
+        
+        if (hasSearch && hasBarcodeGenerate && hasTaskAssigned) {
+            // All filters: search + ALL lines barcodeGenerate=true + ALL lines taskAssigned=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", searchTerm, pageable);
+        } else if (hasSearch && hasBarcodeGenerate) {
+            // Search + ALL lines barcodeGenerate=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", searchTerm, pageable);
+        } else if (hasSearch && hasTaskAssigned) {
+            // Search + ALL lines taskAssigned=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", searchTerm, pageable);
+        } else if (hasSearch) {
+            // Only search
+            inbounds = inboundRepository.findByGrnStatusAndSearch("APPROVED", searchTerm, pageable);
+        } else if (hasBarcodeGenerate && hasTaskAssigned) {
+            // ALL lines barcodeGenerate=true AND ALL lines taskAssigned=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", null, pageable);
+        } else if (hasBarcodeGenerate) {
+            // ALL lines barcodeGenerate=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", null, pageable);
+        } else if (hasTaskAssigned) {
+            // ALL lines taskAssigned=true
+            inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", null, pageable);
+        } else {
+            // No filters
+            inbounds = inboundRepository.findByGrnStatus("APPROVED", pageable);
+        }
+        
+        return inbounds.map(this::convertToDTO);
     }
-    
-    return inbounds.map(this::convertToDTO);
-}
     
 
 
