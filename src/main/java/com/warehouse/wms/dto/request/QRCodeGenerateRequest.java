@@ -28,6 +28,10 @@ public class QRCodeGenerateRequest {
     private Long putawayTaskId;
 
     private Long putawayLineId;
+    
+    private Long inboundLineId;
+
+    
 
     private String binId;
 

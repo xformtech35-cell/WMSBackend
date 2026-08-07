@@ -481,6 +481,8 @@ public class InboundService {
                 .itemCode(entity.getItemCode())
                 .itemName(entity.getItemName())
                 .uom(entity.getUom())
+                .barcodeGenerate(entity.getBarcodeGenerate())
+                .taskAssinged(entity.getTaskAssinged())
                 .orderedQuantity(entity.getOrderedQuantity())
                 .receivedQuantity(entity.getReceivedQuantity())
                 .pendingQuantity(entity.getPendingQuantity())

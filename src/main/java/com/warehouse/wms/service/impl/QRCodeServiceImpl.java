@@ -23,9 +23,11 @@ import com.warehouse.wms.constant.QRStatus;
 import com.warehouse.wms.dto.request.QRCodeGenerateRequest;
 import com.warehouse.wms.dto.request.QRCodePrintRequest;
 import com.warehouse.wms.dto.response.QRCodeResponse;
+import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.QRCode;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.QRCodeMapper;
+import com.warehouse.wms.repository.InboundLineRepository;
 import com.warehouse.wms.repository.QRCodeRepository;
 import com.warehouse.wms.service.QRCodeService;
 import com.warehouse.wms.util.BarcodeGenerator;
@@ -41,6 +43,9 @@ import lombok.extern.slf4j.Slf4j;
 public class QRCodeServiceImpl implements QRCodeService {
 
     private final QRCodeRepository qrCodeRepository;
+    
+    private final InboundLineRepository inboundLineRepository;
+
     private final QRCodeMapper qrCodeMapper;
     private final QRCodeGenerator qrCodeGenerator;
     private final BarcodeGenerator barcodeGenerator;
@@ -57,7 +62,18 @@ public class QRCodeServiceImpl implements QRCodeService {
         String qrCodeValue = generateQRCodeValue(request);
         String barcodeValue = generateBarcodeValue(request);
         String qrId = generateQRId();
-
+        
+        
+        Long inboundLineId = request.getInboundLineId();
+        if (inboundLineId != null) {
+            InboundLine inboundLine = inboundLineRepository.findById(inboundLineId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Inbound Line not found with ID: " + inboundLineId));
+            
+            // Set barcodeGenerate to true
+            inboundLine.setBarcodeGenerate(true);
+            inboundLineRepository.save(inboundLine);
+            log.info("✅ Barcode generate flag set to true for inbound line: {}", inboundLineId);
+        }
         // Generate images
         String qrImage = qrCodeGenerator.generateQRCodeBase64(qrCodeValue, request.getItemCode());
         String barcodeImage = barcodeGenerator.generateBarcodeBase64(barcodeValue, request.getItemCode());

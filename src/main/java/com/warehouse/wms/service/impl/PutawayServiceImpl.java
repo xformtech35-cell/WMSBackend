@@ -67,11 +67,17 @@ public class PutawayServiceImpl implements PutawayService {
     public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
         log.info("Initiating putaway for GRN: {}", request.getGrnNumber());
 
-        // Check if putaway already exists
-        Optional<PutawayTask> existingTask = putawayTaskRepository.findByGrnNumber(request.getGrnNumber());
-        if (existingTask.isPresent()) {
-            throw new InvalidOperationException("Putaway task already exists for GRN: " + request.getGrnNumber());
-        }
+        
+        
+        
+     
+        
+        
+//        // Check if putaway already exists
+//        Optional<PutawayTask> existingTask = putawayTaskRepository.findByGrnNumber(request.getGrnNumber());
+//        if (existingTask.isPresent()) {
+//            throw new InvalidOperationException("Putaway task already exists for GRN: " + request.getGrnNumber());
+//        }
 
         // Create putaway task
         PutawayTask task = PutawayTask.builder()
@@ -118,6 +124,10 @@ public class PutawayServiceImpl implements PutawayService {
                 if (inboundLine != null) {
                     lineBuilder.inboundLine(inboundLine);
                 }
+                inboundLine.setTaskAssinged(true);
+                
+                inboundLineRepository.save(inboundLine);
+
             }
 
             // Set suggested location

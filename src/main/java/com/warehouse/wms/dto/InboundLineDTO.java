@@ -28,5 +28,8 @@ public class InboundLineDTO {
     private String remarks;
     private List<InspectionImageDTO> images;
     private String batchNumber;
+ private Boolean barcodeGenerate;
+    
+    private Boolean taskAssinged;
 
 }
