@@ -102,6 +102,14 @@ public class QRCodeController {
         QRCodeResponse response = qrCodeService.scanQRCode(qrCode, scannedBy);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/barcode/scan")
+    @Operation(summary = "Scan QR Code")
+    public ResponseEntity<QRCodeResponse> scanBarCode(@RequestParam String barCode, @RequestParam String scannedBy) {
+        log.info("Received request to scan QR Code: {}", barCode);
+        QRCodeResponse response = qrCodeService.scanBarCode(barCode, scannedBy);
+        return ResponseEntity.ok(response);
+    }
+
 
     @GetMapping("/generate/image/qr")
     @Operation(summary = "Generate QR Code image")

@@ -56,6 +56,13 @@ public class InboundLine {
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
     
+    
+    
+    private Boolean barcodeGenerate;
+    
+    private Boolean taskAssinged;
+
+    
     @Column(columnDefinition = "TEXT")
     private String remarks;
     

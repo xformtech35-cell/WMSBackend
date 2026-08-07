@@ -29,6 +29,8 @@ public interface QRCodeService {
     QRCodeResponse printQRCode(QRCodePrintRequest request);
 
     QRCodeResponse scanQRCode(String qrCode, String scannedBy);
+    QRCodeResponse scanBarCode(String barCode, String scannedBy);
+
 
     QRCodeResponse scanBarcode(String barcode, String scannedBy);
 
