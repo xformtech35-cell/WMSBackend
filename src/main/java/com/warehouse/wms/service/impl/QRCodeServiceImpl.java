@@ -64,6 +64,14 @@ public class QRCodeServiceImpl implements QRCodeService {
         String qrId = generateQRId();
         
         
+      String  fullPath = request.getWarehouseId() + "/" + 
+    		  request.getZone() + "/" + 
+    		  request.getAisle() + "/" + 
+    		  request.getRack() + "/" + 
+    		  request.getShelf() + "/" + 
+    		  request.getLevel() + "/" + 
+    		  request.getBinId();
+        
         Long inboundLineId = request.getInboundLineId();
         if (inboundLineId != null) {
             InboundLine inboundLine = inboundLineRepository.findById(inboundLineId)
@@ -71,6 +79,24 @@ public class QRCodeServiceImpl implements QRCodeService {
             
             // Set barcodeGenerate to true
             inboundLine.setBarcodeGenerate(true);
+            
+           
+                inboundLine.setFullpath(fullPath);
+                inboundLine.setWarehouseId(request.getWarehouseId());
+                inboundLine.setZone(request.getZone());
+                inboundLine.setAisle(request.getAisle());
+                inboundLine.setRack(request.getRack());
+                inboundLine.setLevel(request.getLevel());
+                inboundLine.setBinId(request.getBinId());
+        
+            
+            
+            
+            
+            
+            
+            
+            
             inboundLineRepository.save(inboundLine);
             log.info("✅ Barcode generate flag set to true for inbound line: {}", inboundLineId);
         }

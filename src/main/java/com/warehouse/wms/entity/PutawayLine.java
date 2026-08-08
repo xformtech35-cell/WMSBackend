@@ -67,7 +67,11 @@ public class PutawayLine {
 
     @Column(name = "suggested_shelf", length = 10)
     private String suggestedShelf;
+    
+    private String suggestedLevel;
 
+    private String fullpath;
+    
     @Column(name = "suggested_bin", length = 50)
     private String suggestedBin;
 
@@ -86,6 +90,9 @@ public class PutawayLine {
 
     @Column(name = "actual_shelf", length = 10)
     private String actualShelf;
+    
+    private String actualLevel;
+
 
     @Column(name = "actual_bin", length = 50)
     private String actualBin;

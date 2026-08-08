@@ -48,6 +48,9 @@ public class PutawayConfirmation {
 
     @Column(name = "warehouse_id", length = 20)
     private String warehouseId;
+    
+    private String fullpath;
+
 
     @Column(name = "zone", length = 10)
     private String zone;

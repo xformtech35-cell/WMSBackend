@@ -34,5 +34,17 @@ public class InboundLineDTO {
     
     @Builder.Default  // ✅ Default value false
     private Boolean taskAssinged = false;
+    
+    private String fullpath;
+    
+    
+    
+    private String warehouseId;
+    private String zone;
+    private String aisle;
+    private String rack;
+    private String level;
+    private String binId;
+    
 
 }

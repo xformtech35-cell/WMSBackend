@@ -61,6 +61,15 @@ public class InboundLine {
     private Boolean barcodeGenerate;
     
     private Boolean taskAssinged;
+    private String fullpath;
+    
+    private String warehouseId;
+    private String zone;
+    private String aisle;
+    private String rack;
+    private String shelf;
+    private String level;
+    private String binId;
 
     
     @Column(columnDefinition = "TEXT")

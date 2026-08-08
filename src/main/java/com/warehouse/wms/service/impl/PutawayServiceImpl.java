@@ -63,102 +63,112 @@ public class PutawayServiceImpl implements PutawayService {
     private static final String CONFIRMATION_PREFIX = "PCN";
     private static final String INVENTORY_PREFIX = "INV";
 
-    @Override
-    public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
-        log.info("Initiating putaway for GRN: {}", request.getGrnNumber());
+ @Override
+public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
+    log.info("Initiating putaway for GRN: {}", request.getGrnNumber());
 
+    // Create putaway task
+    PutawayTask task = PutawayTask.builder()
+            .taskNumber(generateTaskNumber())
+            .grnNumber(request.getGrnNumber())
+            .warehouseId(request.getWarehouseId())
+            .receivingArea(request.getReceivingArea())
+            .assignedTo(request.getAssignedTo())
+            .assignedAt(request.getAssignedTo() != null ? LocalDateTime.now() : null)
+            .createdBy(request.getCreatedBy())
+            .status(PutawayStatus.PENDING)
+            .stage(PutawayStage.INITIATED)
+            .build();
+
+    int totalQuantity = 0;
+
+    // Process each line
+    for (PutawayInitiateRequest.PutawayLineRequest lineRequest : request.getLines()) {
+        // Suggest location
+        LocationSuggestionResponse suggestion = suggestLocation(
+            lineRequest.getItemCode(), 
+            lineRequest.getQuantity(), 
+            request.getWarehouseId()
+        );
+
+        // Build line with proper fields
+        PutawayLine.PutawayLineBuilder lineBuilder = PutawayLine.builder()
+                .lineNumber(task.getLines().size() + 1)
+                .itemCode(lineRequest.getItemCode())
+                .itemName(lineRequest.getItemName())
+                .uom(lineRequest.getUom())
+                .quantity(lineRequest.getQuantity())
+                .putawayQuantity(0)
+                .remainingQuantity(lineRequest.getQuantity())
+                .batchNumber(lineRequest.getBatchNumber())
+                .serialNumber(lineRequest.getSerialNumber())
+                .remarks(lineRequest.getRemarks())
+                .status(PutawayLineStatus.PENDING);
+
+        // Declare suggested outside the if block so it's accessible later
+        LocationSuggestionResponse.SuggestedLocation suggested = null;
+        String fullPath = null;
         
-        
-        
-     
-        
-        
-//        // Check if putaway already exists
-//        Optional<PutawayTask> existingTask = putawayTaskRepository.findByGrnNumber(request.getGrnNumber());
-//        if (existingTask.isPresent()) {
-//            throw new InvalidOperationException("Putaway task already exists for GRN: " + request.getGrnNumber());
-//        }
-
-        // Create putaway task
-        PutawayTask task = PutawayTask.builder()
-                .taskNumber(generateTaskNumber())
-                .grnNumber(request.getGrnNumber())
-                .warehouseId(request.getWarehouseId())
-                .receivingArea(request.getReceivingArea())
-                .assignedTo(request.getAssignedTo())
-                .assignedAt(request.getAssignedTo() != null ? LocalDateTime.now() : null)
-                .createdBy(request.getCreatedBy())
-                .status(PutawayStatus.PENDING)
-                .stage(PutawayStage.INITIATED)
-                .build();
-
-        int totalQuantity = 0;
-
-        // Process each line
-        for (PutawayInitiateRequest.PutawayLineRequest lineRequest : request.getLines()) {
-            // Suggest location
-            LocationSuggestionResponse suggestion = suggestLocation(
-                lineRequest.getItemCode(), 
-                lineRequest.getQuantity(), 
-                request.getWarehouseId()
-            );
-
-            // ✅ FIX: Build line with proper fields
-            PutawayLine.PutawayLineBuilder lineBuilder = PutawayLine.builder()
-                    .lineNumber(task.getLines().size() + 1)
-                    .itemCode(lineRequest.getItemCode())
-                    .itemName(lineRequest.getItemName())
-                    .uom(lineRequest.getUom())
-                    .quantity(lineRequest.getQuantity())
-                    .putawayQuantity(0)
-                    .remainingQuantity(lineRequest.getQuantity())
-                    .batchNumber(lineRequest.getBatchNumber())
-                    .serialNumber(lineRequest.getSerialNumber())
-                    .remarks(lineRequest.getRemarks())
-                    .status(PutawayLineStatus.PENDING);
-
-            // ✅ FIX: Set InboundLine if inboundLineId is provided
-            if (lineRequest.getInboundLineId() != null) {
-                InboundLine inboundLine = inboundLineRepository.findById(lineRequest.getInboundLineId())
-                        .orElse(null);
-                if (inboundLine != null) {
-                    lineBuilder.inboundLine(inboundLine);
-                }
-                inboundLine.setTaskAssinged(true);
-                
-                inboundLineRepository.save(inboundLine);
-
-            }
-
-            // Set suggested location
-            if (suggestion != null && suggestion.getSuggestedLocations() != null 
-                && !suggestion.getSuggestedLocations().isEmpty()) {
-                LocationSuggestionResponse.SuggestedLocation suggested = 
-                    suggestion.getSuggestedLocations().get(0);
-                lineBuilder.suggestedWarehouse(suggested.getWarehouseId())
-                           .suggestedZone(suggested.getZone())
-                           .suggestedAisle(suggested.getAisle())
-                           .suggestedRack(suggested.getRack())
-                           .suggestedShelf(suggested.getShelf())
-                           .suggestedBin(suggested.getBinId());
-            }
-
-            PutawayLine line = lineBuilder.build();
-            task.addLine(line);
-            totalQuantity += lineRequest.getQuantity();
+        // Set suggested location
+        if (suggestion != null && suggestion.getSuggestedLocations() != null 
+            && !suggestion.getSuggestedLocations().isEmpty()) {
+            
+            suggested = suggestion.getSuggestedLocations().get(0);
+            
+            fullPath = suggested.getWarehouseId() + "/" + 
+                      suggested.getZone() + "/" + 
+                      suggested.getAisle() + "/" + 
+                      suggested.getRack() + "/" + 
+                      suggested.getShelf() + "/" + 
+                      suggested.getLevel();
+            
+            lineBuilder.suggestedWarehouse(suggested.getWarehouseId())
+                       .suggestedZone(suggested.getZone())
+                       .suggestedAisle(suggested.getAisle())
+                       .suggestedRack(suggested.getRack())
+                       .suggestedShelf(suggested.getShelf())
+                       .suggestedLevel(suggested.getLevel())
+                       .suggestedBin(suggested.getBinId())
+                       .fullpath(fullPath);
         }
 
-        task.setTotalQuantity(totalQuantity);
-        task.setPendingQuantity(totalQuantity);
+        // Build the line first so we have the fullpath
+        PutawayLine line = lineBuilder.build();
+        
 
-        PutawayTask savedTask = putawayTaskRepository.save(task);
-        log.info("✅ Putaway task created: {}", savedTask.getTaskNumber());
+        // Set InboundLine if inboundLineId is provided
+        if (lineRequest.getInboundLineId() != null) {
+            InboundLine inboundLine = inboundLineRepository.findById(lineRequest.getInboundLineId())
+                    .orElse(null);
+            if (inboundLine != null) {
+                line.setInboundLine(inboundLine);
+                inboundLine.setTaskAssinged(true);
+                lineBuilder.actualWarehouse(inboundLine.getWarehouseId());
+                lineBuilder.actualZone(inboundLine.getZone());
+                lineBuilder.actualAisle(inboundLine.getAisle());
+                lineBuilder.actualRack(inboundLine.getRack());
+                lineBuilder.actualLevel(inboundLine.getLevel());
+                lineBuilder.actualBin(inboundLine.getBinId());
 
-        // Generate QR Codes for the task
-        generateQRCodesForTask(savedTask);
+                inboundLineRepository.save(inboundLine);
+            }
+        }
 
-        return putawayTaskMapper.toResponse(savedTask);
+        task.addLine(line);
+        totalQuantity += lineRequest.getQuantity();
     }
+
+    task.setTotalQuantity(totalQuantity);
+    task.setPendingQuantity(totalQuantity);
+
+    PutawayTask savedTask = putawayTaskRepository.save(task);
+    log.info("✅ Putaway task created: {}", savedTask.getTaskNumber());
+
+    // Generate QR Codes for the task
+    generateQRCodesForTask(savedTask);
+
+    return putawayTaskMapper.toResponse(savedTask);
+}
 
     @Override
     public PutawayTaskResponse executePutawayStage(PutawayExecuteRequest request) {

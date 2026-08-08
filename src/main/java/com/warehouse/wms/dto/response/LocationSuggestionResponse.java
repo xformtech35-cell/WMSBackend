@@ -39,6 +39,8 @@ public class LocationSuggestionResponse {
         private String aisle;
         private String rack;
         private String shelf;
+        private String level;
+
         private Integer capacity;
         private Integer availableCapacity;
         private Integer usedCapacity;
