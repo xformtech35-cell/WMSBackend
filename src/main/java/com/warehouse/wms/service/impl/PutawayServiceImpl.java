@@ -1,6 +1,7 @@
 // ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
 package com.warehouse.wms.service.impl;
 
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,7 @@ import com.warehouse.wms.dto.request.QRCodeGenerateRequest;
 import com.warehouse.wms.dto.response.LocationSuggestionResponse;
 import com.warehouse.wms.dto.response.PutawayTaskResponse;
 import com.warehouse.wms.dto.response.QRCodeResponse;
+import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.BinLocation;
 import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.InventoryStock;
@@ -33,6 +35,7 @@ import com.warehouse.wms.exception.InvalidOperationException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.PutawayTaskMapper;
 import com.warehouse.wms.repository.BinLocationRepository;
+import com.warehouse.wms.repository.BinRepository;
 import com.warehouse.wms.repository.InboundLineRepository;
 import com.warehouse.wms.repository.InventoryStockRepository;
 import com.warehouse.wms.repository.PutawayConfirmationRepository;
@@ -49,6 +52,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Transactional
 public class PutawayServiceImpl implements PutawayService {
+
+    private final BinRepository binRepository;
 
     private final PutawayTaskRepository putawayTaskRepository;
     private final PutawayLineRepository putawayLineRepository;
@@ -105,34 +110,51 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
                 .remarks(lineRequest.getRemarks())
                 .status(PutawayLineStatus.PENDING);
 
-        // Declare suggested outside the if block so it's accessible later
-        LocationSuggestionResponse.SuggestedLocation suggested = null;
-        String fullPath = null;
-        
-        // Set suggested location
-        if (suggestion != null && suggestion.getSuggestedLocations() != null 
-            && !suggestion.getSuggestedLocations().isEmpty()) {
-            
-            suggested = suggestion.getSuggestedLocations().get(0);
-            
-            fullPath = suggested.getWarehouseId() + "/" + 
-                      suggested.getZone() + "/" + 
-                      suggested.getAisle() + "/" + 
-                      suggested.getRack() + "/" + 
-                      suggested.getShelf() + "/" + 
-                      suggested.getLevel();
-            
-            lineBuilder.suggestedWarehouse(suggested.getWarehouseId())
-                       .suggestedZone(suggested.getZone())
-                       .suggestedAisle(suggested.getAisle())
-                       .suggestedRack(suggested.getRack())
-                       .suggestedShelf(suggested.getShelf())
-                       .suggestedLevel(suggested.getLevel())
-                       .suggestedBin(suggested.getBinId())
-                       .fullpath(fullPath);
-        }
+//        // Declare suggested outside the if block so it's accessible later
+//        LocationSuggestionResponse.SuggestedLocation suggested = null;
+//        String fullPath = null;
+//        
+//        // Set suggested location
+//        if (suggestion != null && suggestion.getSuggestedLocations() != null 
+//            && !suggestion.getSuggestedLocations().isEmpty()) {
+//            
+//            suggested = suggestion.getSuggestedLocations().get(0);
+//            
+//            fullPath = suggested.getWarehouseId() + "/" + 
+//                      suggested.getZone() + "/" + 
+//                      suggested.getAisle() + "/" + 
+//                      suggested.getRack() + "/" + 
+//                      suggested.getShelf() + "/" + 
+//                      suggested.getLevel();
+//            
+//            lineBuilder.suggestedWarehouse(suggested.getWarehouseId())
+//                       .suggestedZone(suggested.getZone())
+//                       .suggestedAisle(suggested.getAisle())
+//                       .suggestedRack(suggested.getRack())
+//                       .suggestedShelf(suggested.getShelf())
+//                       .suggestedLevel(suggested.getLevel())
+//                       .suggestedBin(suggested.getBinId())
+//                       .fullpath(fullPath);
+//        }
 
         // Build the line first so we have the fullpath
+        
+        InboundLine inboundLine1 = inboundLineRepository.findById(lineRequest.getInboundLineId())
+                .orElse(null);
+      
+            lineBuilder.suggestedWarehouse(inboundLine1.getWarehouseId());
+            lineBuilder.suggestedZone(inboundLine1.getZone());
+            lineBuilder.suggestedAisle(inboundLine1.getAisle());
+            lineBuilder.suggestedRack(inboundLine1.getRack());
+            lineBuilder.suggestedLevel(inboundLine1.getLevel());
+            lineBuilder.suggestedBin(inboundLine1.getBinId());
+            lineBuilder.fullpath(inboundLine1.getFullpath());
+            
+
+        
+        
+        
+        
         PutawayLine line = lineBuilder.build();
         
 
@@ -194,31 +216,81 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
                 task.setStage(PutawayStage.TRANSPORTED);
                 task.setTransportedAt(now);
                 break;
+                
+       case PLACED:
+    // Verify bin barcode is provided
+    if (request.getBinBarcode() == null || request.getBinBarcode().trim().isEmpty()) {
+        throw new InvalidOperationException("Bin barcode is required for PLACED stage");
+    }
+    
+  
+    
+    // Fetch the bin for validation
+    Bin bin = binRepository.findByBarcode(request.getBinBarcode())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Bin not found for barcode: " + request.getBinBarcode()));
+    
+    // Find the specific line by ID
+    PutawayLine targetLine = null;
+    for (PutawayLine line : task.getLines()) {
+        if (line.getId().equals(request.getPutawayLineId())) {
+            targetLine = line;
+            break;
+        }
+    }
+    
+    if (targetLine == null) {
+        throw new ResourceNotFoundException(
+            "Putaway line not found with ID: " + request.getPutawayLineId());
+    }
+    
+    // Check if the line is already placed
+    if (targetLine.getStatus() == PutawayLineStatus.PLACED || 
+        targetLine.getStatus() == PutawayLineStatus.COMPLETED) {
+        throw new InvalidOperationException(
+            "Line " + targetLine.getLineNumber() + " is already " + targetLine.getStatus());
+    }
+    
+  
+    
+    // Update ONLY the specific line with its OWN suggested location
+    targetLine.setActualWarehouse(targetLine.getSuggestedWarehouse());
+    targetLine.setActualZone(targetLine.getSuggestedZone());
+    targetLine.setActualAisle(targetLine.getSuggestedAisle());
+    targetLine.setActualRack(targetLine.getSuggestedRack());
+    targetLine.setActualShelf(targetLine.getSuggestedShelf());
+    targetLine.setActualLevel(targetLine.getSuggestedLevel());
+    targetLine.setActualBin(targetLine.getSuggestedBin());
+    targetLine.setBinBarcode(bin.getBarcode());
+    
+    // Update line status to PLACED
+    targetLine.setStatus(PutawayLineStatus.PLACED);
+    
+    // Update task
+   // task.setStage(PutawayStage.PLACED);
+    task.setPlacedAt(now);
+    
+    // Check if ALL lines are placed
+    boolean allPlaced = true;
+    for (PutawayLine line : task.getLines()) {
+        if (line.getStatus() != PutawayLineStatus.PLACED && 
+            line.getStatus() != PutawayLineStatus.COMPLETED) {
+            allPlaced = false;
+            break;
+        }
+    }
+    
+    if (allPlaced) {
+        task.setStatus(PutawayStatus.COMPLETED);
+        task.setStage(PutawayStage.COMPLETED);
+        task.setCompletedAt(now);
+        log.info("All lines placed. Task {} completed", task.getTaskNumber());
+    }
+    
+    log.info("Line {} (ID: {}) placed at bin: {}", 
+        targetLine.getLineNumber(), targetLine.getId(), bin.getBarcode());
+    break;
             case SCANNED:
-                // Verify bin scan
-                if (request.getBinBarcode() != null) {
-                    BinLocation bin = binLocationRepository.findByBinBarcode(request.getBinBarcode())
-                            .orElseThrow(() -> new ResourceNotFoundException("Bin not found for barcode: " + request.getBinBarcode()));
-                    
-                    // Update task with scanned location
-                    task.setStage(PutawayStage.SCANNED);
-                    task.setScannedAt(now);
-                    
-                    // Update line with actual bin
-                    for (PutawayLine line : task.getLines()) {
-                        if (line.getStatus() == PutawayLineStatus.PENDING) {
-                            line.setActualWarehouse(bin.getWarehouseId());
-                            line.setActualZone(bin.getZone());
-                            line.setActualAisle(bin.getAisle());
-                            line.setActualRack(bin.getRack());
-                            line.setActualShelf(bin.getShelf());
-                            line.setActualBin(bin.getBinId());
-                            line.setBinBarcode(bin.getBinBarcode());
-                        }
-                    }
-                }
-                break;
-            case PLACED:
                 task.setStage(PutawayStage.PLACED);
                 task.setPlacedAt(now);
                 break;

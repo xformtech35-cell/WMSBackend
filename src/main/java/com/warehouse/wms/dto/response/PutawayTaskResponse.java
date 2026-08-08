@@ -64,6 +64,7 @@ public class PutawayTaskResponse {
         private String suggestedRack;
         private String suggestedShelf;
         private String suggestedBin;
+        private String fullpath;
         private String actualWarehouse;
         private String actualZone;
         private String actualAisle;

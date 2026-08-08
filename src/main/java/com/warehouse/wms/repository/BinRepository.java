@@ -2,6 +2,7 @@
 package com.warehouse.wms.repository;
 
 import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.BinLocation;
 import com.warehouse.wms.entity.Bin.BinStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,8 @@ public interface BinRepository extends JpaRepository<Bin, Long> {
     // ====== Basic Queries ======
     
     Optional<Bin> findByBarcode(String barcode);
+    
+
     
     List<Bin> findByRackId(Long rackId);
     

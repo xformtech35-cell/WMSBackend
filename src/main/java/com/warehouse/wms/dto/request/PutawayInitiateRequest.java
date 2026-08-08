@@ -45,6 +45,8 @@ public class PutawayInitiateRequest {
         private String itemName;
 
         private String uom;
+        
+        
 
         @NotNull(message = "Quantity is required")
         private Integer quantity;

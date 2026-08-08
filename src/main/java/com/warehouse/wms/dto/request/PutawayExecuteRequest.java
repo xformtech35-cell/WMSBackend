@@ -19,6 +19,9 @@ public class PutawayExecuteRequest {
     private String stage; // PICKED, TRANSPORTED, SCANNED, PLACED
 
     private String binId;
+    
+    private long putawayLineId;
+
 
     private String binBarcode;
 

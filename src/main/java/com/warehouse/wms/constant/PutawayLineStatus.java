@@ -6,5 +6,7 @@ public enum PutawayLineStatus {
     IN_PROGRESS,
     COMPLETED,
     CONFIRMED,
-    CANCELLED
+    CANCELLED,
+    SCANNED,
+    PLACED
 }
