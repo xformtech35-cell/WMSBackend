@@ -199,7 +199,7 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
         PutawayTask task = putawayTaskRepository.findByTaskNumber(request.getTaskNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + request.getTaskNumber()));
 
-        if (task.getStatus() == PutawayStatus.COMPLETED || task.getStatus() == PutawayStatus.CONFIRMED) {
+        if (task.getStatus() == PutawayStatus.COMPLETED ) {
             throw new InvalidOperationException("Task is already completed/confirmed");
         }
 
@@ -246,7 +246,7 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
     
     // Check if the line is already placed
     if (targetLine.getStatus() == PutawayLineStatus.PLACED || 
-        targetLine.getStatus() == PutawayLineStatus.COMPLETED) {
+        targetLine.getStatus() == PutawayLineStatus.CONFIRMED) {
         throw new InvalidOperationException(
             "Line " + targetLine.getLineNumber() + " is already " + targetLine.getStatus());
     }
@@ -274,15 +274,15 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
     boolean allPlaced = true;
     for (PutawayLine line : task.getLines()) {
         if (line.getStatus() != PutawayLineStatus.PLACED && 
-            line.getStatus() != PutawayLineStatus.COMPLETED) {
+            line.getStatus() != PutawayLineStatus.CONFIRMED) {
             allPlaced = false;
             break;
         }
     }
     
     if (allPlaced) {
-        task.setStatus(PutawayStatus.COMPLETED);
-        task.setStage(PutawayStage.COMPLETED);
+        task.setStatus(PutawayStatus.CONFIRMED);
+        task.setStage(PutawayStage.CONFIRMED);
         task.setCompletedAt(now);
         log.info("All lines placed. Task {} completed", task.getTaskNumber());
     }
@@ -302,27 +302,50 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
         return putawayTaskMapper.toResponse(updatedTask);
     }
 
-    @Override
+ @Override
     @Transactional
     public PutawayTaskResponse confirmPutaway(PutawayConfirmRequest request) {
         log.info("Confirming putaway for task: {}", request.getTaskNumber());
 
+        // 1. Validate and get task
         PutawayTask task = putawayTaskRepository.findByTaskNumber(request.getTaskNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + request.getTaskNumber()));
 
-        if (task.getStatus() == PutawayStatus.CONFIRMED) {
-            throw new InvalidOperationException("Task already confirmed");
+        // Check if task is already completed
+        if (task.getStatus() == PutawayStatus.COMPLETED) {
+            throw new InvalidOperationException("Task already completed");
         }
 
-        // Process confirmation lines
+        // Check if task is cancelled
+        if (task.getStatus() == PutawayStatus.CANCELLED) {
+            throw new InvalidOperationException("Task is cancelled");
+        }
+
+        // 2. Process confirmation lines
         int confirmedQuantity = 0;
         for (PutawayConfirmRequest.PutawayConfirmLineRequest lineRequest : request.getLines()) {
             PutawayLine line = putawayLineRepository.findById(lineRequest.getLineId())
                     .orElseThrow(() -> new ResourceNotFoundException("Line not found: " + lineRequest.getLineId()));
 
+            // Get confirmed quantity (use line quantity if not provided)
             Integer qty = lineRequest.getConfirmedQuantity() != null ? 
                           lineRequest.getConfirmedQuantity() : line.getQuantity();
-            
+
+            // Validate quantity
+            if (qty > line.getQuantity()) {
+                throw new InvalidOperationException(
+                    String.format("Confirmed quantity (%d) exceeds line quantity (%d) for item: %s", 
+                        qty, line.getQuantity(), line.getItemCode())
+                );
+            }
+
+            if (qty <= 0) {
+                throw new InvalidOperationException(
+                    "Confirmed quantity must be greater than 0 for item: " + line.getItemCode()
+                );
+            }
+
+            // Update line
             line.setPutawayQuantity(qty);
             line.setRemainingQuantity(line.getQuantity() - qty);
             line.setStatus(PutawayLineStatus.COMPLETED);
@@ -337,32 +360,60 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
             putawayLineRepository.save(line);
         }
 
-        // Update task
+        // 3. Validate total quantity
+      
+
+        // 4. Update task header
         task.setPutawayQuantity(confirmedQuantity);
         task.setPendingQuantity(task.getTotalQuantity() - confirmedQuantity);
-        task.setStage(PutawayStage.CONFIRMED);
+        task.setStage(PutawayStage.COMPLETED);
+        task.setStatus(PutawayStatus.COMPLETED);
         task.setConfirmedAt(LocalDateTime.now());
+        task.setCompletedAt(LocalDateTime.now());
         task.setConfirmedBy(request.getConfirmedBy());
-        task.setStatus(PutawayStatus.CONFIRMED);
         task.setRemarks(request.getRemarks());
 
-        // Generate confirmation number
+        // 5. Generate confirmation number
         String confirmationNumber = generateConfirmationNumber();
         task.setConfirmationNumber(confirmationNumber);
 
-        // Create confirmation record
+        // 6. Create confirmation record
+        PutawayConfirmation confirmation = buildConfirmation(task, request, confirmationNumber, confirmedQuantity);
+        putawayConfirmationRepository.save(confirmation);
+
+        // 7. Save task
+        PutawayTask updatedTask = putawayTaskRepository.save(task);
+
+        // 8. Update inventory if verified
+        if (request.getIsVerified() != null && request.getIsVerified()) {
+            updateInventoryAfterPutaway(confirmationNumber);
+        }
+
+        // 9. Update QR Code status
+        updateQRCodeStatusForTask(task.getId());
+
+        log.info("✅ Putaway completed with confirmation number: {}", confirmationNumber);
+        return putawayTaskMapper.toResponse(updatedTask);
+    }
+
+    private PutawayConfirmation buildConfirmation(
+            PutawayTask task, 
+            PutawayConfirmRequest request, 
+            String confirmationNumber, 
+            Integer confirmedQuantity) {
+        
         PutawayConfirmation confirmation = PutawayConfirmation.builder()
                 .confirmationNumber(confirmationNumber)
                 .taskNumber(task.getTaskNumber())
                 .putawayTaskId(task.getId())
                 .grnNumber(task.getGrnNumber())
+                .warehouseId(task.getWarehouseId())
                 .confirmedBy(request.getConfirmedBy())
                 .confirmedAt(LocalDateTime.now())
                 .totalQuantity(task.getTotalQuantity())
                 .confirmedQuantity(confirmedQuantity)
-                .warehouseId(task.getWarehouseId())
-                .isVerified(request.getIsVerified())
-                .verifiedBy(request.getVerifiedBy())
+                .isVerified(request.getIsVerified() != null && request.getIsVerified())
+                .verifiedBy(request.getIsVerified() ? request.getVerifiedBy() : null)
                 .verifiedAt(request.getIsVerified() ? LocalDateTime.now() : null)
                 .inventoryUpdated(false)
                 .remarks(request.getRemarks())
@@ -381,22 +432,8 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
             }
         }
 
-        putawayConfirmationRepository.save(confirmation);
-
-        PutawayTask updatedTask = putawayTaskRepository.save(task);
-
-        // Update inventory
-        if (request.getIsVerified()) {
-            updateInventoryAfterPutaway(confirmationNumber);
-        }
-
-        // Update QR Code status
-        updateQRCodeStatusForTask(task.getId());
-
-        log.info("✅ Putaway confirmed with number: {}", confirmationNumber);
-        return putawayTaskMapper.toResponse(updatedTask);
+        return confirmation;
     }
-
 @Override
 @Transactional
 public void updateInventoryAfterPutaway(String confirmationNumber) {
