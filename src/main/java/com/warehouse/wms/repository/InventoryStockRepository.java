@@ -1,86 +1,78 @@
-// ====== FILE: src/main/java/com/warehouse/wms/repository/InventoryStockRepository.java ======
 package com.warehouse.wms.repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
+import com.warehouse.wms.entity.InventoryStock;
+import com.warehouse.wms.constant.InventoryStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.warehouse.wms.constant.InventoryStatus;
-import com.warehouse.wms.entity.InventoryStock;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface InventoryStockRepository extends JpaRepository<InventoryStock, Long> {
-
+public interface InventoryStockRepository extends JpaRepository<InventoryStock, Long>, JpaSpecificationExecutor<InventoryStock> {
+    
     Optional<InventoryStock> findByInventoryNumber(String inventoryNumber);
-
+    
     Optional<InventoryStock> findByBinIdAndItemCode(String binId, String itemCode);
-
-    List<InventoryStock> findByWarehouseId(String warehouseId);
-
+    
+    Optional<InventoryStock> findByItemCodeAndBinId(String itemCode, String binId);
+    
+    Optional<InventoryStock> findByItemCodeAndBinIdAndBatchNumber(String itemCode, String binId, String batchNumber);
+    
     List<InventoryStock> findByItemCode(String itemCode);
-
+    
     List<InventoryStock> findByBinId(String binId);
-
-    List<InventoryStock> findByItemCodeAndBinId(String itemCode, String binId);
-
-    List<InventoryStock> findByStatus(InventoryStatus status);
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity > 0 AND i.itemCode = :itemCode")
-    List<InventoryStock> findAvailableStockByItem(@Param("itemCode") String itemCode);
-
+    
+    List<InventoryStock> findByWarehouseId(String warehouseId);
+    
+    List<InventoryStock> findByGrnNumber(String grnNumber);
+    
+    List<InventoryStock> findByPutawayTaskNumber(String putawayTaskNumber);
+    
+    List<InventoryStock> findByConfirmationNumber(String confirmationNumber);
+    
+    @Query("SELECT i FROM InventoryStock i WHERE i.itemCode = :itemCode AND i.binId = :binId AND i.status = :status")
+    Optional<InventoryStock> findStockByItemAndBinAndStatus(@Param("itemCode") String itemCode, 
+                                                             @Param("binId") String binId, 
+                                                             @Param("status") InventoryStatus status);
+    
+    @Query("SELECT i FROM InventoryStock i WHERE i.warehouseId = :warehouseId AND i.binId = :binId")
+    List<InventoryStock> findByWarehouseAndBin(@Param("warehouseId") String warehouseId, 
+                                                @Param("binId") String binId);
+    
+    @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity > 0 AND i.status = 'ACTIVE'")
+    List<InventoryStock> findAvailableStock();
+    
+    @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.itemCode = :itemCode")
+    Integer getTotalQuantityByItemCode(@Param("itemCode") String itemCode);
+    
     @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.itemCode = :itemCode")
-    Integer getTotalAvailableQuantityByItem(@Param("itemCode") String itemCode);
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.itemCode = :itemCode AND i.availableQuantity > 0 " +
-           "ORDER BY i.mfgDate ASC")
-    List<InventoryStock> findFIFOStock(@Param("itemCode") String itemCode);
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.itemCode = :itemCode AND i.availableQuantity > 0 " +
-           "ORDER BY i.expiryDate ASC")
-    List<InventoryStock> findFEFOStock(@Param("itemCode") String itemCode);
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.itemCode = :itemCode AND i.availableQuantity > 0 " +
-           "ORDER BY i.updatedAt DESC")
-    List<InventoryStock> findLIFOStock(@Param("itemCode") String itemCode);
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.expiryDate < CURRENT_TIMESTAMP AND i.availableQuantity > 0")
-    List<InventoryStock> findExpiredStock();
-
-    @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity < :threshold")
-    List<InventoryStock> findLowStock(@Param("threshold") Integer threshold);
-
+    Integer getTotalAvailableQuantityByItemCode(@Param("itemCode") String itemCode);
+    
+    // REMOVE this method if minQuantity doesn't exist
+    // @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity < i.minQuantity")
+    // List<InventoryStock> findLowStockItems();
+    
+//    @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity < i.minQuantity")
+//    List<InventoryStock> findLowStockItems();
+    
+    @Query("SELECT i FROM InventoryStock i WHERE i.availableQuantity < 10 AND i.status = 'ACTIVE'")
+    List<InventoryStock> findLowStockItems();
+    
     @Modifying
     @Transactional
-    @Query("UPDATE InventoryStock i SET i.availableQuantity = i.availableQuantity + :quantity, " +
-           "i.lastUpdatedDate = :updatedDate WHERE i.id = :id")
-    int addStockQuantity(@Param("id") Long id, @Param("quantity") Integer quantity, 
-                         @Param("updatedDate") LocalDateTime updatedDate);
-
+    @Query("UPDATE InventoryStock i SET i.status = :status WHERE i.id = :id")
+    int updateStatus(@Param("id") Long id, @Param("status") InventoryStatus status);
+    
     @Modifying
     @Transactional
-    @Query("UPDATE InventoryStock i SET i.availableQuantity = i.availableQuantity - :quantity, " +
-           "i.lastUpdatedDate = :updatedDate WHERE i.id = :id AND i.availableQuantity >= :quantity")
-    int deductStockQuantity(@Param("id") Long id, @Param("quantity") Integer quantity,
-                            @Param("updatedDate") LocalDateTime updatedDate);
-
-    @Modifying
-    @Transactional
-    @Query("UPDATE InventoryStock i SET i.reservedQuantity = i.reservedQuantity + :quantity, " +
-           "i.availableQuantity = i.availableQuantity - :quantity WHERE i.id = :id " +
-           "AND i.availableQuantity >= :quantity")
-    int reserveStock(@Param("id") Long id, @Param("quantity") Integer quantity);
-
-    @Modifying
-    @Transactional
-    @Query("UPDATE InventoryStock i SET i.reservedQuantity = i.reservedQuantity - :quantity, " +
-           "i.availableQuantity = i.availableQuantity + :quantity WHERE i.id = :id " +
-           "AND i.reservedQuantity >= :quantity")
-    int unreserveStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+    @Query("UPDATE InventoryStock i SET i.isFrozen = :frozen WHERE i.id = :id")
+    int updateFrozenStatus(@Param("id") Long id, @Param("frozen") Boolean frozen);
 }

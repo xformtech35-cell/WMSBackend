@@ -1,4 +1,4 @@
-package com.warehouse.wms.dto;
+package com.warehouse.wms.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

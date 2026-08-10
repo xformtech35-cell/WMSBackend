@@ -27,15 +27,15 @@ public class FulfillmentController {
         long ordersCreated = salesOrderRepository.countByStatus("CREATED");
         long ordersReserved = salesOrderRepository.countByStatus("RESERVED");
         long ordersPacked = salesOrderRepository.countByStatus("PACKED");
-        long inventoryReserved = inventoryRepository.countByState(com.warehouse.wms.entity.Inventory.InventoryState.RESERVED);
-        long inventoryPacked = inventoryRepository.countByState(com.warehouse.wms.entity.Inventory.InventoryState.PACKED);
+//        long inventoryReserved = inventoryRepository.countByState(com.warehouse.wms.entity.Inventory.InventoryState.RESERVED);
+//        long inventoryPacked = inventoryRepository.countByState(com.warehouse.wms.entity.Inventory.InventoryState.PACKED);
 
         FulfillmentPendingSummary summary = FulfillmentPendingSummary.builder()
                 .pendingPickTasks(pendingPickTasks)
                 .ordersCreatedOrReserved(ordersCreated + ordersReserved)
                 .ordersPackedNotShipped(ordersPacked)
-                .inventoryReserved(inventoryReserved)
-                .inventoryPacked(inventoryPacked)
+//                .inventoryReserved(inventoryReserved)
+//                .inventoryPacked(inventoryPacked)
                 .build();
 
         return ResponseEntity.ok(summary);

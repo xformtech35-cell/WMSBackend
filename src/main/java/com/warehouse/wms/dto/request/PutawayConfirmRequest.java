@@ -21,7 +21,6 @@ public class PutawayConfirmRequest {
     @NotBlank(message = "Task number is required")
     private String taskNumber;
 
-    @NotBlank(message = "Confirmed by is required")
     private String confirmedBy;
 
     @NotNull(message = "Confirmed quantity is required")

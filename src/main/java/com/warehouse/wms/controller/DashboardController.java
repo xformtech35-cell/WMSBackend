@@ -102,27 +102,27 @@ public class DashboardController {
         return result;
     }
 
-    @GetMapping("/charts/shipments")
-    public List<Map<String, Object>> shipmentsChart(@RequestParam(defaultValue = "7") int days) {
-        LocalDateTime from = LocalDate.now().minusDays(days - 1L).atStartOfDay();
-        List<Inventory> shipped = inventoryRepository.findByStateAndUpdatedAtBetween(
-                Inventory.InventoryState.SHIPPED, from, LocalDateTime.now());
-
-        Map<String, Long> byDay = new LinkedHashMap<>();
-        shipped.forEach(i -> {
-            String day = i.getUpdatedAt().toLocalDate().toString();
-            byDay.merge(day, 1L, Long::sum);
-        });
-
-        // Always fill all N days so chart always shows a full timeline
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (int i = days - 1; i >= 0; i--) {
-            String dateStr = LocalDate.now().minusDays(i).toString();
-            Map<String, Object> m = new HashMap<>();
-            m.put("date", dateStr);
-            m.put("count", byDay.getOrDefault(dateStr, 0L));
-            result.add(m);
-        }
-        return result;
-    }
+//    @GetMapping("/charts/shipments")
+//    public List<Map<String, Object>> shipmentsChart(@RequestParam(defaultValue = "7") int days) {
+//        LocalDateTime from = LocalDate.now().minusDays(days - 1L).atStartOfDay();
+//        List<Inventory> shipped = inventoryRepository.findByStateAndUpdatedAtBetween(
+//                Inventory.InventoryState.SHIPPED, from, LocalDateTime.now());
+//
+//        Map<String, Long> byDay = new LinkedHashMap<>();
+//        shipped.forEach(i -> {
+//            String day = i.getUpdatedAt().toLocalDate().toString();
+//            byDay.merge(day, 1L, Long::sum);
+//        });
+//
+//        // Always fill all N days so chart always shows a full timeline
+//        List<Map<String, Object>> result = new ArrayList<>();
+//        for (int i = days - 1; i >= 0; i--) {
+//            String dateStr = LocalDate.now().minusDays(i).toString();
+//            Map<String, Object> m = new HashMap<>();
+//            m.put("date", dateStr);
+//            m.put("count", byDay.getOrDefault(dateStr, 0L));
+//            result.add(m);
+//        }
+//        return result;
+//    }
 }

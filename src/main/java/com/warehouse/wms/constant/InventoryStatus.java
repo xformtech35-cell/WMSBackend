@@ -8,5 +8,10 @@ public enum InventoryStatus {
     ON_HOLD,
     DAMAGED,
     EXPIRED,
-    DISPOSED
+    DISPOSED,
+    IN_TRANSIT,
+    FROZEN
+    
+    
 }
+

@@ -206,7 +206,7 @@ public class ReturnsService {
         stockBatchRepository.save(targetBatch);
 
         // Create individual inventory records
-        long existingCount = inventoryRepository.countBySkuIdAndBatchNo(sku.getId(), batchNoFinal);
+        //long existingCount = inventoryRepository.countBySkuIdAndBatchNo(sku.getId(), batchNoFinal);
         for (int i = 1; i <= returnedQty; i++) {
             Inventory inv = new Inventory();
             inv.setSku(sku);
@@ -214,7 +214,7 @@ public class ReturnsService {
             inv.setBatchNo(batchNoFinal);
             inv.setQuantity(1);
             inv.setState(Inventory.InventoryState.AVAILABLE);
-            inv.setSerialNo(sku.getSkuCode() + "-" + batchNoFinal + "-R-" + String.format("%05d", existingCount + i));
+            //inv.setSerialNo(sku.getSkuCode() + "-" + batchNoFinal + "-R-" + String.format("%05d", existingCount + i));
             inv.setManufactureDate(mfgFinal);
             inv.setExpiryDate(expFinal);
             Inventory savedInv = inventoryRepository.save(inv);

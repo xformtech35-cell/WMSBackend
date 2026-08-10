@@ -69,22 +69,22 @@ public class CycleCountService {
         
         // Populate expected lines from live Inventory balances
         List<Inventory> activeInventory;
-        if (task.getBin() != null) {
-            activeInventory = inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, task.getBin().getBarcode());
-        } else if (task.getZone() != null) {
-            activeInventory = new ArrayList<>();
-            List<Bin> bins = binRepository.findAll().stream()
-                    .filter(b -> b.getRack() != null && b.getRack().getAisle() != null && b.getRack().getAisle().getZone() != null 
-                            && b.getRack().getAisle().getZone().getId().equals(task.getZone().getId()))
-                    .toList();
-            for (Bin bin : bins) {
-                activeInventory.addAll(inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, bin.getBarcode()));
-            }
-        } else {
+//        if (task.getBin() != null) {
+//            activeInventory = inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, task.getBin().getBarcode());
+//        } else if (task.getZone() != null) {
+//            activeInventory = new ArrayList<>();
+//            List<Bin> bins = binRepository.findAll().stream()
+//                    .filter(b -> b.getRack() != null && b.getRack().getAisle() != null && b.getRack().getAisle().getZone() != null 
+//                            && b.getRack().getAisle().getZone().getId().equals(task.getZone().getId()))
+//                    .toList();
+//            for (Bin bin : bins) {
+//                activeInventory.addAll(inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, bin.getBarcode()));
+//            }
+//        } else {
             activeInventory = inventoryRepository.findAll().stream()
                     .filter(i -> i.getState() == Inventory.InventoryState.AVAILABLE)
                     .toList();
-        }
+//        }
 
         if (task.getSku() != null) {
             activeInventory = activeInventory.stream()
@@ -280,32 +280,32 @@ public class CycleCountService {
                     });
             batch.setQuantity(batch.getQuantity() + variance);
             stockBatchRepository.save(batch);
-
-        } else {
-            // Deduct items from inventory (remove 'AVAILABLE' items first)
-            int itemsToRemove = Math.abs(variance);
-            List<Inventory> items = inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, bin.getBarcode()).stream()
-                    .filter(i -> i.getSku().getId().equals(line.getSku().getId()) && Objects.equals(i.getBatchNo(), line.getBatchNumber()))
-                    .limit(itemsToRemove)
-                    .toList();
-
-            for (Inventory inv : items) {
-                inventoryRepository.delete(inv);
-            }
-
-            // Subtract batch volume/weight
-            int actualRemoved = items.size();
-            bin.setOccupiedVolumeCm3(bin.getOccupiedVolumeCm3().subtract(volPerItem.multiply(BigDecimal.valueOf(actualRemoved))).max(BigDecimal.ZERO));
-            bin.setOccupiedWeightG(bin.getOccupiedWeightG().subtract(wtPerItem.multiply(BigDecimal.valueOf(actualRemoved))).max(BigDecimal.ZERO));
-            binRepository.save(bin);
-
-            // Deduct StockBatch quantity
-            stockBatchRepository.findBySkuIdAndBinIdAndBatchNumber(line.getSku().getId(), bin.getId(), line.getBatchNumber())
-                    .ifPresent(b -> {
-                        b.setQuantity(Math.max(0, b.getQuantity() - actualRemoved));
-                        stockBatchRepository.save(b);
-                    });
         }
+//        } else {
+//            // Deduct items from inventory (remove 'AVAILABLE' items first)
+//            int itemsToRemove = Math.abs(variance);
+//            List<Inventory> items = inventoryRepository.findByStateAndBinBarcode(Inventory.InventoryState.AVAILABLE, bin.getBarcode()).stream()
+//                    .filter(i -> i.getSku().getId().equals(line.getSku().getId()) && Objects.equals(i.getBatchNo(), line.getBatchNumber()))
+//                    .limit(itemsToRemove)
+//                    .toList();
+//
+//            for (Inventory inv : items) {
+//                inventoryRepository.delete(inv);
+//            }
+//
+//            // Subtract batch volume/weight
+//            int actualRemoved = items.size();
+//            bin.setOccupiedVolumeCm3(bin.getOccupiedVolumeCm3().subtract(volPerItem.multiply(BigDecimal.valueOf(actualRemoved))).max(BigDecimal.ZERO));
+//            bin.setOccupiedWeightG(bin.getOccupiedWeightG().subtract(wtPerItem.multiply(BigDecimal.valueOf(actualRemoved))).max(BigDecimal.ZERO));
+//            binRepository.save(bin);
+//
+//            // Deduct StockBatch quantity
+//            stockBatchRepository.findBySkuIdAndBinIdAndBatchNumber(line.getSku().getId(), bin.getId(), line.getBatchNumber())
+//                    .ifPresent(b -> {
+//                        b.setQuantity(Math.max(0, b.getQuantity() - actualRemoved));
+//                        stockBatchRepository.save(b);
+//                    });
+//        }
         eventBroadcastService.broadcastInventoryChange(line.getSku().getId(), "ADJUSTED");
     }
 

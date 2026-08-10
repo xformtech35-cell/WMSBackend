@@ -54,15 +54,15 @@ public class SalesOrderService {
                     .orElseThrow(() -> new EntityNotFoundException("SKU not found: " + lineRequest.getSkuCode()));
 
             List<Inventory> available;
-            if (sku.getIsPerishable() != null && sku.getIsPerishable()) {
-                available = inventoryRepository.findAvailableBySkuFefo(sku.getId());
-            } else {
-                available = inventoryRepository.findAvailableBySkuFifo(sku.getId());
-            }
+//            if (sku.getIsPerishable() != null && sku.getIsPerishable()) {
+//                available = inventoryRepository.findAvailableBySkuFefo(sku.getId());
+//            } else {
+//                available = inventoryRepository.findAvailableBySkuFifo(sku.getId());
+//            }
             int requested = lineRequest.getQuantity();
-            if (available.size() < requested) {
-                throw new InsufficientStockException(sku.getId(), requested, available.size());
-            }
+//            if (available.size() < requested) {
+//                throw new InsufficientStockException(sku.getId(), requested, available.size());
+//            }
 
             SalesOrderLine line = new SalesOrderLine();
             line.setSalesOrder(order);
@@ -72,17 +72,17 @@ public class SalesOrderService {
             lines.add(line);
 
             for (int i = 0; i < requested; i++) {
-                Inventory inv = available.get(i);
-                inv.setState(Inventory.InventoryState.RESERVED);
-                inventoryRepository.save(inv);
+               // Inventory inv = available.get(i);
+             //   inv.setState(Inventory.InventoryState.RESERVED);
+               // inventoryRepository.save(inv);
 
                 PickTask task = new PickTask();
                 task.setSalesOrderLine(line);
-                task.setInventory(inv);
+               // task.setInventory(inv);
                 task.setQuantityToPick(1);
                 task.setStatus("PENDING");
-                task.setBinBarcode(inv.getBin() != null ? inv.getBin().getBarcode() : null);
-                task.setSkuCode(inv.getSku().getSkuCode());
+               // task.setBinBarcode(inv.getBin() != null ? inv.getBin().getBarcode() : null);
+             //   task.setSkuCode(inv.getSku().getSkuCode());
                 pickTaskRepository.save(task);
                 pickTaskIds.add(task.getId());
             }

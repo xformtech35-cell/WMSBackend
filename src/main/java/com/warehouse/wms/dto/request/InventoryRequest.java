@@ -1,5 +1,8 @@
-package com.warehouse.wms.dto;
+package com.warehouse.wms.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,23 +14,36 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InventoryResponse {
+public class InventoryRequest {
+    
     private Long id;
+    
     private Long purchaseRequestItemId;
+    
+    @NotNull(message = "SKU ID is required")
     private Long skuId;
-    private String skuCode;
-    private String skuName;
+    
     private Long binId;
-    private String binCode;
+    
     private Long goodsReceiptLineId;
+    
     private String batchNo;
+    
     private String serialNo;
+    
+    @NotBlank(message = "Item code is required")
     private String itemCode;
+    
+    @NotBlank(message = "Item name is required")
     private String itemName;
+    
+    @NotNull(message = "Quantity is required")
+    @Positive(message = "Quantity must be greater than 0")
     private Integer quantity;
+    
     private String state;
+    
     private LocalDateTime manufactureDate;
+    
     private LocalDateTime expiryDate;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

@@ -752,9 +752,6 @@ public class InboundService {
 
 // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
 
- // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
-
-
 
 @Transactional(readOnly = true)
 public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean barcodeGenerate, Boolean taskAssigned, Pageable pageable) {
@@ -807,6 +804,7 @@ public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean ba
     
     return filteredInbounds.map(this::convertToDTO);
 }
+
 
 }
 
