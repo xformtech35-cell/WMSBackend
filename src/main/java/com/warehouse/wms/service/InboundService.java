@@ -6,11 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.BeanUtils;
+
 
 import com.warehouse.wms.dto.CreateInboundDTO;
 import com.warehouse.wms.dto.GateEntryDTO;
@@ -745,51 +754,59 @@ public class InboundService {
 
  // ====== FILE: src/main/java/com/warehouse/wms/service/impl/InboundServiceImpl.java ======
 
-    @Transactional(readOnly = true)
-    public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean barcodeGenerate, Boolean taskAssigned, Pageable pageable) {
-        log.info("Fetching inbounds with GRN status APPROVED - search: {}, barcodeGenerate: {}, taskAssigned: {}, page: {}, size: {}", 
-                 search, barcodeGenerate, taskAssigned, pageable.getPageNumber(), pageable.getPageSize());
-        
-        String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
-        Page<Inbound> inbounds;
-        
-        // Check which filters are applied
-        boolean hasSearch = searchTerm != null;
-        boolean hasBarcodeGenerate = barcodeGenerate != null && barcodeGenerate;
-        boolean hasTaskAssigned = taskAssigned != null && taskAssigned;
-        
-        if (hasSearch && hasBarcodeGenerate && hasTaskAssigned) {
-            // All filters: search + ALL lines barcodeGenerate=true + ALL lines taskAssigned=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", searchTerm, pageable);
-        } else if (hasSearch && hasBarcodeGenerate) {
-            // Search + ALL lines barcodeGenerate=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", searchTerm, pageable);
-        } else if (hasSearch && hasTaskAssigned) {
-            // Search + ALL lines taskAssigned=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", searchTerm, pageable);
-        } else if (hasSearch) {
-            // Only search
-            inbounds = inboundRepository.findByGrnStatusAndSearch("APPROVED", searchTerm, pageable);
-        } else if (hasBarcodeGenerate && hasTaskAssigned) {
-            // ALL lines barcodeGenerate=true AND ALL lines taskAssigned=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", null, pageable);
-        } else if (hasBarcodeGenerate) {
-            // ALL lines barcodeGenerate=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", null, pageable);
-        } else if (hasTaskAssigned) {
-            // ALL lines taskAssigned=true
-            inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", null, pageable);
-        } else {
-            // No filters
-            inbounds = inboundRepository.findByGrnStatus("APPROVED", pageable);
-        }
-        
-        return inbounds.map(this::convertToDTO);
+
+
+@Transactional(readOnly = true)
+public Page<InboundDTO> getInboundsByGrnStatusApproved(String search, Boolean barcodeGenerate, Boolean taskAssigned, Pageable pageable) {
+    log.info("Fetching inbounds with GRN status APPROVED - search: {}, barcodeGenerate: {}, taskAssigned: {}, page: {}, size: {}", 
+             search, barcodeGenerate, taskAssigned, pageable.getPageNumber(), pageable.getPageSize());
+    
+    String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+    Page<Inbound> inbounds = null; // Initialize with null
+    
+    // Check which filters are applied
+    boolean hasSearch = searchTerm != null;
+    boolean hasBarcodeGenerate = barcodeGenerate != null && barcodeGenerate;
+    boolean hasTaskAssigned = taskAssigned != null && taskAssigned;
+    
+    if (hasSearch && hasBarcodeGenerate && hasTaskAssigned) {
+        // All filters: search + ALL lines barcodeGenerate=true + ALL lines taskAssigned=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", searchTerm, pageable);
+    } else if (hasSearch && hasBarcodeGenerate) {
+        // Search + ALL lines barcodeGenerate=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", searchTerm, pageable);
+    } else if (hasSearch && hasTaskAssigned) {
+        // Search + ALL lines taskAssigned=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", searchTerm, pageable);
+    } else if (hasSearch) {
+        // Only search
+        inbounds = inboundRepository.findByGrnStatusAndSearch("APPROVED", searchTerm, pageable);
+    } else if (hasBarcodeGenerate && hasTaskAssigned) {
+        // ALL lines barcodeGenerate=true AND ALL lines taskAssigned=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesBothFlags("APPROVED", null, pageable);
+    } else if (hasBarcodeGenerate) {
+        // ALL lines barcodeGenerate=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesBarcodeGenerated("APPROVED", null, pageable);
+    } else if (hasTaskAssigned) {
+        // ALL lines taskAssigned=true
+        inbounds = inboundRepository.findByGrnStatusAndAllLinesTaskAssigned("APPROVED", null, pageable);
+    } else {
+        // No filters
+        inbounds = inboundRepository.findByGrnStatus("APPROVED", pageable);
     }
     
-
-
-
+    // Now inbounds is guaranteed to be initialized
+    // Filter out inbounds that have rejected items
+    List<Inbound> filteredList = inbounds.getContent().stream()
+        .filter(inbound -> inbound.getLines().stream()
+            .noneMatch(line -> "REJECTED".equals(line.getQualityStatus())))
+        .collect(Collectors.toList());
+    
+    // Create a new Page with filtered content
+    Page<Inbound> filteredInbounds = new PageImpl<>(filteredList, pageable, filteredList.size());
+    
+    return filteredInbounds.map(this::convertToDTO);
+}
 
 }
 
