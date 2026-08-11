@@ -37,6 +37,15 @@ public class Zone {
 
     @Column(name = "zone_type", length = 20)
     private String zoneType; // PICKING, BULK, OVERFLOW, DANGEROUS
+    
+    @Column(name = "barcode_data", length = 50)
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
+
+    @Column(name = "barcode_image", columnDefinition = "TEXT")
+    private String barcodeImage; // Base64 encoded barcode image
+
+    @Column(name = "barcode_format", length = 20)
+    private String barcodeFormat; // CODE128, CODE39, etc.
 
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -85,5 +94,12 @@ public class Zone {
             aisle.setZone(null);
             this.totalAisles = this.aisles.size();
         }
+    }
+    
+    public String getFullZoneIdentifier() {
+        if (warehouse != null && warehouse.getWarehouseId() != null) {
+            return warehouse.getWarehouseId() + "-" + zoneId;
+        }
+        return zoneId;
     }
 }

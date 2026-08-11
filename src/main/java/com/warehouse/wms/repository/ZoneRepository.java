@@ -85,4 +85,19 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
     @Transactional
     @Query("UPDATE Zone z SET z.totalAisles = :count WHERE z.id = :id")
     int updateTotalAisles(@Param("id") Long id, @Param("count") Integer count);
+    
+    
+    
+    
+    
+    
+    
+ Optional<Zone> findByWarehouse_WarehouseIdAndZoneId(String warehouseId, String zoneId);
+    
+    List<Zone> findByWarehouse_WarehouseId(String warehouseId);
+    
+    List<Zone> findByWarehouse_WarehouseIdAndIsActiveTrue(String warehouseId);
+    
+    
+    boolean existsByWarehouse_WarehouseIdAndZoneId(String warehouseId, String zoneId);
 }
