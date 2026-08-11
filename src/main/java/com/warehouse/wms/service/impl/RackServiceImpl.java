@@ -30,6 +30,7 @@ public class RackServiceImpl implements RackService {
     private final RackRepository rackRepository;
     private final AisleRepository aisleRepository;
     private final RackMapper rackMapper;
+    private final RackBarcodeServiceImpl rackBarcodeServiceImpl;
 
     // ====== Create ======
 
@@ -57,6 +58,10 @@ public class RackServiceImpl implements RackService {
         long totalRacks = rackRepository.countByAisleId(aisle.getId());
         aisle.setTotalRacks((int) totalRacks);
         aisleRepository.save(aisle);
+        
+        
+        rackBarcodeServiceImpl.generateRackBarcode(savedRack.getAisle().getZone().getWarehouse().getWarehouseId(),savedRack.getAisle().getZone().getZoneId(),savedRack.getAisle().getAisleId(),savedRack.getRackId());
+        
 
         log.info("✅ Rack created: {} in aisle: {}", savedRack.getRackId(), aisle.getAisleId());
         return rackMapper.toResponse(savedRack);

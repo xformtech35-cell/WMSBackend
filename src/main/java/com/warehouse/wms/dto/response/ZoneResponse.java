@@ -2,6 +2,8 @@
 package com.warehouse.wms.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,6 +29,14 @@ public class ZoneResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    
+    
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
+
+    private String barcodeImage; // Base64 encoded barcode image
+
+    private String barcodeFormat; // CODE128, CODE39, etc.
 
     @JsonIgnoreProperties({"zones"})
     private WarehouseResponse warehouse;  // ✅ This will show warehouse details

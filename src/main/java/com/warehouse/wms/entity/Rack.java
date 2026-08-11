@@ -45,6 +45,18 @@ public class Rack {
     private Double width;
     
     private String unit;
+    
+    
+    
+    
+    @Column(name = "barcode_data", length = 50)
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId-aisleId-rackId)
+
+    @Column(name = "barcode_image", columnDefinition = "TEXT")
+    private String barcodeImage; // Base64 encoded barcode image
+
+    @Column(name = "barcode_format", length = 20)
+    private String barcodeFormat; // CODE128, CODE39, etc.
 
     @Column(name = "depth")
     private Double depth;
@@ -97,5 +109,17 @@ public class Rack {
             level.setRack(null);
             this.totalShelves = this.levels.size();
         }
+    }
+    
+
+    // Helper method to get full rack identifier
+    public String getFullRackIdentifier() {
+        if (aisle != null && aisle.getZone() != null && aisle.getZone().getWarehouse() != null) {
+            return aisle.getZone().getWarehouse().getWarehouseId() + "-" + 
+                   aisle.getZone().getZoneId() + "-" + 
+                   aisle.getAisleId() + "-" + 
+                   rackId;
+        }
+        return rackId;
     }
 }

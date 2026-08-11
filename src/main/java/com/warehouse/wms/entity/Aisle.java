@@ -52,6 +52,15 @@ public class Aisle {
     
     private String unit;
 
+    
+    @Column(name = "barcode_data", length = 50)
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId-aisleId)
+
+    @Column(name = "barcode_image", columnDefinition = "TEXT")
+    private String barcodeImage; // Base64 encoded barcode image
+
+    @Column(name = "barcode_format", length = 20)
+    private String barcodeFormat; // CODE128, CODE39, etc.
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -92,5 +101,16 @@ public class Aisle {
             rack.setAisle(null);
             this.totalRacks = this.racks.size();
         }
+    }
+    
+    
+    // Helper method to get full aisle identifier
+    public String getFullAisleIdentifier() {
+        if (zone != null && zone.getWarehouse() != null) {
+            return zone.getWarehouse().getWarehouseId() + "-" + 
+                   zone.getZoneId() + "-" + 
+                   aisleId;
+        }
+        return aisleId;
     }
 }

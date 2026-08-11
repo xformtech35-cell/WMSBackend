@@ -29,6 +29,13 @@ public class RackResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
+
+    private String barcodeImage; // Base64 encoded barcode image
+
+    private String barcodeFormat; // CODE128, CODE39, etc.
+
 
     @JsonIgnoreProperties({"racks"})
     private AisleResponse aisle;

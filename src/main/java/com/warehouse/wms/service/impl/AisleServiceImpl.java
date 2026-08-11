@@ -30,6 +30,9 @@ public class AisleServiceImpl implements AisleService {
     private final AisleRepository aisleRepository;
     private final ZoneRepository zoneRepository;
     private final AisleMapper aisleMapper;
+    
+    private final AisleBarcodeServiceImpl aisleBarcodeServiceImpl;
+
 
     // ====== Create ======
 
@@ -57,6 +60,8 @@ public class AisleServiceImpl implements AisleService {
         long totalAisles = aisleRepository.countByZoneId(zone.getId());
         zone.setTotalAisles((int) totalAisles);
         zoneRepository.save(zone);
+        
+        aisleBarcodeServiceImpl.generateAisleBarcode(savedAisle.getZone().getWarehouse().getWarehouseId(),savedAisle.getZone().getZoneId(),savedAisle.getAisleId());
 
         log.info("✅ Aisle created: {} in zone: {}", savedAisle.getAisleId(), zone.getZoneId());
         return aisleMapper.toResponse(savedAisle);

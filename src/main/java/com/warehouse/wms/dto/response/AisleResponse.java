@@ -28,6 +28,14 @@ public class AisleResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
+
+    private String barcodeImage; // Base64 encoded barcode image
+
+    private String barcodeFormat; // CODE128, CODE39, etc.
+
 
     @JsonIgnoreProperties({"aisles"})
     private ZoneResponse zone;  // ✅ This will have warehouse

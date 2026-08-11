@@ -82,4 +82,17 @@ public interface AisleRepository extends JpaRepository<Aisle, Long> {
     @Transactional
     @Query("UPDATE Aisle a SET a.totalRacks = :count WHERE a.id = :id")
     int updateTotalRacks(@Param("id") Long id, @Param("count") Integer count);
+    
+    
+    Optional<Aisle> findByZone_Warehouse_WarehouseIdAndZone_ZoneIdAndAisleId(
+            String warehouseId, String zoneId, String aisleId);
+    
+    List<Aisle> findByZone_Warehouse_WarehouseIdAndZone_ZoneId(
+            String warehouseId, String zoneId);
+    
+    List<Aisle> findByZone_Warehouse_WarehouseId(String warehouseId);
+    
+    
+    boolean existsByZone_Warehouse_WarehouseIdAndZone_ZoneIdAndAisleId(
+            String warehouseId, String zoneId, String aisleId);
 }

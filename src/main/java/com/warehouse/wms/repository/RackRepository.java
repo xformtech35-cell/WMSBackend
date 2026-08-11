@@ -85,4 +85,22 @@ public interface RackRepository extends JpaRepository<Rack, Long> {
     @Transactional
     @Query("UPDATE Rack r SET r.totalShelves = :count WHERE r.id = :id")
     int updateTotalShelves(@Param("id") Long id, @Param("count") Integer count);
+    
+    
+    
+    
+    Optional<Rack> findByAisle_Zone_Warehouse_WarehouseIdAndAisle_Zone_ZoneIdAndAisle_AisleIdAndRackId(
+            String warehouseId, String zoneId, String aisleId, String rackId);
+    
+    List<Rack> findByAisle_Zone_Warehouse_WarehouseIdAndAisle_Zone_ZoneIdAndAisle_AisleId(
+            String warehouseId, String zoneId, String aisleId);
+    
+    List<Rack> findByAisle_Zone_Warehouse_WarehouseIdAndAisle_Zone_ZoneId(
+            String warehouseId, String zoneId);
+    
+    List<Rack> findByAisle_Zone_Warehouse_WarehouseId(String warehouseId);
+    
+    
+    boolean existsByAisle_Zone_Warehouse_WarehouseIdAndAisle_Zone_ZoneIdAndAisle_AisleIdAndRackId(
+            String warehouseId, String zoneId, String aisleId, String rackId);
 }
