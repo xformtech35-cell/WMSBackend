@@ -611,11 +611,43 @@ public void updateInventoryAfterPutaway(String confirmationNumber) {
                 .collect(Collectors.toList());
     }
 
+//    @Override
+//    public Page<PutawayTaskResponse> getAllPutawayTasks(Pageable pageable) {
+//        return putawayTaskRepository.findAll(pageable)
+//                .map(putawayTaskMapper::toResponse);
+//    }
+    
+    
+    
+    
+    
     @Override
-    public Page<PutawayTaskResponse> getAllPutawayTasks(Pageable pageable) {
-        return putawayTaskRepository.findAll(pageable)
-                .map(putawayTaskMapper::toResponse);
+    @Transactional(readOnly = true)
+    public Page<PutawayTaskResponse> getAllPutawayTasks(
+            String search,
+            PutawayStatus status,
+            PutawayStage stage,
+            String grnNumber,
+            String assignedTo,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable) {
+        
+        log.debug("Fetching Putaway tasks with filters - search: {}, status: {}, stage: {}, grn: {}, assignedTo: {}, startDate: {}, endDate: {}",
+                search, status, stage, grnNumber, assignedTo, startDate, endDate);
+        
+        return putawayTaskRepository.findAll(
+                PutawayTaskSpecification.filterBy(search, status, stage, grnNumber, assignedTo, startDate, endDate),
+                pageable
+        ).map(putawayTaskMapper::toResponse);
     }
+    
+    
+    
+    
+    
+    
+    
 
     @Override
     @Transactional

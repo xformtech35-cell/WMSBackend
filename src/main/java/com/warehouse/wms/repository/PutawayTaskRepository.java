@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +17,7 @@ import com.warehouse.wms.constant.PutawayStatus;
 import com.warehouse.wms.entity.PutawayTask;
 
 @Repository
-public interface PutawayTaskRepository extends JpaRepository<PutawayTask, Long> {
+public interface PutawayTaskRepository extends JpaRepository<PutawayTask, Long>, JpaSpecificationExecutor<PutawayTask> {
 
     Optional<PutawayTask> findByTaskNumber(String taskNumber);
 
