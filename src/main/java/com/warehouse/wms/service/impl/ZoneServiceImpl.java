@@ -30,7 +30,7 @@ public class ZoneServiceImpl implements ZoneService {
     private final ZoneRepository zoneRepository;
     private final WarehouseRepository warehouseRepository;
     private final ZoneMapper zoneMapper;
-
+    private final  ZoneBarcodeServiceImpl zoneBarcodeServiceImpl;
     // ====== Create ======
 
     @Override
@@ -58,6 +58,8 @@ public class ZoneServiceImpl implements ZoneService {
         warehouse.setTotalZones((int) totalZones);
         warehouseRepository.save(warehouse);
 
+        zoneBarcodeServiceImpl.generateZoneBarcode(savedZone.getWarehouse().getWarehouseId(),savedZone.getZoneId());
+        
         log.info("✅ Zone created: {} in warehouse: {}", savedZone.getZoneId(), warehouse.getWarehouseId());
         return zoneMapper.toResponse(savedZone);
     }

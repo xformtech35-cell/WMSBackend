@@ -27,6 +27,8 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper warehouseMapper;
+    private final BarcodeServiceImpl barcodeServiceImpl;
+
 
     @Override
     public WarehouseResponse createWarehouse(WarehouseRequest request) {
@@ -41,6 +43,9 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         Warehouse savedWarehouse = warehouseRepository.save(warehouse);
         log.info("✅ Warehouse created: {}", savedWarehouse.getWarehouseId());
+        
+        barcodeServiceImpl.generateWarehouseBarcode(savedWarehouse.getWarehouseId());
+        
 
         return warehouseMapper.toResponse(savedWarehouse);
     }
