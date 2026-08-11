@@ -91,4 +91,37 @@ public interface BinRepository extends JpaRepository<Bin, Long> {
     @Transactional
     @Query("UPDATE Bin b SET b.status = :status WHERE b.id = :id")
     int updateBinStatus(@Param("id") Long id, @Param("status") BinStatus status);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    Optional<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleIdAndLevel_Rack_RackIdAndLevel_LevelIdAndBarcode(
+            String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String barcode);
+    
+    List<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleIdAndLevel_Rack_RackIdAndLevel_LevelId(
+            String warehouseId, String zoneId, String aisleId, String rackId, String levelId);
+    
+    List<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleIdAndLevel_Rack_RackId(
+            String warehouseId, String zoneId, String aisleId, String rackId);
+    
+    List<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleId(
+            String warehouseId, String zoneId, String aisleId);
+    
+    List<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneId(
+            String warehouseId, String zoneId);
+    
+    List<Bin> findByLevel_Rack_Aisle_Zone_Warehouse_WarehouseId(String warehouseId);
+    
+    List<Bin> findByLevelIdAndIsActiveTrue(Long levelId);
+    
+    List<Bin> findByLevel_RackIdAndIsActiveTrue(Long rackId);
+    
+    boolean existsByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleIdAndLevel_Rack_RackIdAndLevel_LevelIdAndBarcode(
+            String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String barcode);
 }

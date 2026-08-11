@@ -27,6 +27,13 @@ public class BinResponse {
     private BigDecimal utilizationPercentage;
     private String status;
     private String fullLocation;
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
+	
+    private String barcodeImage; // Base64 encoded barcode image
+
+    private String barcodeFormat; // CODE128, CODE39, etc.
+
+    
     
     private String unit;
 

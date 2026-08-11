@@ -24,6 +24,7 @@ import com.warehouse.wms.mapper.BinMapper;
 import com.warehouse.wms.repository.BinRepository;
 import com.warehouse.wms.repository.LevelRepository;
 import com.warehouse.wms.repository.RackRepository;
+import com.warehouse.wms.service.BinBarcodeService;
 import com.warehouse.wms.service.BinService;
 
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class BinServiceImpl implements BinService {
     private final RackRepository rackRepository;
     private final BinMapper binMapper;
     private final LevelRepository levelRepository;  // ✅ ADD THIS
+    private final BinBarcodeService binBarcodeService;
 
  // ====== FILE: src/main/java/com/warehouse/wms/service/impl/BinServiceImpl.java ======
  // Update the createBin method
@@ -72,6 +74,15 @@ public class BinServiceImpl implements BinService {
 
      Bin savedBin = binRepository.save(bin);
      log.info("✅ Bin created: {}", savedBin.getBarcode());
+     
+     
+     binBarcodeService.generateBinBarcode(
+             savedBin.getLevel().getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+             savedBin.getLevel().getRack().getAisle().getZone().getZoneId(),
+             savedBin.getLevel().getRack().getAisle().getAisleId(),
+             savedBin.getLevel().getRack().getRackId(),
+             savedBin.getLevel().getLevelId(),
+             savedBin.getBarcode());
 
      return binMapper.toResponse(savedBin);
  }

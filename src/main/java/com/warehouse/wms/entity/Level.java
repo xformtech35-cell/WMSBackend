@@ -70,6 +70,17 @@ public class Level {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    
+    @Column(name = "barcode_data", length = 50)
+    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId-aisleId-rackId-levelId)
+
+    @Column(name = "barcode_image", columnDefinition = "TEXT")
+    private String barcodeImage; // Base64 encoded barcode image
+
+    @Column(name = "barcode_format", length = 20)
+    private String barcodeFormat; // CODE128, CODE39, etc.
+    
+    
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rack_id")
@@ -79,6 +90,12 @@ public class Level {
     @OneToMany(mappedBy = "level", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @Builder.Default
     private List<Bin> bins = new ArrayList<>();
+
+    
+    
+    
+    
+    // Helper methods
 
     // Helper methods
     public void addBin(Bin bin) {

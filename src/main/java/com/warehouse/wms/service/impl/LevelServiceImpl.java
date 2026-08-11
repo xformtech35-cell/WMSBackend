@@ -30,6 +30,7 @@ public class LevelServiceImpl implements LevelService {
     private final LevelRepository levelRepository;
     private final RackRepository rackRepository;
     private final LevelMapper levelMapper;
+    private final LevelBarcodeServiceImpl levelBarcodeServiceImpl;
 
     // ====== Create ======
 
@@ -56,6 +57,9 @@ public class LevelServiceImpl implements LevelService {
         long totalShelves = levelRepository.countByRackId(rack.getId());
         rack.setTotalShelves((int) totalShelves);
         rackRepository.save(rack);
+        
+        
+        levelBarcodeServiceImpl.generateLevelBarcode(savedLevel.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),savedLevel.getRack().getAisle().getZone().getZoneId(),savedLevel.getRack().getAisle().getAisleId(),savedLevel.getRack().getRackId(),savedLevel.getLevelId());
 
         log.info("✅ Level created: {} in rack: {}", savedLevel.getLevelId(), rack.getRackId());
         return levelMapper.toResponse(savedLevel);

@@ -53,6 +53,17 @@ public class Bin {
 
     @Column(name = "volume_cm3")
     private BigDecimal volumeCm3;
+    
+    
+    
+    @Column(name = "barcode_data", length = 100)
+    private String barcodeData; // Store the actual full barcode data (warehouseId-zoneId-aisleId-rackId-levelId-barcode)
+
+    @Column(name = "barcode_image", columnDefinition = "TEXT")
+    private String barcodeImage; // Base64 encoded barcode image
+
+    @Column(name = "barcode_format", length = 20)
+    private String barcodeFormat; // CODE128, CODE39, etc.
 
     @Column(name = "max_weight_g", nullable = false)
     private BigDecimal maxWeightG;

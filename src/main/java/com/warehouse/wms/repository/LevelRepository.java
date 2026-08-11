@@ -19,7 +19,6 @@ public interface LevelRepository extends JpaRepository<Level, Long> {
 
     List<Level> findByRackId(Long rackId);
 
-    List<Level> findByRackIdAndIsActiveTrue(Long rackId);
 
     Page<Level> findByRackId(Long rackId, Pageable pageable);
 
@@ -29,4 +28,24 @@ public interface LevelRepository extends JpaRepository<Level, Long> {
     boolean existsByLevelId(String levelId);
 
     long countByRackId(Long rackId);
+    
+    
+    Optional<Level> findByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneIdAndRack_Aisle_AisleIdAndRack_RackIdAndLevelId(
+            String warehouseId, String zoneId, String aisleId, String rackId, String levelId);
+    
+    List<Level> findByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneIdAndRack_Aisle_AisleIdAndRack_RackId(
+            String warehouseId, String zoneId, String aisleId, String rackId);
+    
+    List<Level> findByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneIdAndRack_Aisle_AisleId(
+            String warehouseId, String zoneId, String aisleId);
+    
+    List<Level> findByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneId(
+            String warehouseId, String zoneId);
+    
+    List<Level> findByRack_Aisle_Zone_Warehouse_WarehouseId(String warehouseId);
+    
+    List<Level> findByRackIdAndIsActiveTrue(Long rackId);
+    
+    boolean existsByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneIdAndRack_Aisle_AisleIdAndRack_RackIdAndLevelId(
+            String warehouseId, String zoneId, String aisleId, String rackId, String levelId);
 }
