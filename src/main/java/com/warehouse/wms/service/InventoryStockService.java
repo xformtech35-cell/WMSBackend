@@ -1,10 +1,12 @@
 package com.warehouse.wms.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.warehouse.wms.constant.InventoryStatus;
 import com.warehouse.wms.dto.request.InventorySearchRequest;
 import com.warehouse.wms.dto.request.InventoryStockRequest;
 import com.warehouse.wms.dto.response.InventoryStockResponse;
@@ -21,7 +23,29 @@ public interface InventoryStockService {
     
     InventoryStockResponse getStockByItemAndBin(String itemCode, String binId);
     
-    Page<InventoryStockResponse> getAllStocks(Pageable pageable);
+//    Page<InventoryStockResponse> getAllStocks(Pageable pageable);
+    
+    Page<InventoryStockResponse> getAllStocks(
+            String search,
+            String itemCode,
+            String itemName,
+            InventoryStatus status,
+            String warehouseId,
+            String zone,
+            String aisle,
+            String rack,
+            String level,
+            String binId,
+            String batchNumber,
+            String grnNumber,
+            Boolean isAvailable,
+            Boolean isAllocated,
+            Boolean isFrozen,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable);
     
     List<InventoryStockResponse> getStocksByItemCode(String itemCode);
     

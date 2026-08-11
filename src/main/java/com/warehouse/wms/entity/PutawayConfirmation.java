@@ -66,6 +66,10 @@ public class PutawayConfirmation {
 
     @Column(name = "bin_id", length = 50)
     private String binId;
+    
+    
+    @Column(name = "level", length = 10)
+    private String level;
 
     @Column(name = "bin_barcode", length = 100)
     private String binBarcode;

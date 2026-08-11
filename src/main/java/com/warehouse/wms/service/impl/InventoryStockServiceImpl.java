@@ -113,15 +113,57 @@ public class InventoryStockServiceImpl implements InventoryStockService {
         return inventoryStockMapper.toResponse(stock);
     }
 
+//    @Override
+//    @Transactional(readOnly = true)
+//    public Page<InventoryStockResponse> getAllStocks(Pageable pageable) {
+//        log.info("Fetching all inventory stocks with pagination: page {}, size {}", 
+//            pageable.getPageNumber(), pageable.getPageSize());
+//        
+//        Page<InventoryStock> stocks = inventoryStockRepository.findAll(pageable);
+//        return stocks.map(inventoryStockMapper::toResponse);
+//    }
+    
+    
     @Override
     @Transactional(readOnly = true)
-    public Page<InventoryStockResponse> getAllStocks(Pageable pageable) {
-        log.info("Fetching all inventory stocks with pagination: page {}, size {}", 
-            pageable.getPageNumber(), pageable.getPageSize());
+    public Page<InventoryStockResponse> getAllStocks(
+            String search,
+            String itemCode,
+            String itemName,
+            InventoryStatus status,
+            String warehouseId,
+            String zone,
+            String aisle,
+            String rack,
+            String level,
+            String binId,
+            String batchNumber,
+            String grnNumber,
+            Boolean isAvailable,
+            Boolean isAllocated,
+            Boolean isFrozen,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable) {
         
-        Page<InventoryStock> stocks = inventoryStockRepository.findAll(pageable);
+        log.info("Fetching inventory stocks with pagination and filters: page {}, size {}, search: {}, status: {}, warehouse: {}, zone: {}, aisle: {}, rack: {}, level: {}, bin: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), search, status, warehouseId, zone, aisle, rack, level, binId);
+        
+        Page<InventoryStock> stocks = inventoryStockRepository.findAll(
+                InventoryStockSpecification.filterBy(
+                        search, itemCode, itemName, status, warehouseId, zone, aisle, rack, level, binId,
+                        batchNumber, grnNumber, isAvailable, isAllocated, isFrozen,
+                        startDate, endDate, minQuantity, maxQuantity),
+                pageable
+        );
+        
         return stocks.map(inventoryStockMapper::toResponse);
     }
+    
+    
+    
 
     @Override
     @Transactional(readOnly = true)

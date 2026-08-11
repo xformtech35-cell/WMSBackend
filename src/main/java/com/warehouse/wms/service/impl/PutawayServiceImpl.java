@@ -427,6 +427,7 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
                 confirmation.setZone(line.getActualZone());
                 confirmation.setAisle(line.getActualAisle());
                 confirmation.setRack(line.getActualRack());
+                confirmation.setLevel(line.getActualLevel());
                 confirmation.setShelf(line.getActualShelf());
                 break;
             }
@@ -482,6 +483,7 @@ public void updateInventoryAfterPutaway(String confirmationNumber) {
                     .aisle(line.getActualAisle())
                     .rack(line.getActualRack())
                     .shelf(line.getActualShelf())
+                    .level(line.getActualLevel())
                     .binId(line.getActualBin())
                     .binBarcode(line.getBinBarcode())
                     .batchNumber(line.getBatchNumber())

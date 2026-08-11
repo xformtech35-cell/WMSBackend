@@ -1,11 +1,13 @@
 package com.warehouse.wms.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,11 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.warehouse.wms.constant.InventoryStatus;
 import com.warehouse.wms.dto.request.InventorySearchRequest;
 import com.warehouse.wms.dto.request.InventoryStockRequest;
 import com.warehouse.wms.dto.response.InventoryStockResponse;
 import com.warehouse.wms.service.InventoryStockService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -75,14 +79,48 @@ public class InventoryStockController {
         return ResponseEntity.ok(response);
     }
 
+//    @GetMapping
+//    public ResponseEntity<Page<InventoryStockResponse>> getAllStocks(
+//            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+//        log.info("GET /api/inventory-stock - Get all inventory stocks");
+//        Page<InventoryStockResponse> responses = inventoryStockService.getAllStocks(pageable);
+//        return ResponseEntity.ok(responses);
+//    }
+
     @GetMapping
+    @Operation(summary = "Get all inventory stocks with pagination, search, and filters")
     public ResponseEntity<Page<InventoryStockResponse>> getAllStocks(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) InventoryStatus status,
+            @RequestParam(required = false) String warehouseId,
+            @RequestParam(required = false) String zone,
+            @RequestParam(required = false) String aisle,
+            @RequestParam(required = false) String rack,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String binId,
+            @RequestParam(required = false) String batchNumber,
+            @RequestParam(required = false) String grnNumber,
+            @RequestParam(required = false) Boolean isAvailable,
+            @RequestParam(required = false) Boolean isAllocated,
+            @RequestParam(required = false) Boolean isFrozen,
+            @RequestParam(required = false) 
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) 
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("GET /api/inventory-stock - Get all inventory stocks");
-        Page<InventoryStockResponse> responses = inventoryStockService.getAllStocks(pageable);
+        
+        log.info("GET /api/inventory-stock - Get all inventory stocks with filters");
+        Page<InventoryStockResponse> responses = inventoryStockService.getAllStocks(
+                search, itemCode, itemName, status, warehouseId, zone, aisle, rack, level, binId,
+                batchNumber, grnNumber, isAvailable, isAllocated, isFrozen,
+                startDate, endDate, minQuantity, maxQuantity, pageable);
         return ResponseEntity.ok(responses);
     }
-
+    
     @GetMapping("/item/{itemCode}")
     public ResponseEntity<List<InventoryStockResponse>> getStocksByItemCode(@PathVariable String itemCode) {
         log.info("GET /api/inventory-stock/item/{} - Get stocks by item code", itemCode);

@@ -27,6 +27,8 @@ public class InventoryStockResponse {
     private String aisle;
     private String rack;
     private String shelf;
+    private String level;
+
     private String binId;
     private String binBarcode;
     private String batchNumber;

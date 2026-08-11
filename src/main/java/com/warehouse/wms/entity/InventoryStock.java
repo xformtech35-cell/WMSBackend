@@ -76,6 +76,9 @@ public class InventoryStock {
 
     @Column(name = "shelf", length = 10)
     private String shelf;
+    
+    @Column(name = "level", length = 10)
+    private String level;
 
     @Column(name = "bin_id", length = 50)
     private String binId;
