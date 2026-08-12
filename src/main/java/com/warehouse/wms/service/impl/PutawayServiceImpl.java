@@ -219,6 +219,8 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
                 
        case PLACED:
     // Verify bin barcode is provided
+    	   
+    	   
     if (request.getBinBarcode() == null || request.getBinBarcode().trim().isEmpty()) {
         throw new InvalidOperationException("Bin barcode is required for PLACED stage");
     }
@@ -226,9 +228,21 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
   
     
     // Fetch the bin for validation
-    Bin bin = binRepository.findByBarcode(request.getBinBarcode())
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Bin not found for barcode: " + request.getBinBarcode()));
+    Bin bin =new Bin();
+    
+    
+   if(bin.getFullLocation()==request.getBinBarcode())
+	   
+	   
+   {
+    
+    
+    
+    
+    
+    
+    
+    
     
     // Find the specific line by ID
     PutawayLine targetLine = null;
@@ -289,6 +303,8 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
     
     log.info("Line {} (ID: {}) placed at bin: {}", 
         targetLine.getLineNumber(), targetLine.getId(), bin.getBarcode());
+    
+   }
     break;
             case SCANNED:
                 task.setStage(PutawayStage.PLACED);

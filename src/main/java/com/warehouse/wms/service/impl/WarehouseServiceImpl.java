@@ -96,6 +96,13 @@ public class WarehouseServiceImpl implements WarehouseService {
         }
 
         warehouseMapper.updateEntity(warehouse, request);
+        
+        if(warehouse.getBarcodeImage()==null)
+        {
+            barcodeServiceImpl.generateWarehouseBarcode(warehouse.getWarehouseId());
+
+        }
+        
         Warehouse updatedWarehouse = warehouseRepository.save(warehouse);
         log.info("✅ Warehouse updated: {}", updatedWarehouse.getWarehouseId());
 

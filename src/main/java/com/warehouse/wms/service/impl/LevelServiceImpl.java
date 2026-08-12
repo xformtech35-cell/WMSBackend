@@ -154,6 +154,12 @@ public class LevelServiceImpl implements LevelService {
 
         // Update level fields
         levelMapper.updateEntity(level, request);
+        
+        if(level.getBarcodeImage()==null)
+        {        levelBarcodeServiceImpl.generateLevelBarcode(level.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),level.getRack().getAisle().getZone().getZoneId(),level.getRack().getAisle().getAisleId(),level.getRack().getRackId(),level.getLevelId());
+
+        }
+        
 
         Level updatedLevel = levelRepository.save(level);
         log.info("✅ Level updated: {}", updatedLevel.getLevelId());

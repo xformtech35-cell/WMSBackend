@@ -61,7 +61,7 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
             // Generate barcode
             String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(
                     fullIdentifier, 
-                    label, 
+                    
                     DEFAULT_WIDTH, 
                     DEFAULT_HEIGHT
             );
@@ -146,7 +146,7 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
             // Generate new barcode
             String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(
                     fullIdentifier,
-                    "Bin: " + fullIdentifier,
+                   
                     DEFAULT_WIDTH,
                     DEFAULT_HEIGHT
             );
@@ -325,7 +325,7 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
                     barcodeFormat = BarcodeFormat.CODE_128;
             }
             
-            return barcodeGenerator.generateBarcodeBase64(data, label, barcodeFormat);
+            return barcodeGenerator.generateBarcodeBase64(data, barcodeFormat);
         } catch (Exception e) {
             log.error("Error generating barcode with format {}: {}", format, e.getMessage(), e);
             return null;

@@ -32,10 +32,10 @@ public class QRCode {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "qr_id", nullable = false, unique = true, length = 50)
+    @Column(name = "qr_id", nullable = true, unique = true, length = 50)
     private String qrId;
     
-    @Column(name = "qr_code", nullable = false, unique = true, length = 100)
+    @Column(name = "qr_code", length = 100)
     private String qrCode;
     
     @Column(name = "qr_image", columnDefinition = "LONGTEXT")
@@ -44,7 +44,7 @@ public class QRCode {
     @Column(name = "qr_data", columnDefinition = "LONGTEXT")
     private String qrData; // JSON data encoded
     
-    @Column(name = "barcode", unique = true, length = 100)
+    @Column(name = "barcode", length = 100)
     private String barcode;
     
     @Column(name = "barcode_image", columnDefinition = "LONGTEXT")

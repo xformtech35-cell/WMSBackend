@@ -64,12 +64,11 @@ public class QRCodeServiceImpl implements QRCodeService {
         String qrId = generateQRId();
         
         
-      String  fullPath = request.getWarehouseId() + "/" + 
-    		  request.getZone() + "/" + 
-    		  request.getAisle() + "/" + 
-    		  request.getRack() + "/" + 
-    		  request.getShelf() + "/" + 
-    		  request.getLevel() + "/" + 
+      String  fullPath = request.getWarehouseId() + "-" + 
+    		  request.getZone() + "-" + 
+    		  request.getAisle() + "-" + 
+    		  request.getRack() + "-" + 
+    		  request.getLevel() + "-" + 
     		  request.getBinId();
         
         Long inboundLineId = request.getInboundLineId();
@@ -102,7 +101,7 @@ public class QRCodeServiceImpl implements QRCodeService {
         }
         // Generate images
         String qrImage = qrCodeGenerator.generateQRCodeBase64(qrCodeValue, request.getItemCode());
-        String barcodeImage = barcodeGenerator.generateBarcodeBase64(barcodeValue, request.getItemCode());
+        String barcodeImage = barcodeGenerator.generateBarcodeBase64(barcodeValue);
 
         // Build QR Data JSON
         Map<String, Object> qrData = buildQRData(request, qrCodeValue, barcodeValue);
@@ -378,7 +377,7 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
 
     @Override
     public String generateBarcodeBase64(String data) {
-        return barcodeGenerator.generateBarcodeBase64(data, "Barcode");
+        return barcodeGenerator.generateBarcodeBase64(data);
     }
 
     // Private Helper Methods
@@ -392,10 +391,16 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
     }
 
     private String generateBarcodeValue(QRCodeGenerateRequest request) {
-        return String.format("%s-%s-%s", 
-            BARCODE_PREFIX,
-            request.getItemCode(),
-            String.format("%08d", new Random().nextInt(99999999)));
+        // Build the full path from the request
+        String fullPath = request.getWarehouseId() + "-" + 
+                request.getZone() + "-" + 
+                request.getAisle() + "-" + 
+                request.getRack() + "-" + 
+                request.getLevel() + "-" + 
+                request.getBinId();
+        
+        // Use the full path as the barcode value
+        return fullPath;
     }
 
     private String generateQRId() {

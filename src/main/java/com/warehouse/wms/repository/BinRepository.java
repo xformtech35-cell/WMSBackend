@@ -24,6 +24,7 @@ public interface BinRepository extends JpaRepository<Bin, Long> {
     
     Optional<Bin> findByBarcode(String barcode);
     
+//    Optional<Bin> findByFullLocation(String barcode);
 
     
     List<Bin> findByRackId(Long rackId);

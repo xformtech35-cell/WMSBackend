@@ -44,7 +44,7 @@ public class BarcodeServiceImpl implements BarcodeService {
                     .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found: " + warehouseId));
             
             // Generate barcode
-            String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(warehouseId, label, width, height);
+            String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(warehouseId, width, height);
             
             if (barcodeBase64 != null) {
                 // Update warehouse with barcode data
@@ -108,8 +108,8 @@ public class BarcodeServiceImpl implements BarcodeService {
             
             // Generate new barcode
             String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(
-                    warehouse.getWarehouseId(), 
-                    "Warehouse: " + warehouse.getWarehouseId()
+                    warehouse.getWarehouseId()
+                    
             );
             
             if (barcodeBase64 != null) {
@@ -148,7 +148,7 @@ public class BarcodeServiceImpl implements BarcodeService {
                     barcodeFormat = BarcodeFormat.CODE_128;
             }
             
-            return barcodeGenerator.generateBarcodeBase64(data, label, barcodeFormat);
+            return barcodeGenerator.generateBarcodeBase64(data,  barcodeFormat);
         } catch (Exception e) {
             log.error("Error generating barcode with format {}: {}", format, e.getMessage(), e);
             return null;

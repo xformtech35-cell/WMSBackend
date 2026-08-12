@@ -162,10 +162,23 @@ public class AisleServiceImpl implements AisleService {
             long newCount = aisleRepository.countByZoneId(newZone.getId());
             newZone.setTotalAisles((int) newCount);
             zoneRepository.save(newZone);
+            
+            
+            
         }
 
         // Update aisle fields
         aisleMapper.updateEntity(aisle, request);
+        
+        
+        if(aisle.getBarcodeImage()==null)
+        {
+            aisleBarcodeServiceImpl.generateAisleBarcode(aisle.getZone().getWarehouse().getWarehouseId(),aisle.getZone().getZoneId(),aisle.getAisleId());
+
+        }
+        
+        
+        
 
         Aisle updatedAisle = aisleRepository.save(aisle);
         log.info("✅ Aisle updated: {}", updatedAisle.getAisleId());

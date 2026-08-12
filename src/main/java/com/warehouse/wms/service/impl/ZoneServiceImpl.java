@@ -155,6 +155,14 @@ public class ZoneServiceImpl implements ZoneService {
 
         // Update zone fields
         zoneMapper.updateEntity(zone, request);
+        
+        
+        if(zone.getBarcodeImage()==null)
+        {
+            zoneBarcodeServiceImpl.generateZoneBarcode(zone.getWarehouse().getWarehouseId(),zone.getZoneId());
+
+        }
+        
 
         Zone updatedZone = zoneRepository.save(zone);
         log.info("✅ Zone updated: {}", updatedZone.getZoneId());

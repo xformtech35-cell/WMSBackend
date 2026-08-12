@@ -33,29 +33,19 @@ public class BarcodeGenerator {
     private static final String DEFAULT_IMAGE_FORMAT = "png";
 
     /**
-     * Generate Barcode as Base64 encoded string
+     * Generate Barcode as Base64 encoded string (no label)
      */
     public String generateBarcodeBase64(String data) {
-        return generateBarcodeBase64(data, null, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        return generateBarcodeBase64(data, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     }
 
     /**
-     * Generate Barcode with label as Base64 encoded string
+     * Generate Barcode with custom size (no label)
      */
-    public String generateBarcodeBase64(String data, String label) {
-        return generateBarcodeBase64(data, label, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    }
-
-    /**
-     * Generate Barcode with custom size and label
-     */
-    public String generateBarcodeBase64(String data, String label, int width, int height) {
+    public String generateBarcodeBase64(String data, int width, int height) {
         try {
             BufferedImage barcodeImage = generateBarcodeImage(data, width, height);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating Barcode: {}", e.getMessage(), e);
             return null;
@@ -63,16 +53,13 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode with custom colors
+     * Generate Barcode with custom colors (no label)
      */
-    public String generateBarcodeBase64(String data, String label, int width, int height, 
+    public String generateBarcodeBase64(String data, int width, int height, 
                                          int foregroundColor, int backgroundColor) {
         try {
             BufferedImage barcodeImage = generateBarcodeImage(data, width, height, foregroundColor, backgroundColor);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating Barcode with colors: {}", e.getMessage(), e);
             return null;
@@ -80,22 +67,19 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode with specific barcode format
+     * Generate Barcode with specific barcode format (no label)
      */
-    public String generateBarcodeBase64(String data, String label, BarcodeFormat format) {
-        return generateBarcodeBase64(data, label, format, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    public String generateBarcodeBase64(String data, BarcodeFormat format) {
+        return generateBarcodeBase64(data, format, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     }
 
     /**
-     * Generate Barcode with specific barcode format and custom size
+     * Generate Barcode with specific barcode format and custom size (no label)
      */
-    public String generateBarcodeBase64(String data, String label, BarcodeFormat format, int width, int height) {
+    public String generateBarcodeBase64(String data, BarcodeFormat format, int width, int height) {
         try {
             BufferedImage barcodeImage = generateBarcodeImage(data, format, width, height);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating Barcode: {}", e.getMessage(), e);
             return null;
@@ -103,7 +87,7 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode as BufferedImage
+     * Generate Barcode as BufferedImage (no label)
      */
     public BufferedImage generateBarcodeImage(String data, int width, int height) 
             throws WriterException {
@@ -111,7 +95,7 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode as BufferedImage with custom colors
+     * Generate Barcode as BufferedImage with custom colors (no label)
      */
     public BufferedImage generateBarcodeImage(String data, int width, int height, 
                                                int foregroundColor, int backgroundColor) 
@@ -121,7 +105,7 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode as BufferedImage with specific format
+     * Generate Barcode as BufferedImage with specific format (no label)
      */
     public BufferedImage generateBarcodeImage(String data, BarcodeFormat format, int width, int height) 
             throws WriterException {
@@ -134,12 +118,12 @@ public class BarcodeGenerator {
         
         BufferedImage barcodeImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
         
-        // Add human-readable text below barcode
+        // Add human-readable text below barcode (this is the text at the bottom)
         return addHumanReadableText(barcodeImage, data);
     }
 
     /**
-     * Generate Barcode as BufferedImage with specific format and colors
+     * Generate Barcode as BufferedImage with specific format and colors (no label)
      */
     public BufferedImage generateBarcodeImage(String data, BarcodeFormat format, int width, int height,
                                                int foregroundColor, int backgroundColor) 
@@ -154,7 +138,7 @@ public class BarcodeGenerator {
         MatrixToImageConfig config = new MatrixToImageConfig(foregroundColor, backgroundColor);
         BufferedImage barcodeImage = MatrixToImageWriter.toBufferedImage(bitMatrix, config);
         
-        // Add human-readable text below barcode
+        // Add human-readable text below barcode (this is the text at the bottom)
         return addHumanReadableText(barcodeImage, data);
     }
 
@@ -218,55 +202,7 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Add label to barcode (above the barcode)
-     */
-    public BufferedImage addLabelToBarcode(BufferedImage barcodeImage, String label) {
-        if (label == null || label.isEmpty()) {
-            return barcodeImage;
-        }
-
-        int labelHeight = 30;
-        int padding = 5;
-        int totalHeight = barcodeImage.getHeight() + labelHeight + padding * 2;
-        int width = Math.max(barcodeImage.getWidth(), 200);
-
-        BufferedImage combined = new BufferedImage(width, totalHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = combined.createGraphics();
-
-        // White background
-        g2d.setColor(Color.WHITE);
-        g2d.fillRect(0, 0, width, totalHeight);
-
-        // Draw label with background
-        g2d.setColor(new Color(240, 240, 240));
-        g2d.fillRect(0, 0, width, labelHeight + padding);
-
-        g2d.setColor(Color.BLACK);
-        g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        FontMetrics fm = g2d.getFontMetrics();
-        
-        // Handle long labels
-        String displayLabel = label;
-        if (fm.stringWidth(label) > width - 20) {
-            while (fm.stringWidth(displayLabel + "...") > width - 20 && displayLabel.length() > 3) {
-                displayLabel = displayLabel.substring(0, displayLabel.length() - 1);
-            }
-            displayLabel += "...";
-        }
-        
-        int labelX = (width - fm.stringWidth(displayLabel)) / 2;
-        int labelY = labelHeight / 2 + fm.getAscent() / 2 - 2;
-        g2d.drawString(displayLabel, labelX, labelY);
-
-        // Draw barcode below label
-        g2d.drawImage(barcodeImage, (width - barcodeImage.getWidth()) / 2, labelHeight + padding, null);
-
-        g2d.dispose();
-        return combined;
-    }
-
-    /**
-     * Generate multiple barcodes in one image (grid layout)
+     * Generate multiple barcodes in one image (grid layout) - no labels
      */
     public String generateMultipleBarcodes(Map<String, String> barcodeData, String title) {
         try {
@@ -304,11 +240,9 @@ public class BarcodeGenerator {
                 int x = spacing + col * (barcodeWidth + spacing);
                 int y = yOffset + row * (barcodeHeight + spacing + 50);
 
-                // Generate barcode
+                // Generate barcode (no label)
                 BufferedImage barcode = generateBarcodeImage(entry.getValue(), barcodeWidth, barcodeHeight);
-                BufferedImage labeledBarcode = addLabelToBarcode(barcode, entry.getKey());
-                
-                g2d.drawImage(labeledBarcode, x, y, null);
+                g2d.drawImage(barcode, x, y, null);
 
                 index++;
             }
@@ -349,7 +283,7 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode and return as byte array
+     * Generate Barcode and return as byte array (no label)
      */
     public byte[] generateBarcodeBytes(String data) {
         try {
@@ -362,26 +296,10 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate Barcode with label and return as byte array
+     * Generate Barcode as Data URI (for HTML embedding) - no label
      */
-    public byte[] generateBarcodeBytes(String data, String label) {
-        try {
-            BufferedImage barcodeImage = generateBarcodeImage(data, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToByteArray(finalImage, DEFAULT_IMAGE_FORMAT);
-        } catch (Exception e) {
-            log.error("Error generating barcode bytes: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-
-    /**
-     * Generate Barcode as Data URI (for HTML embedding)
-     */
-    public String generateBarcodeDataURI(String data, String label) {
-        String base64 = generateBarcodeBase64(data, label);
+    public String generateBarcodeDataURI(String data) {
+        String base64 = generateBarcodeBase64(data);
         if (base64 != null) {
             return "data:image/png;base64," + base64;
         }
@@ -395,26 +313,19 @@ public class BarcodeGenerator {
         if (data == null || data.isEmpty()) {
             return false;
         }
-        // Check for invalid characters
-        // CODE128 can encode ASCII 0-127
-        // EAN-13 requires exactly 13 digits
-        // UPC-A requires exactly 12 digits
         return data.length() <= 128 && !data.matches(".*[\\x00-\\x1F].*");
     }
 
     /**
-     * Generate EAN-13 barcode (requires exactly 13 digits)
+     * Generate EAN-13 barcode (requires exactly 13 digits) - no label
      */
-    public String generateEAN13Barcode(String data, String label) {
+    public String generateEAN13Barcode(String data) {
         try {
             if (data.length() != 13 || !data.matches("\\d+")) {
                 throw new IllegalArgumentException("EAN-13 requires exactly 13 digits");
             }
             BufferedImage barcodeImage = generateBarcodeImage(data, BarcodeFormat.EAN_13, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating EAN-13 barcode: {}", e.getMessage(), e);
             return null;
@@ -422,33 +333,28 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate UPC-A barcode (requires exactly 12 digits)
+     * Generate UPC-A barcode (requires exactly 12 digits) - no label
      */
-    public String generateUPABarcode(String data, String label) {
+    public String generateUPABarcode(String data) {
         try {
             if (data.length() != 12 || !data.matches("\\d+")) {
                 throw new IllegalArgumentException("UPC-A requires exactly 12 digits");
             }
             BufferedImage barcodeImage = generateBarcodeImage(data, BarcodeFormat.UPC_A, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating UPC-A barcode: {}", e.getMessage(), e);
             return null;
         }
     }
+
     /**
-     * Generate Code 39 barcode
+     * Generate Code 39 barcode - no label
      */
-    public String generateCode39Barcode(String data, String label) {
+    public String generateCode39Barcode(String data) {
         try {
             BufferedImage barcodeImage = generateBarcodeImage(data, BarcodeFormat.CODE_39, DEFAULT_WIDTH, DEFAULT_HEIGHT);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating Code 39 barcode: {}", e.getMessage(), e);
             return null;
@@ -458,7 +364,7 @@ public class BarcodeGenerator {
     /**
      * Generate barcode with custom font for human-readable text
      */
-    public BufferedImage generateBarcodeWithCustomFont(String data, String label, Font font) 
+    public BufferedImage generateBarcodeWithCustomFont(String data, Font font) 
             throws WriterException {
         BufferedImage barcodeImage = generateBarcodeImage(data, DEFAULT_WIDTH, DEFAULT_HEIGHT);
         
@@ -490,30 +396,20 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate barcode with DPI support
-     * FIXED: Removed setProperty and properly handle DPI scaling
+     * Generate barcode with DPI support - no label
      */
-    public String generateBarcodeWithDPI(String data, String label, int width, int height, int dpi) {
+    public String generateBarcodeWithDPI(String data, int width, int height, int dpi) {
         try {
-            // Scale dimensions based on DPI (72 DPI is standard screen resolution)
             double scaleFactor = dpi / 72.0;
             int scaledWidth = (int) (width * scaleFactor);
             int scaledHeight = (int) (height * scaleFactor);
             
-            // Generate barcode with scaled dimensions
             BufferedImage barcodeImage = generateBarcodeImage(data, scaledWidth, scaledHeight);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
-            
-            // If we need to set DPI metadata, we need to use a different approach
-            // For PNG, we can't set DPI easily, but we can return the image with proper scaling
-            // The DPI is effectively set by the scaling factor
             
             log.info("Generated barcode with {} DPI (scaled from {}x{} to {}x{})", 
                      dpi, width, height, scaledWidth, scaledHeight);
             
-            return convertToBase64(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToBase64(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating barcode with DPI: {}", e.getMessage(), e);
             return null;
@@ -521,20 +417,17 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate barcode with DPI support and return as byte array
+     * Generate barcode with DPI support and return as byte array - no label
      */
-    public byte[] generateBarcodeWithDPIAsBytes(String data, String label, int width, int height, int dpi) {
+    public byte[] generateBarcodeWithDPIAsBytes(String data, int width, int height, int dpi) {
         try {
             double scaleFactor = dpi / 72.0;
             int scaledWidth = (int) (width * scaleFactor);
             int scaledHeight = (int) (height * scaleFactor);
             
             BufferedImage barcodeImage = generateBarcodeImage(data, scaledWidth, scaledHeight);
-            BufferedImage finalImage = label != null && !label.isEmpty() 
-                ? addLabelToBarcode(barcodeImage, label) 
-                : barcodeImage;
             
-            return convertToByteArray(finalImage, DEFAULT_IMAGE_FORMAT);
+            return convertToByteArray(barcodeImage, DEFAULT_IMAGE_FORMAT);
         } catch (Exception e) {
             log.error("Error generating barcode with DPI as bytes: {}", e.getMessage(), e);
             return null;
@@ -542,16 +435,16 @@ public class BarcodeGenerator {
     }
 
     /**
-     * Generate barcode with high resolution (300 DPI) for printing
+     * Generate barcode with high resolution (300 DPI) for printing - no label
      */
-    public String generateHighResBarcode(String data, String label) {
-        return generateBarcodeWithDPI(data, label, DEFAULT_WIDTH, DEFAULT_HEIGHT, 300);
+    public String generateHighResBarcode(String data) {
+        return generateBarcodeWithDPI(data, DEFAULT_WIDTH, DEFAULT_HEIGHT, 300);
     }
 
     /**
-     * Generate barcode with very high resolution (600 DPI) for professional printing
+     * Generate barcode with very high resolution (600 DPI) for professional printing - no label
      */
-    public String generateProfessionalBarcode(String data, String label) {
-        return generateBarcodeWithDPI(data, label, DEFAULT_WIDTH, DEFAULT_HEIGHT, 600);
+    public String generateProfessionalBarcode(String data) {
+        return generateBarcodeWithDPI(data, DEFAULT_WIDTH, DEFAULT_HEIGHT, 600);
     }
 }

@@ -166,6 +166,23 @@ public class BinServiceImpl implements BinService {
                 .multiply(request.getWidthCm())
                 .multiply(request.getHeightCm());
         bin.setVolumeCm3(volume);
+        
+        
+        
+        
+        
+        
+        if(bin.getBarcodeImage()==null)
+        {
+        	 binBarcodeService.generateBinBarcode(
+        			 bin.getLevel().getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+        			 bin.getLevel().getRack().getAisle().getZone().getZoneId(),
+        			 bin.getLevel().getRack().getAisle().getAisleId(),
+        			 bin.getLevel().getRack().getRackId(),
+        			 bin.getLevel().getLevelId(),
+        			 bin.getBarcode());
+        }
+        
 
         Bin updatedBin = binRepository.save(bin);
         log.info("✅ Bin updated: {}", updatedBin.getBarcode());

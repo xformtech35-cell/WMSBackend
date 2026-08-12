@@ -174,6 +174,15 @@ public class RackServiceImpl implements RackService {
 
         // Update rack fields
         rackMapper.updateEntity(rack, request);
+        
+        if(rack.getBarcodeImage()==null)
+        {
+            rackBarcodeServiceImpl.generateRackBarcode(rack.getAisle().getZone().getWarehouse().getWarehouseId(),rack.getAisle().getZone().getZoneId(),rack.getAisle().getAisleId(),rack.getRackId());
+
+        	
+        }
+        
+        
 
         Rack updatedRack = rackRepository.save(rack);
         log.info("✅ Rack updated: {}", updatedRack.getRackId());
