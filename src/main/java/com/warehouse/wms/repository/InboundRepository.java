@@ -248,16 +248,18 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
  // ====== ALL lines have barcodeGenerate = true ======
  
  @Query("SELECT i FROM Inbound i WHERE i.grnStatus = :grnStatus AND " +
-        "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-        "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-        "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-        "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-        "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
-        "NOT EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i AND (il.barcodeGenerate IS NULL OR il.barcodeGenerate = false))")
- Page<Inbound> findByGrnStatusAndAllLinesBarcodeGenerated(
-         @Param("grnStatus") String grnStatus,
-         @Param("search") String search,
-         Pageable pageable);
+	       "(:search IS NULL OR LOWER(i.inboundNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+	       "LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+	       "LOWER(i.supplierName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+	       "LOWER(i.grnNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+	       "LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+	       "NOT EXISTS (SELECT il FROM InboundLine il WHERE il.inbound = i " +
+	       "AND il.qualityStatus != 'REJECTED' " +  // Ignore REJECTED lines
+	       "AND (il.barcodeGenerate IS NULL OR il.barcodeGenerate = false))")
+	Page<Inbound> findByGrnStatusAndAllLinesBarcodeGenerated(
+	         @Param("grnStatus") String grnStatus,
+	         @Param("search") String search,
+	         Pageable pageable);
 
  // ====== ALL lines have taskAssigned = true ======
  
