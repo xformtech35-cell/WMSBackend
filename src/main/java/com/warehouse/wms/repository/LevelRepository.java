@@ -48,4 +48,31 @@ public interface LevelRepository extends JpaRepository<Level, Long> {
     
     boolean existsByRack_Aisle_Zone_Warehouse_WarehouseIdAndRack_Aisle_Zone_ZoneIdAndRack_Aisle_AisleIdAndRack_RackIdAndLevelId(
             String warehouseId, String zoneId, String aisleId, String rackId, String levelId);
+    
+    
+    
+    
+
+    
+    @Query("SELECT l FROM Level l WHERE l.rack.aisle.zone.warehouse.warehouseId = :warehouseId " +
+           "AND l.rack.aisle.zone.zoneId = :zoneId " +
+           "AND l.rack.aisle.aisleId = :aisleId " +
+           "AND l.rack.rackId = :rackId " +
+           "AND l.levelId = :levelId")
+    Optional<Level> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId,
+            @Param("aisleId") String aisleId,
+            @Param("rackId") String rackId,
+            @Param("levelId") String levelId);
+    
+    @Query("SELECT l FROM Level l WHERE l.rack.aisle.zone.warehouse.warehouseId = :warehouseId " +
+           "AND l.rack.aisle.zone.zoneId = :zoneId " +
+           "AND l.rack.aisle.aisleId = :aisleId " +
+           "AND l.rack.rackId = :rackId")
+    List<Level> findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId,
+            @Param("aisleId") String aisleId,
+            @Param("rackId") String rackId);
 }

@@ -95,4 +95,26 @@ public interface AisleRepository extends JpaRepository<Aisle, Long> {
     
     boolean existsByZone_Warehouse_WarehouseIdAndZone_ZoneIdAndAisleId(
             String warehouseId, String zoneId, String aisleId);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @Query("SELECT a FROM Aisle a WHERE a.zone.warehouse.warehouseId = :warehouseId AND a.zone.zoneId = :zoneId AND a.aisleId = :aisleId")
+    Optional<Aisle> findByWarehouseIdAndZoneIdAndAisleId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId,
+            @Param("aisleId") String aisleId);
+    
+    @Query("SELECT a FROM Aisle a WHERE a.zone.warehouse.warehouseId = :warehouseId AND a.zone.zoneId = :zoneId")
+    List<Aisle> findByWarehouseIdAndZoneId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId);
 }

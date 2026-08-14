@@ -3,9 +3,9 @@ package com.warehouse.wms.service.impl;
 
 import com.warehouse.wms.dto.response.ItemStockSummary;
 import com.warehouse.wms.dto.response.StockAvailabilitySummary;
-import com.warehouse.wms.entity.StockAvailability;
+import com.warehouse.wms.entity.*;
 import com.warehouse.wms.entity.StockAvailability.LocationLevel;
-import com.warehouse.wms.repository.StockAvailabilityRepository;
+import com.warehouse.wms.repository.*;
 import com.warehouse.wms.service.StockAvailabilityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +25,12 @@ import java.util.stream.Collectors;
 public class StockAvailabilityServiceImpl implements StockAvailabilityService {
 
     private final StockAvailabilityRepository stockAvailabilityRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final ZoneRepository zoneRepository;
+    private final AisleRepository aisleRepository;
+    private final RackRepository rackRepository;
+    private final LevelRepository levelRepository;
+    private final BinRepository binRepository;
 
     // ====== Get Stock Availability at Each Level ======
 
@@ -98,59 +104,53 @@ public class StockAvailabilityServiceImpl implements StockAvailabilityService {
         return buildSummary(stocks);
     }
 
-// ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
-
-@Override
-public StockAvailabilitySummary getBinStockSummary(String binId) {
-    log.debug("Getting bin stock summary for: {}", binId);
-    
-    if (binId == null) {
-        return buildEmptyStockSummary();
-    }
-    
-    List<StockAvailability> stocks = new ArrayList<>();
-    
-    try {
-        // ✅ Method 1: Find by bin_id - returns List<StockAvailability>
-        List<StockAvailability> byBinId = stockAvailabilityRepository
-                .findByBinIdAndItemCode(binId, null);
+    @Override
+    public StockAvailabilitySummary getBinStockSummary(String binId) {
+        log.debug("Getting bin stock summary for: {}", binId);
         
-        if (byBinId != null && !byBinId.isEmpty()) {
-            stocks = byBinId;
-            log.debug("Found {} stock records by bin_id: {}", stocks.size(), binId);
+        if (binId == null) {
+            return buildEmptyStockSummary();
         }
         
-        // Method 2: If no results, try by bin_barcode
-        if (stocks.isEmpty()) {
-            List<StockAvailability> byBinBarcode = stockAvailabilityRepository
-                    .findByBinBarcodeAndItemCode(binId, null);
-            if (byBinBarcode != null && !byBinBarcode.isEmpty()) {
-                stocks = byBinBarcode;
-                log.debug("Found {} stock records by bin_barcode: {}", stocks.size(), binId);
-            }
-        }
+        List<StockAvailability> stocks = new ArrayList<>();
         
-        // Method 3: Manual filtering as fallback
-        if (stocks.isEmpty()) {
-            stocks = stockAvailabilityRepository
-                    .findAll()
-                    .stream()
-                    .filter(s -> LocationLevel.BIN == s.getLocationLevel())
-                    .filter(s -> binId.equals(s.getBinId()) || binId.equals(s.getBinBarcode()))
-                    .collect(Collectors.toList());
+        try {
+            List<StockAvailability> byBinId = stockAvailabilityRepository
+                    .findByBinIdAndItemCode(binId, null);
             
-            if (!stocks.isEmpty()) {
-                log.debug("Found {} stock records by manual filtering: {}", stocks.size(), binId);
+            if (byBinId != null && !byBinId.isEmpty()) {
+                stocks = byBinId;
+                log.debug("Found {} stock records by bin_id: {}", stocks.size(), binId);
             }
+            
+            if (stocks.isEmpty()) {
+                List<StockAvailability> byBinBarcode = stockAvailabilityRepository
+                        .findByBinBarcodeAndItemCode(binId, null);
+                if (byBinBarcode != null && !byBinBarcode.isEmpty()) {
+                    stocks = byBinBarcode;
+                    log.debug("Found {} stock records by bin_barcode: {}", stocks.size(), binId);
+                }
+            }
+            
+            if (stocks.isEmpty()) {
+                stocks = stockAvailabilityRepository
+                        .findAll()
+                        .stream()
+                        .filter(s -> LocationLevel.BIN == s.getLocationLevel())
+                        .filter(s -> binId.equals(s.getBinId()) || binId.equals(s.getBinBarcode()))
+                        .collect(Collectors.toList());
+                
+                if (!stocks.isEmpty()) {
+                    log.debug("Found {} stock records by manual filtering: {}", stocks.size(), binId);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("Error fetching bin stock summary for binId: {}", binId, e);
         }
         
-    } catch (Exception e) {
-        log.error("Error fetching bin stock summary for binId: {}", binId, e);
+        return buildSummary(stocks);
     }
-    
-    // ✅ Always return a summary
-    return buildSummary(stocks);
-}
 
     // ====== Check Stock Availability ======
 
@@ -164,7 +164,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             return true;
         }
         
-        // Check at BIN level first
         if (binId != null) {
             Optional<Integer> binAvailable = stockAvailabilityRepository
                     .getAvailableQuantityInBin(binId, itemCode);
@@ -173,7 +172,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at LEVEL level
         if (levelId != null) {
             Optional<StockAvailability> levelStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, null, 
@@ -183,7 +181,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at RACK level
         if (rackId != null) {
             Optional<StockAvailability> rackStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, null, null, 
@@ -193,7 +190,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at AISLE level
         if (aisleId != null) {
             Optional<StockAvailability> aisleStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, null, null, null, 
@@ -203,7 +199,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at ZONE level
         if (zoneId != null) {
             Optional<StockAvailability> zoneStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, null, null, null, null, 
@@ -213,7 +208,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at WAREHOUSE level
         if (warehouseId != null) {
             Optional<StockAvailability> warehouseStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, null, null, null, null, null, 
@@ -231,7 +225,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
                                         String rackId, String levelId, String binId, String itemCode) {
         log.debug("Getting available quantity: item={}", itemCode);
         
-        // Check at BIN level first
         if (binId != null) {
             Optional<Integer> binAvailable = stockAvailabilityRepository
                     .getAvailableQuantityInBin(binId, itemCode);
@@ -240,7 +233,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at LEVEL level
         if (levelId != null) {
             Optional<StockAvailability> levelStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, null, 
@@ -250,7 +242,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at RACK level
         if (rackId != null) {
             Optional<StockAvailability> rackStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, null, null, 
@@ -260,7 +251,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at AISLE level
         if (aisleId != null) {
             Optional<StockAvailability> aisleStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, aisleId, null, null, null, 
@@ -270,7 +260,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at ZONE level
         if (zoneId != null) {
             Optional<StockAvailability> zoneStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, zoneId, null, null, null, null, 
@@ -280,7 +269,6 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
             }
         }
 
-        // Check at WAREHOUSE level
         if (warehouseId != null) {
             Optional<StockAvailability> warehouseStock = stockAvailabilityRepository
                     .findByLocationAndItem(warehouseId, null, null, null, null, null, 
@@ -295,9 +283,7 @@ public StockAvailabilitySummary getBinStockSummary(String binId) {
 
     // ====== Private Helper Methods ======
 
-  // ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
-
-// ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
+   // ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
 
 private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
     if (stocks == null || stocks.isEmpty()) {
@@ -312,50 +298,27 @@ private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
     int minCapacity = 0;
     int binCount = 0;
     int totalBinsUsed = 0;
-    int capacityFound = 0;
-    
-    // ✅ Use the MAX maxCapacity value from all stock records
-    Integer binMaxCapacity = null;
-    Integer binMinCapacity = null;
     
     List<ItemStockSummary> itemSummaries = new ArrayList<>();
     List<String> uniqueItems = new ArrayList<>();
 
+    // ✅ First pass: Calculate totals from stock records
     for (StockAvailability stock : stocks) {
         totalQty += stock.getTotalQuantity() != null ? stock.getTotalQuantity() : 0;
         stockin += stock.getAvailableQuantity() != null ? stock.getAvailableQuantity() : 0;
         reservedQty += stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0;
         inTransitQty += stock.getInTransitQuantity() != null ? stock.getInTransitQuantity() : 0;
         
-        // Track unique items
         if (stock.getItemCode() != null && !uniqueItems.contains(stock.getItemCode())) {
             uniqueItems.add(stock.getItemCode());
         }
         
-        // ✅ Take the MAX maxCapacity (should be same for all items in same bin)
-        if (stock.getMaxCapacity() != null && stock.getMaxCapacity() > 0) {
-            if (binMaxCapacity == null || stock.getMaxCapacity() > binMaxCapacity) {
-                binMaxCapacity = stock.getMaxCapacity();
-            }
-            capacityFound++;
-            binCount++;
-        }
-        
-        // ✅ Take the MAX minCapacity
-        if (stock.getMinCapacity() != null && stock.getMinCapacity() > 0) {
-            if (binMinCapacity == null || stock.getMinCapacity() > binMinCapacity) {
-                binMinCapacity = stock.getMinCapacity();
-            }
-        }
-        
-        // Count bins used
         if (stock.getTotalQuantity() != null && stock.getTotalQuantity() > 0) {
             if (stock.getBinId() != null) {
                 totalBinsUsed++;
             }
         }
         
-        // Add item summary (avoid duplicates)
         boolean exists = itemSummaries.stream()
                 .anyMatch(item -> item.getItemCode().equals(stock.getItemCode()));
         
@@ -372,27 +335,57 @@ private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
         }
     }
 
-    // ✅ Use the MAX maxCapacity
-    if (binMaxCapacity != null) {
-        maxCapacity = binMaxCapacity;
+    // ✅ Get capacity from entity (PRIORITY 1 - use entity capacity)
+    StockAvailability firstStock = stocks.get(0);
+    LocationLevel level = firstStock.getLocationLevel();
+    
+    // Get capacity from entity
+    Integer entityMaxCapacity = getCapacityFromEntity(firstStock);
+    Integer entityMinCapacity = getMinCapacityFromEntity(firstStock);
+    
+    // ✅ If entity has capacity, use it (this is the fix!)
+    if (entityMaxCapacity != null && entityMaxCapacity > 0) {
+        maxCapacity = entityMaxCapacity;
+        log.debug("Using entity maxCapacity: {} from {}", maxCapacity, level);
     } else {
-        // If no capacity found, use default based on location level
-        String locationLevel = stocks.get(0).getLocationLevel() != null ? 
-                stocks.get(0).getLocationLevel().name() : "UNKNOWN";
-        maxCapacity = getDefaultCapacityForLevel(locationLevel);
-        minCapacity = getDefaultMinCapacityForLevel(locationLevel);
+        // Fallback: Try to get from stock records
+        for (StockAvailability stock : stocks) {
+            if (stock.getMaxCapacity() != null && stock.getMaxCapacity() > 0) {
+                if (stock.getMaxCapacity() > maxCapacity) {
+                    maxCapacity = stock.getMaxCapacity();
+                }
+                binCount++;
+            }
+        }
+        log.debug("Using stock maxCapacity: {} (no entity capacity found)", maxCapacity);
     }
     
-    // ✅ Use the MAX minCapacity
-    if (binMinCapacity != null) {
-        minCapacity = binMinCapacity;
+    // ✅ If entity has min capacity, use it
+    if (entityMinCapacity != null && entityMinCapacity > 0) {
+        minCapacity = entityMinCapacity;
+        log.debug("Using entity minCapacity: {} from {}", minCapacity, level);
+    } else {
+        // Fallback: Try to get from stock records
+        for (StockAvailability stock : stocks) {
+            if (stock.getMinCapacity() != null && stock.getMinCapacity() > 0) {
+                if (stock.getMinCapacity() > minCapacity) {
+                    minCapacity = stock.getMinCapacity();
+                }
+            }
+        }
+        log.debug("Using stock minCapacity: {} (no entity capacity found)", minCapacity);
     }
 
-    // Calculate available slots (maxCapacity - totalQuantity)
+    // If still no capacity, use 0
+    if (maxCapacity == 0) {
+        maxCapacity = 0;
+        log.warn("No capacity found for level: {}", level);
+    }
+
+    // Calculate available slots
     int availableSlots = Math.max(0, maxCapacity - totalQty);
     int occupiedSlots = Math.min(maxCapacity, totalQty);
     
-    // Calculate utilization
     Double utilization = null;
     if (maxCapacity > 0) {
         utilization = ((double) totalQty / maxCapacity) * 100;
@@ -401,7 +394,6 @@ private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
         }
     }
 
-    // Determine stock status
     boolean hasStock = totalQty > 0;
     boolean isAvailable = stockin > 0;
     boolean isFull = maxCapacity > 0 && totalQty >= maxCapacity;
@@ -421,12 +413,10 @@ private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
         }
     }
 
-    // Get location path from first stock
-    String locationPath = stocks.get(0).getFullLocationPath();
-    String locationLevel = stocks.get(0).getLocationLevel() != null ? 
-            stocks.get(0).getLocationLevel().name() : null;
+    String locationPath = firstStock.getFullLocationPath();
+    String locationLevel = firstStock.getLocationLevel() != null ? 
+            firstStock.getLocationLevel().name() : null;
 
-    // Get timestamps
     String lastPutawayDate = stocks.stream()
             .map(StockAvailability::getLastPutawayDate)
             .filter(d -> d != null)
@@ -441,120 +431,394 @@ private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
             .map(d -> d.toString())
             .orElse(null);
 
-    // Calculate stock turnover rate
     Double stockTurnoverRate = null;
     if (totalQty > 0 && stockin > 0) {
         stockTurnoverRate = (double) totalQty / stockin;
     }
 
     return StockAvailabilitySummary.builder()
-            // Stock counts
             .totalQuantity(totalQty)
             .stockin(stockin)
             .reservedQuantity(reservedQty)
             .inTransitQuantity(inTransitQty)
-            
-            // Capacity - use MAX value
             .maxCapacity(maxCapacity > 0 ? maxCapacity : null)
-            .minCapacity(minCapacity > 0 ? minCapacity : null)
+            .minCapacity(minCapacity)
             .utilizationPercentage(utilization)
             .availableSlots(availableSlots)
             .occupiedSlots(occupiedSlots)
-            
-            // Stock status
             .hasStock(hasStock)
             .isAvailable(isAvailable)
             .isFull(isFull)
             .isLowStock(isLowStock)
             .isHighStock(isHighStock)
             .stockStatus(stockStatus)
-            
-            // Location
             .locationPath(locationPath)
             .locationLevel(locationLevel)
-            
-            // Items
             .uniqueItemsCount(uniqueItems.size())
             .items(itemSummaries)
-            
-            // Timestamps
             .lastPutawayDate(lastPutawayDate)
             .lastPickDate(lastPickDate)
-            
-            // Summary
             .totalBinsUsed(totalBinsUsed)
             .totalBinsAvailable(binCount > 0 ? binCount : null)
             .stockTurnoverRate(stockTurnoverRate)
-            
             .build();
 }
 
-    private Integer getDefaultCapacityForLevel(String locationLevel) {
-        if (locationLevel == null) return 1000;
-        switch (locationLevel.toUpperCase()) {
-            case "WAREHOUSE": return 100000;
-            case "ZONE": return 50000;
-            case "AISLE": return 10000;
-            case "RACK": return 5000;
-            case "LEVEL": return 1000;
-            case "BIN": return 100;
-            default: return 1000;
+/**
+ * Get capacity from entity based on location level
+ */
+private Integer getCapacityFromEntity(StockAvailability stock) {
+    if (stock == null) {
+        return 0;
+    }
+    
+    LocationLevel level = stock.getLocationLevel();
+    
+    try {
+        switch (level) {
+            case WAREHOUSE:
+                Optional<Warehouse> warehouse = warehouseRepository.findByWarehouseId(stock.getWarehouseId());
+                if (warehouse.isPresent()) {
+                    Integer capacity = warehouse.get().getMaxCapacity();
+                    log.debug("Found warehouse maxCapacity: {} for warehouse: {}", capacity, stock.getWarehouseId());
+                    return capacity != null ? capacity : 0;
+                }
+                break;
+                
+            case ZONE:
+                Optional<Zone> zone = zoneRepository.findByWarehouseIdAndZoneId(
+                        stock.getWarehouseId(), stock.getZoneId());
+                if (zone.isPresent()) {
+                    Integer maxCap = zone.get().getMaxCapacity();
+                    log.debug("Found zone maxCapacity: {} for zone: {}", maxCap, stock.getZoneId());
+                    return maxCap != null ? maxCap : 0;
+                }
+                break;
+                
+            case AISLE:
+                Optional<Aisle> aisle = aisleRepository.findByWarehouseIdAndZoneIdAndAisleId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId());
+                if (aisle.isPresent()) {
+                    Integer maxCap = aisle.get().getMaxCapacity();
+                    log.debug("Found aisle maxCapacity: {} for aisle: {}", maxCap, stock.getAisleId());
+                    return maxCap != null ? maxCap : 0;
+                }
+                break;
+                
+            case RACK:
+                Optional<Rack> rack = rackRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), stock.getRackId());
+                if (rack.isPresent()) {
+                    Integer maxCap = rack.get().getMaxCapacity();
+                    log.debug("Found rack maxCapacity: {} for rack: {}", maxCap, stock.getRackId());
+                    return maxCap != null ? maxCap : 0;
+                }
+                break;
+                
+            case LEVEL:
+                Optional<Level> level1 = levelRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), 
+                        stock.getRackId(), stock.getLevelId());
+                if (level1.isPresent()) {
+                    Integer maxCap = level1.get().getMaxCapacity();
+                    log.debug("Found level maxCapacity: {} for level: {}", maxCap, stock.getLevelId());
+                    return maxCap != null ? maxCap : 0;
+                }
+                break;
+                
+            case BIN:
+                Optional<Bin> bin = binRepository.findByBarcode(stock.getBinId());
+                if (bin.isPresent()) {
+                    Integer maxCap = bin.get().getMaxCapacity();
+                    log.debug("Found bin maxCapacity: {} for bin: {}", maxCap, stock.getBinId());
+                    return maxCap != null ? maxCap : 0;
+                }
+                break;
+                
+            default:
+                break;
         }
+    } catch (Exception e) {
+        log.warn("Error getting capacity from entity for level: {}", level, e);
+    }
+    
+    return 0;
+}
+
+/**
+ * Get min capacity from entity based on location level
+ */
+private Integer getMinCapacityFromEntity(StockAvailability stock) {
+    if (stock == null) {
+        return 0;
+    }
+    
+    LocationLevel level = stock.getLocationLevel();
+    
+    try {
+        switch (level) {
+            case WAREHOUSE:
+                Optional<Warehouse> warehouse = warehouseRepository.findByWarehouseId(stock.getWarehouseId());
+                if (warehouse.isPresent()) {
+                    Integer minCap = warehouse.get().getMinCapacity();
+                    log.debug("Found warehouse minCapacity: {} for warehouse: {}", minCap, stock.getWarehouseId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            case ZONE:
+                Optional<Zone> zone = zoneRepository.findByWarehouseIdAndZoneId(
+                        stock.getWarehouseId(), stock.getZoneId());
+                if (zone.isPresent()) {
+                    Integer minCap = zone.get().getMinCapacity();
+                    log.debug("Found zone minCapacity: {} for zone: {}", minCap, stock.getZoneId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            case AISLE:
+                Optional<Aisle> aisle = aisleRepository.findByWarehouseIdAndZoneIdAndAisleId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId());
+                if (aisle.isPresent()) {
+                    Integer minCap = aisle.get().getMinCapacity();
+                    log.debug("Found aisle minCapacity: {} for aisle: {}", minCap, stock.getAisleId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            case RACK:
+                Optional<Rack> rack = rackRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), stock.getRackId());
+                if (rack.isPresent()) {
+                    Integer minCap = rack.get().getMinCapacity();
+                    log.debug("Found rack minCapacity: {} for rack: {}", minCap, stock.getRackId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            case LEVEL:
+                Optional<Level> level2 = levelRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelId(
+                        stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), 
+                        stock.getRackId(), stock.getLevelId());
+                if (level2.isPresent()) {
+                    Integer minCap = level2.get().getMinCapacity();
+                    log.debug("Found level minCapacity: {} for level: {}", minCap, stock.getLevelId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            case BIN:
+                Optional<Bin> bin = binRepository.findByBarcode(stock.getBinId());
+                if (bin.isPresent()) {
+                    Integer minCap = bin.get().getMinCapacity();
+                    log.debug("Found bin minCapacity: {} for bin: {}", minCap, stock.getBinId());
+                    return minCap != null ? minCap : 0;
+                }
+                break;
+                
+            default:
+                break;
+        }
+    } catch (Exception e) {
+        log.warn("Error getting min capacity from entity for level: {}", level, e);
+    }
+    
+    return 0;
+}
+
+    /**
+     * Get capacity from entity based on location level
+     */
+    private Integer getCapacityFromEntity(List<StockAvailability> stocks) {
+        if (stocks == null || stocks.isEmpty()) {
+            return 0;
+        }
+        
+        StockAvailability stock = stocks.get(0);
+        LocationLevel level = stock.getLocationLevel();
+        
+        try {
+            switch (level) {
+                case WAREHOUSE:
+                    Optional<Warehouse> warehouse = warehouseRepository.findByWarehouseId(stock.getWarehouseId());
+                    if (warehouse.isPresent()) {
+                        // ✅ Use capacity field, not maxCapacity
+                        Integer capacity = warehouse.get().getCapacity();
+                        log.debug("Found warehouse capacity: {} for warehouse: {}", capacity, stock.getWarehouseId());
+                        return capacity != null ? capacity : 0;
+                    }
+                    break;
+                    
+                case ZONE:
+                    Optional<Zone> zone = zoneRepository.findByWarehouseIdAndZoneId(
+                            stock.getWarehouseId(), stock.getZoneId());
+                    if (zone.isPresent()) {
+                        Integer maxCap = zone.get().getMaxCapacity();
+                        log.debug("Found zone maxCapacity: {} for zone: {}", maxCap, stock.getZoneId());
+                        return maxCap != null ? maxCap : 0;
+                    }
+                    break;
+                    
+                case AISLE:
+                    Optional<Aisle> aisle = aisleRepository.findByWarehouseIdAndZoneIdAndAisleId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId());
+                    if (aisle.isPresent()) {
+                        Integer maxCap = aisle.get().getMaxCapacity();
+                        log.debug("Found aisle maxCapacity: {} for aisle: {}", maxCap, stock.getAisleId());
+                        return maxCap != null ? maxCap : 0;
+                    }
+                    break;
+                    
+                case RACK:
+                    Optional<Rack> rack = rackRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), stock.getRackId());
+                    if (rack.isPresent()) {
+                        Integer maxCap = rack.get().getMaxCapacity();
+                        log.debug("Found rack maxCapacity: {} for rack: {}", maxCap, stock.getRackId());
+                        return maxCap != null ? maxCap : 0;
+                    }
+                    break;
+                    
+                case LEVEL:
+                    Optional<Level> level2 = levelRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), 
+                            stock.getRackId(), stock.getLevelId());
+                    if (level2.isPresent()) {
+                        Integer maxCap = level2.get().getMaxCapacity();
+                        log.debug("Found level maxCapacity: {} for level: {}", maxCap, stock.getLevelId());
+                        return maxCap != null ? maxCap : 0;
+                    }
+                    break;
+                    
+                case BIN:
+                    Optional<Bin> bin = binRepository.findByBarcode(stock.getBinId());
+                    if (bin.isPresent()) {
+                        Integer maxCap = bin.get().getMaxCapacity();
+                        log.debug("Found bin maxCapacity: {} for bin: {}", maxCap, stock.getBinId());
+                        return maxCap != null ? maxCap : 0;
+                    }
+                    break;
+                    
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            log.warn("Error getting capacity from entity for level: {}", level, e);
+        }
+        
+        // ✅ Return 0 if not found (no hardcoded defaults)
+        return 0;
     }
 
-    private Integer getDefaultMinCapacityForLevel(String locationLevel) {
-        if (locationLevel == null) return 0;
-        switch (locationLevel.toUpperCase()) {
-            case "WAREHOUSE": return 0;
-            case "ZONE": return 0;
-            case "AISLE": return 0;
-            case "RACK": return 0;
-            case "LEVEL": return 0;
-            case "BIN": return 10;
-            default: return 0;
+    /**
+     * Get min capacity from entity based on location level
+     */
+    private Integer getMinCapacityFromEntity(List<StockAvailability> stocks) {
+        if (stocks == null || stocks.isEmpty()) {
+            return 0;
         }
+        
+        StockAvailability stock = stocks.get(0);
+        LocationLevel level = stock.getLocationLevel();
+        
+        try {
+            switch (level) {
+                case WAREHOUSE:
+                    Optional<Warehouse> warehouse = warehouseRepository.findByWarehouseId(stock.getWarehouseId());
+                    if (warehouse.isPresent()) {
+                        Integer minCap = warehouse.get().getMinCapacity();
+                        log.debug("Found warehouse minCapacity: {} for warehouse: {}", minCap, stock.getWarehouseId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                case ZONE:
+                    Optional<Zone> zone = zoneRepository.findByWarehouseIdAndZoneId(
+                            stock.getWarehouseId(), stock.getZoneId());
+                    if (zone.isPresent()) {
+                        Integer minCap = zone.get().getMinCapacity();
+                        log.debug("Found zone minCapacity: {} for zone: {}", minCap, stock.getZoneId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                case AISLE:
+                    Optional<Aisle> aisle = aisleRepository.findByWarehouseIdAndZoneIdAndAisleId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId());
+                    if (aisle.isPresent()) {
+                        Integer minCap = aisle.get().getMinCapacity();
+                        log.debug("Found aisle minCapacity: {} for aisle: {}", minCap, stock.getAisleId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                case RACK:
+                    Optional<Rack> rack = rackRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), stock.getRackId());
+                    if (rack.isPresent()) {
+                        Integer minCap = rack.get().getMinCapacity();
+                        log.debug("Found rack minCapacity: {} for rack: {}", minCap, stock.getRackId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                case LEVEL:
+                    Optional<Level> level1 = levelRepository.findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelId(
+                            stock.getWarehouseId(), stock.getZoneId(), stock.getAisleId(), 
+                            stock.getRackId(), stock.getLevelId());
+                    if (level1.isPresent()) {
+                        Integer minCap = level1.get().getMinCapacity();
+                        log.debug("Found level minCapacity: {} for level: {}", minCap, stock.getLevelId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                case BIN:
+                    Optional<Bin> bin = binRepository.findByBarcode(stock.getBinId());
+                    if (bin.isPresent()) {
+                        Integer minCap = bin.get().getMinCapacity();
+                        log.debug("Found bin minCapacity: {} for bin: {}", minCap, stock.getBinId());
+                        return minCap != null ? minCap : 0;
+                    }
+                    break;
+                    
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            log.warn("Error getting min capacity from entity for level: {}", level, e);
+        }
+        
+        // ✅ Return 0 if not found (no hardcoded defaults)
+        return 0;
     }
 
     private StockAvailabilitySummary buildEmptyStockSummary() {
         return StockAvailabilitySummary.builder()
-                // Stock counts
                 .totalQuantity(0)
                 .stockin(0)
                 .reservedQuantity(0)
                 .inTransitQuantity(0)
-                
-                // Capacity
                 .maxCapacity(null)
-                .minCapacity(null)
+                .minCapacity(0)
                 .utilizationPercentage(0.0)
                 .availableSlots(0)
                 .occupiedSlots(0)
-                
-                // Stock status
                 .hasStock(false)
                 .isFull(false)
                 .isAvailable(false)
                 .isLowStock(false)
                 .isHighStock(false)
                 .stockStatus("EMPTY")
-                
-                // Location
                 .locationPath(null)
                 .locationLevel(null)
-                
-                // Items
                 .uniqueItemsCount(0)
                 .items(new ArrayList<>())
-                
-                // Timestamps
                 .lastPutawayDate(null)
                 .lastPickDate(null)
-                
-                // Summary
                 .totalBinsUsed(0)
                 .totalBinsAvailable(0)
                 .stockTurnoverRate(0.0)
-                
                 .build();
     }
 }

@@ -100,4 +100,14 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
     
     
     boolean existsByWarehouse_WarehouseIdAndZoneId(String warehouseId, String zoneId);
+    
+    
+    
+    
+    @Query("SELECT z FROM Zone z WHERE z.warehouse.warehouseId = :warehouseId AND z.zoneId = :zoneId")
+    Optional<Zone> findByWarehouseIdAndZoneId(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId);
+    
+   
 }

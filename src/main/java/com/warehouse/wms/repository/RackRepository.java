@@ -103,4 +103,36 @@ public interface RackRepository extends JpaRepository<Rack, Long> {
     
     boolean existsByAisle_Zone_Warehouse_WarehouseIdAndAisle_Zone_ZoneIdAndAisle_AisleIdAndRackId(
             String warehouseId, String zoneId, String aisleId, String rackId);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @Query("SELECT r FROM Rack r WHERE r.aisle.zone.warehouse.warehouseId = :warehouseId " +
+           "AND r.aisle.zone.zoneId = :zoneId " +
+           "AND r.aisle.aisleId = :aisleId " +
+           "AND r.rackId = :rackId")
+    Optional<Rack> findByWarehouseIdAndZoneIdAndAisleIdAndRackId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId,
+            @Param("aisleId") String aisleId,
+            @Param("rackId") String rackId);
+    
+    @Query("SELECT r FROM Rack r WHERE r.aisle.zone.warehouse.warehouseId = :warehouseId " +
+           "AND r.aisle.zone.zoneId = :zoneId " +
+           "AND r.aisle.aisleId = :aisleId")
+    List<Rack> findByWarehouseIdAndZoneIdAndAisleId(
+            @Param("warehouseId") String warehouseId,
+            @Param("zoneId") String zoneId,
+            @Param("aisleId") String aisleId);
 }
