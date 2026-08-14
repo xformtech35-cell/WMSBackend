@@ -89,6 +89,15 @@ public class StockAvailability {
     // Capacity information
     @Column(name = "max_capacity")
     private Integer maxCapacity;
+    
+    @Column(name = "min_capacity")
+    private Integer minCapacity;
+    
+    
+    
+ 
+    
+    
 
     @Column(name = "utilization_percentage")
     private Double utilizationPercentage;

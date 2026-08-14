@@ -847,87 +847,89 @@ case PLACED:
  // ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
 
 
- @Override
- @Transactional
- public void updateInventoryAfterPutaway(String confirmationNumber) {
-     log.info("Updating inventory for confirmation: {}", confirmationNumber);
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
 
-     PutawayConfirmation confirmation = putawayConfirmationRepository
-             .findByConfirmationNumber(confirmationNumber)
-             .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
+    @Override
+    @Transactional
+    public void updateInventoryAfterPutaway(String confirmationNumber) {
+        log.info("Updating inventory for confirmation: {}", confirmationNumber);
 
-     if (confirmation.getInventoryUpdated()) {
-         log.info("Inventory already updated for confirmation: {}", confirmationNumber);
-         return;
-     }
+        PutawayConfirmation confirmation = putawayConfirmationRepository
+                .findByConfirmationNumber(confirmationNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
 
-     PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
-             .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+        if (confirmation.getInventoryUpdated()) {
+            log.info("Inventory already updated for confirmation: {}", confirmationNumber);
+            return;
+        }
 
-     // Update inventory for each line
-     for (PutawayLine line : task.getLines()) {
-         if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
-             continue;
-         }
+        PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 
-         String warehouseId = line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId();
-         String zoneId = line.getActualZone();
-         String aisleId = line.getActualAisle();
-         String rackId = line.getActualRack();
-         String levelId = line.getActualLevel();
-         String binId = line.getActualBin();
-         String itemCode = line.getItemCode();
-         Integer quantity = line.getPutawayQuantity();
+        // Update inventory for each line
+        for (PutawayLine line : task.getLines()) {
+            if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
+                continue;
+            }
 
-         // ====== 1. UPDATE STOCK AVAILABILITY AT ALL HIERARCHICAL LEVELS ======
-         
-         // 1.1 Update at BIN level
-         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.BIN);
+            String warehouseId = line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId();
+            String zoneId = line.getActualZone();
+            String aisleId = line.getActualAisle();
+            String rackId = line.getActualRack();
+            String levelId = line.getActualLevel();
+            String binId = line.getActualBin();
+            String itemCode = line.getItemCode();
+            Integer quantity = line.getPutawayQuantity();
 
-         // 1.2 Update at LEVEL level
-         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, null, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.LEVEL);
+            // ====== UPDATE STOCK AVAILABILITY AT ALL HIERARCHICAL LEVELS ======
+            
+            // 1. Update at BIN level
+            updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.BIN);
 
-         // 1.3 Update at RACK level
-         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, null, null, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.RACK);
+            // 2. Update at LEVEL level
+            updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, null, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.LEVEL);
 
-         // 1.4 Update at AISLE level
-         updateStockAvailability(warehouseId, zoneId, aisleId, null, null, null, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.AISLE);
+            // 3. Update at RACK level
+            updateStockAvailability(warehouseId, zoneId, aisleId, rackId, null, null, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.RACK);
 
-         // 1.5 Update at ZONE level
-         updateStockAvailability(warehouseId, zoneId, null, null, null, null, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.ZONE);
+            // 4. Update at AISLE level
+            updateStockAvailability(warehouseId, zoneId, aisleId, null, null, null, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.AISLE);
 
-         // 1.6 Update at WAREHOUSE level
-         updateStockAvailability(warehouseId, null, null, null, null, null, 
-                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.WAREHOUSE);
+            // 5. Update at ZONE level
+            updateStockAvailability(warehouseId, zoneId, null, null, null, null, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.ZONE);
 
-         // ====== 2. UPDATE EXISTING INVENTORY STOCK (Backward Compatibility) ======
-         updateInventoryStock(line, task, confirmationNumber);
+            // 6. Update at WAREHOUSE level
+            updateStockAvailability(warehouseId, null, null, null, null, null, 
+                                   itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.WAREHOUSE);
 
-         // ====== 3. UPDATE BIN CAPACITY ======
-         if (line.getActualBin() != null) {
-             binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), quantity);
-             binLocationRepository.updateLastPutaway(line.getActualBin());
-         }
-     }
+            // ====== UPDATE EXISTING INVENTORY STOCK (Backward Compatibility) ======
+            updateInventoryStock(line, task, confirmationNumber);
 
-     // Update confirmation
-     confirmation.setInventoryUpdated(true);
-     confirmation.setInventoryUpdatedAt(LocalDateTime.now());
-     putawayConfirmationRepository.save(confirmation);
+            // ====== UPDATE BIN CAPACITY ======
+            if (line.getActualBin() != null) {
+                binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), quantity);
+                binLocationRepository.updateLastPutaway(line.getActualBin());
+            }
+        }
 
-     // Update task status
-     task.setStage(PutawayStage.COMPLETED);
-     task.setStatus(PutawayStatus.COMPLETED);
-     task.setCompletedAt(LocalDateTime.now());
-     putawayTaskRepository.save(task);
+        // Update confirmation
+        confirmation.setInventoryUpdated(true);
+        confirmation.setInventoryUpdatedAt(LocalDateTime.now());
+        putawayConfirmationRepository.save(confirmation);
 
-     log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
- }
+        // Update task status
+        task.setStage(PutawayStage.COMPLETED);
+        task.setStatus(PutawayStatus.COMPLETED);
+        task.setCompletedAt(LocalDateTime.now());
+        putawayTaskRepository.save(task);
+
+        log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
+    }
 
  /**
   * Update stock availability at a specific hierarchical level
@@ -1025,65 +1027,80 @@ case PLACED:
 //====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
 //Completely updated updateStockAvailability method
 
-private void updateStockAvailability(String warehouseId, String zoneId, String aisleId, 
-                                   String rackId, String levelId, String binId,
-                                   String itemCode, String itemName, String uom, 
-                                   Integer quantity, LocationLevel locationLevel) {
-  
-  Optional<StockAvailability> existingStock = stockAvailabilityRepository
-          .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
-                                 itemCode, locationLevel);
+ private void updateStockAvailability(String warehouseId, String zoneId, String aisleId, 
+         String rackId, String levelId, String binId,
+         String itemCode, String itemName, String uom, 
+         Integer quantity, LocationLevel locationLevel) {
 
-  StockAvailability stock;
-  if (existingStock.isPresent()) {
-      stock = existingStock.get();
-      stock.addQuantity(quantity);
-      stock.setUpdatedAt(LocalDateTime.now());
-      log.debug("Updated stock at {} level for item {}: +{} (total: {})", 
-          locationLevel, itemCode, quantity, stock.getTotalQuantity());
-  } else {
-      // ====== FIX: Calculate max capacity from bin ======
-      Integer maxCapacity = calculateMaxCapacityFromBin(binId, locationLevel);
-      
-      stock = StockAvailability.builder()
-              .warehouseId(warehouseId)
-              .zoneId(zoneId)
-              .aisleId(aisleId)
-              .rackId(rackId)
-              .levelId(levelId)
-              .binId(binId)
-              .itemCode(itemCode)
-              .itemName(itemName)
-              .uom(uom)
-              .totalQuantity(quantity)
-              .availableQuantity(quantity)
-              .reservedQuantity(0)
-              .inTransitQuantity(0)
-              .locationLevel(locationLevel)
-              .maxCapacity(maxCapacity)  // ✅ Set from bin
-              .lastPutawayDate(LocalDateTime.now())
-              .build();
-      
-      log.debug("Created stock at {} level - item: {}, qty: {}, maxCapacity: {}, binId: {}", 
-          locationLevel, itemCode, quantity, maxCapacity, binId);
-  }
+Optional<StockAvailability> existingStock = stockAvailabilityRepository
+.findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+         itemCode, locationLevel);
 
-  stockAvailabilityRepository.save(stock);
+StockAvailability stock;
+if (existingStock.isPresent()) {
+stock = existingStock.get();
+stock.addQuantity(quantity);
+stock.setUpdatedAt(LocalDateTime.now());
+log.debug("Updated stock at {} level for item {}: +{} (total: {})", 
+locationLevel, itemCode, quantity, stock.getTotalQuantity());
+} else {
+// ====== Calculate max and min capacity ======
+Integer maxCapacity = calculateMaxCapacity(binId, locationLevel);
+Integer minCapacity = calculateMinCapacity(binId, locationLevel);
+
+stock = StockAvailability.builder()
+.warehouseId(warehouseId)
+.zoneId(zoneId)
+.aisleId(aisleId)
+.rackId(rackId)
+.levelId(levelId)
+.binId(binId)
+.itemCode(itemCode)
+.itemName(itemName)
+.uom(uom)
+.totalQuantity(quantity)
+.availableQuantity(quantity)
+.reservedQuantity(0)
+.inTransitQuantity(0)
+.locationLevel(locationLevel)
+.maxCapacity(maxCapacity)
+.minCapacity(minCapacity)
+.lastPutawayDate(LocalDateTime.now())
+.build();
+
+log.debug("Created stock at {} level - item: {}, qty: {}, maxCapacity: {}, minCapacity: {}, binId: {}", 
+locationLevel, itemCode, quantity, maxCapacity, minCapacity, binId);
+}
+
+stockAvailabilityRepository.save(stock);
 }
 
 /**
-* Calculate max capacity from bin volume
-*/
+* Calculate max capacity from bin using the bin's capacity fields
+* Priority: 
+* 1. bin.getMaxCapacity() - User defined max capacity
+* 2. bin.getVolumeCm3() / 100 - Calculated from volume
+* 3. bin.getMaxWeightG() / 100 - Calculated from weight
+* 4. bin.getMinCapacity() - Fallback to min capacity
+* 5. Default based on location level
+
+
+/**
+*
+ 
+    
+//====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+
 //====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
 
 /**
-* Calculate max capacity from bin using the bin's capacity fields
-* Priority: maxCapacity > volume calculation > weight calculation > default
+* Calculate max capacity - Only uses bin.getMaxCapacity()
+* If not set, uses default based on location level
 */
-private Integer calculateMaxCapacityFromBin(String binId, LocationLevel locationLevel) {
+private Integer calculateMaxCapacity(String binId, LocationLevel locationLevel) {
  // Only calculate for BIN level
  if (locationLevel != LocationLevel.BIN || binId == null) {
-     return getDefaultCapacity(locationLevel);
+     return getDefaultMaxCapacity(locationLevel);
  }
  
  try {
@@ -1091,45 +1108,65 @@ private Integer calculateMaxCapacityFromBin(String binId, LocationLevel location
      if (binOpt.isPresent()) {
          Bin bin = binOpt.get();
          
-         // ====== PRIORITY 1: Use maxCapacity from bin entity ======
+         // ✅ PRIORITY 1: Use maxCapacity from bin entity
          if (bin.getMaxCapacity() != null && bin.getMaxCapacity() > 0) {
              log.debug("Using bin maxCapacity: {} for bin: {}", bin.getMaxCapacity(), binId);
              return bin.getMaxCapacity();
          }
          
-         // ====== PRIORITY 2: Calculate capacity from volume ======
-         if (bin.getVolumeCm3() != null && bin.getVolumeCm3().compareTo(BigDecimal.ZERO) > 0) {
-             // Each item takes 100 cm3
-             int capacity = bin.getVolumeCm3().divide(new BigDecimal(100), 0, RoundingMode.DOWN).intValue();
-             log.debug("Calculated bin capacity: {} from volume: {} cm3", capacity, bin.getVolumeCm3());
-             return Math.max(capacity, 1); // At least 1
-         }
-         
-         // ====== PRIORITY 3: Calculate capacity from max weight ======
-         if (bin.getMaxWeightG() != null && bin.getMaxWeightG().compareTo(BigDecimal.ZERO) > 0) {
-             // Each item weighs 100g
-             int capacity = bin.getMaxWeightG().divide(new BigDecimal(100), 0, RoundingMode.DOWN).intValue();
-             log.debug("Calculated bin capacity: {} from weight: {} g", capacity, bin.getMaxWeightG());
-             return Math.max(capacity, 1);
-         }
-         
-         // ====== PRIORITY 4: Use minCapacity as fallback ======
+         // ✅ PRIORITY 2: Use minCapacity as fallback if maxCapacity not set
          if (bin.getMinCapacity() != null && bin.getMinCapacity() > 0) {
-             log.debug("Using bin minCapacity: {} for bin: {}", bin.getMinCapacity(), binId);
+             log.debug("Using bin minCapacity: {} as maxCapacity for bin: {}", bin.getMinCapacity(), binId);
              return bin.getMinCapacity();
          }
      }
  } catch (Exception e) {
-     log.warn("Error calculating bin capacity for binId: {}", binId, e);
+     log.warn("Error calculating max capacity for binId: {}", binId, e);
  }
  
- return 100; // Default capacity
+ // ✅ PRIORITY 3: Default based on location level
+ return getDefaultMaxCapacity(locationLevel);
 }
 
 /**
-* Get default capacity for non-bin levels
+* Calculate min capacity - Only uses bin.getMinCapacity()
+* If not set, uses default based on location level
 */
-private Integer getDefaultCapacity(LocationLevel locationLevel) {
+private Integer calculateMinCapacity(String binId, LocationLevel locationLevel) {
+ // Only calculate for BIN level
+ if (locationLevel != LocationLevel.BIN || binId == null) {
+     return getDefaultMinCapacity(locationLevel);
+ }
+ 
+ try {
+     Optional<Bin> binOpt = binRepository.findByBarcode(binId);
+     if (binOpt.isPresent()) {
+         Bin bin = binOpt.get();
+         
+         // ✅ PRIORITY 1: Use minCapacity from bin entity
+         if (bin.getMinCapacity() != null && bin.getMinCapacity() > 0) {
+             log.debug("Using bin minCapacity: {} for bin: {}", bin.getMinCapacity(), binId);
+             return bin.getMinCapacity();
+         }
+         
+         // ✅ PRIORITY 2: Use maxCapacity as minCapacity if minCapacity not set
+         if (bin.getMaxCapacity() != null && bin.getMaxCapacity() > 0) {
+             log.debug("Using bin maxCapacity: {} as minCapacity for bin: {}", bin.getMaxCapacity(), binId);
+             return bin.getMaxCapacity();
+         }
+     }
+ } catch (Exception e) {
+     log.warn("Error calculating min capacity for binId: {}", binId, e);
+ }
+ 
+ // ✅ PRIORITY 3: Default based on location level
+ return getDefaultMinCapacity(locationLevel);
+}
+
+/**
+* Get default max capacity for different levels
+*/
+private Integer getDefaultMaxCapacity(LocationLevel locationLevel) {
  switch (locationLevel) {
      case WAREHOUSE: return 100000;
      case ZONE: return 50000;
@@ -1141,10 +1178,19 @@ private Integer getDefaultCapacity(LocationLevel locationLevel) {
  }
 }
 
- 
-    
-    
-    
-    
+/**
+* Get default min capacity for different levels
+*/
+private Integer getDefaultMinCapacity(LocationLevel locationLevel) {
+ switch (locationLevel) {
+     case WAREHOUSE: return 0;
+     case ZONE: return 0;
+     case AISLE: return 0;
+     case RACK: return 0;
+     case LEVEL: return 0;
+     case BIN: return 10;
+     default: return 0;
+ }
+}
     
 }

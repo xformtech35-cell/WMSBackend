@@ -161,26 +161,50 @@ public abstract class AisleMapper {
         }
     }
 
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
+
     protected StockAvailabilitySummary buildEmptyStockSummary() {
         return StockAvailabilitySummary.builder()
+                // Stock counts
                 .totalQuantity(0)
-                .availableQuantity(0)
+                .stockin(0)                    // ✅ Changed from availableQuantity
                 .reservedQuantity(0)
                 .inTransitQuantity(0)
-                .uniqueItemsCount(0)
-//                .maxCapacity(0)
+                
+                // Capacity
+                .maxCapacity(null)             // ✅ Use null instead of 0
+                .minCapacity(null)             // ✅ Added minCapacity
                 .utilizationPercentage(0.0)
-                .locationPath(null)
-                .locationLevel(null)
+                .availableSlots(0)             // ✅ Added availableSlots
+                .occupiedSlots(0)              // ✅ Added occupiedSlots
+                
+                // Stock status
                 .hasStock(false)
                 .isFull(false)
                 .isAvailable(false)
+                .isLowStock(false)             // ✅ Added isLowStock
+                .isHighStock(false)            // ✅ Added isHighStock
+                .stockStatus("EMPTY")          // ✅ Added stockStatus
+                
+                // Location
+                .locationPath(null)
+                .locationLevel(null)
+                
+                // Items
+                .uniqueItemsCount(0)
+                .items(new ArrayList<>())
+                
+                // Timestamps
                 .lastPutawayDate(null)
                 .lastPickDate(null)
-                .items(new ArrayList<>())
+                
+                // Summary
+                .totalBinsUsed(0)              // ✅ Added totalBinsUsed
+                .totalBinsAvailable(0)         // ✅ Added totalBinsAvailable
+                .stockTurnoverRate(0.0)        // ✅ Added stockTurnoverRate
+                
                 .build();
     }
-
     public List<AisleResponse> toResponseList(List<Aisle> aisles) {
         if (aisles == null) {
             return null;

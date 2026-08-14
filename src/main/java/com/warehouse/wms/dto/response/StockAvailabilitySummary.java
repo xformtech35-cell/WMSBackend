@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -14,32 +13,41 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StockAvailabilitySummary {
-    // Total stock counts
-    private Integer totalQuantity;
-    private Integer availableQuantity;
-    private Integer reservedQuantity;
-    private Integer inTransitQuantity;
+    // ====== Stock Counts ======
+    private Integer totalQuantity;      // Total stock in quantity
+    private Integer stockin;             // Stock available for picking (was availableQuantity)
+    private Integer reservedQuantity;    // Reserved stock
+    private Integer inTransitQuantity;   // In transit stock
     
-    // Unique items count
-    private Integer uniqueItemsCount;
+    // ====== Capacity Information ======
+    private Integer maxCapacity;         // Maximum capacity
+    private Integer minCapacity;         // Minimum capacity threshold
+    private Double utilizationPercentage; // Percentage used
+    private Integer availableSlots;      // Available slots (maxCapacity - totalQuantity)
+    private Integer occupiedSlots;       // Occupied slots
     
-    // Capacity information
-//    private Integer maxCapacity;
-    private Double utilizationPercentage;
+    // ====== Stock Status ======
+    private Boolean hasStock;            // True if totalQuantity > 0
+    private Boolean isFull;              // True if totalQuantity >= maxCapacity
+    private Boolean isAvailable;         // True if stockin > 0
+    private Boolean isLowStock;          // True if utilization < 20%
+    private Boolean isHighStock;         // True if utilization > 80%
+    private String stockStatus;          // "EMPTY", "LOW", "NORMAL", "HIGH", "FULL"
     
-    // Location path
-    private String locationPath;
-    private String locationLevel;
+    // ====== Location Information ======
+    private String locationPath;         // Full location path
+    private String locationLevel;        // WAREHOUSE, ZONE, AISLE, RACK, LEVEL, BIN
     
-    // Status flags
-    private Boolean hasStock;
-    private Boolean isFull;
-    private Boolean isAvailable;
+    // ====== Item Information ======
+    private Integer uniqueItemsCount;    // Number of unique items
+    private List<ItemStockSummary> items; // List of items with stock
     
-    // Timestamps
-    private String lastPutawayDate;
-    private String lastPickDate;
+    // ====== Timestamps ======
+    private String lastPutawayDate;      // Last putaway date
+    private String lastPickDate;         // Last pick date
     
-    // Items in this location
-    private List<ItemStockSummary> items;
+    // ====== Summary ======
+    private Integer totalBinsUsed;       // Number of bins with stock
+    private Integer totalBinsAvailable;  // Total bins available
+    private Double stockTurnoverRate;    // Stock turnover rate
 }

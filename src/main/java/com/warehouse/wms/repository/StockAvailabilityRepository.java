@@ -16,10 +16,7 @@ import java.util.Optional;
 public interface StockAvailabilityRepository extends JpaRepository<StockAvailability, Long> {
 
     // ====== Find by specific location and item ======
-    Optional<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelIdAndBinIdAndItemCode(
-            String warehouseId, String zoneId, String aisleId, String rackId, 
-            String levelId, String binId, String itemCode);
-
+    
     @Query("SELECT s FROM StockAvailability s WHERE " +
            "s.warehouseId = :warehouseId AND " +
            "(:zoneId IS NULL OR s.zoneId = :zoneId) AND " +
@@ -40,38 +37,150 @@ public interface StockAvailabilityRepository extends JpaRepository<StockAvailabi
             @Param("locationLevel") LocationLevel locationLevel);
 
     // ====== Find by warehouse level ======
+    
     List<StockAvailability> findByWarehouseIdAndLocationLevel(String warehouseId, LocationLevel locationLevel);
+    
     List<StockAvailability> findByWarehouseIdAndItemCodeAndLocationLevel(
             String warehouseId, String itemCode, LocationLevel locationLevel);
 
     // ====== Find by zone level ======
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndLocationLevel(
             String warehouseId, String zoneId, LocationLevel locationLevel);
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndItemCodeAndLocationLevel(
             String warehouseId, String zoneId, String itemCode, LocationLevel locationLevel);
 
     // ====== Find by aisle level ======
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, LocationLevel locationLevel);
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndItemCodeAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, String itemCode, LocationLevel locationLevel);
 
     // ====== Find by rack level ======
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, String rackId, LocationLevel locationLevel);
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndItemCodeAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, String rackId, String itemCode, LocationLevel locationLevel);
 
     // ====== Find by level ======
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelIdAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, String rackId, String levelId, LocationLevel locationLevel);
+    
     List<StockAvailability> findByWarehouseIdAndZoneIdAndAisleIdAndRackIdAndLevelIdAndItemCodeAndLocationLevel(
             String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String itemCode, LocationLevel locationLevel);
 
     // ====== Find by bin level ======
-    Optional<StockAvailability> findByBinIdAndItemCode(String binId, String itemCode);
+    
+    @Query("SELECT s FROM StockAvailability s WHERE s.binId = :binId AND (:itemCode IS NULL OR s.itemCode = :itemCode)")
+    List<StockAvailability> findByBinIdAndItemCode(
+            @Param("binId") String binId, 
+            @Param("itemCode") String itemCode);
+    
+    @Query("SELECT s FROM StockAvailability s WHERE s.binBarcode = :binBarcode AND (:itemCode IS NULL OR s.itemCode = :itemCode)")
+    List<StockAvailability> findByBinBarcodeAndItemCode(
+            @Param("binBarcode") String binBarcode, 
+            @Param("itemCode") String itemCode);
+
+    @Query("SELECT s FROM StockAvailability s WHERE s.binId = :binId")
+    List<StockAvailability> findByBinId(@Param("binId") String binId);
+
+    @Query("SELECT s FROM StockAvailability s WHERE s.binBarcode = :binBarcode")
+    List<StockAvailability> findByBinBarcode(@Param("binBarcode") String binBarcode);
+
+    List<StockAvailability> findByLocationLevel(LocationLevel locationLevel);
+
+    // ====== MAX CAPACITY QUERIES at each level ======
+    
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByWarehouseAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByZoneAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByAisleAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.rackId = :rackId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByRackAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("rackId") String rackId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.rackId = :rackId AND s.levelId = :levelId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByLevelAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("rackId") String rackId, 
+            @Param("levelId") String levelId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.maxCapacity FROM StockAvailability s WHERE s.binId = :binId AND s.locationLevel = :locationLevel")
+    List<Integer> findMaxCapacityByBin(
+            @Param("binId") String binId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    // ====== MIN CAPACITY QUERIES at each level ======
+    
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByWarehouseAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByZoneAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByAisleAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.rackId = :rackId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByRackAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("rackId") String rackId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.rackId = :rackId AND s.levelId = :levelId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByLevelAndLevel(
+            @Param("warehouseId") String warehouseId, 
+            @Param("zoneId") String zoneId, 
+            @Param("aisleId") String aisleId, 
+            @Param("rackId") String rackId, 
+            @Param("levelId") String levelId, 
+            @Param("locationLevel") LocationLevel locationLevel);
+
+    @Query("SELECT s.minCapacity FROM StockAvailability s WHERE s.binId = :binId AND s.locationLevel = :locationLevel")
+    List<Integer> findMinCapacityByBin(
+            @Param("binId") String binId, 
+            @Param("locationLevel") LocationLevel locationLevel);
 
     // ====== Aggregation Queries ======
+
     @Query("SELECT SUM(s.totalQuantity) FROM StockAvailability s WHERE s.itemCode = :itemCode AND s.warehouseId = :warehouseId")
     Integer getTotalStockForItemInWarehouse(@Param("itemCode") String itemCode, @Param("warehouseId") String warehouseId);
 
@@ -91,6 +200,7 @@ public interface StockAvailabilityRepository extends JpaRepository<StockAvailabi
     Optional<Integer> getAvailableQuantityInBin(@Param("binId") String binId, @Param("itemCode") String itemCode);
 
     // ====== Dashboard Queries ======
+
     @Query("SELECT s.warehouseId, SUM(s.totalQuantity) as total, SUM(s.availableQuantity) as available " +
            "FROM StockAvailability s WHERE s.locationLevel = :locationLevel GROUP BY s.warehouseId")
     List<Object[]> getWarehouseStockSummary(@Param("locationLevel") LocationLevel locationLevel);
@@ -112,6 +222,7 @@ public interface StockAvailabilityRepository extends JpaRepository<StockAvailabi
     List<Object[]> getLevelStockSummary(@Param("warehouseId") String warehouseId, @Param("zoneId") String zoneId, @Param("aisleId") String aisleId, @Param("rackId") String rackId, @Param("locationLevel") LocationLevel locationLevel);
 
     // ====== Utility Queries ======
+
     @Modifying
     @Query("DELETE FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.locationLevel = :locationLevel")
     void deleteByWarehouseAndLevel(@Param("warehouseId") String warehouseId, @Param("locationLevel") LocationLevel locationLevel);
@@ -133,9 +244,4 @@ public interface StockAvailabilityRepository extends JpaRepository<StockAvailabi
 
     @Query("SELECT s FROM StockAvailability s WHERE s.warehouseId = :warehouseId AND s.zoneId = :zoneId AND s.aisleId = :aisleId AND s.rackId = :rackId AND s.levelId = :levelId AND s.binId = :binId AND s.availableQuantity > 0")
     List<StockAvailability> findAvailableStockInBin(@Param("warehouseId") String warehouseId, @Param("zoneId") String zoneId, @Param("aisleId") String aisleId, @Param("rackId") String rackId, @Param("levelId") String levelId, @Param("binId") String binId);
-    
-    @Query("SELECT s FROM StockAvailability s WHERE s.binBarcode = :binBarcode AND (:itemCode IS NULL OR s.itemCode = :itemCode)")
-    List<StockAvailability> findByBinBarcodeAndItemCode(
-            @Param("binBarcode") String binBarcode, 
-            @Param("itemCode") String itemCode);
 }

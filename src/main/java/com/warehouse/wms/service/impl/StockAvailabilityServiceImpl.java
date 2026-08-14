@@ -98,53 +98,59 @@ public class StockAvailabilityServiceImpl implements StockAvailabilityService {
         return buildSummary(stocks);
     }
 
-    @Override
-    public StockAvailabilitySummary getBinStockSummary(String binId) {
-        log.debug("Getting bin stock summary for: {}", binId);
+// ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
+
+@Override
+public StockAvailabilitySummary getBinStockSummary(String binId) {
+    log.debug("Getting bin stock summary for: {}", binId);
+    
+    if (binId == null) {
+        return buildEmptyStockSummary();
+    }
+    
+    List<StockAvailability> stocks = new ArrayList<>();
+    
+    try {
+        // ✅ Method 1: Find by bin_id - returns List<StockAvailability>
+        List<StockAvailability> byBinId = stockAvailabilityRepository
+                .findByBinIdAndItemCode(binId, null);
         
-        if (binId == null) {
-            return buildEmptyStockSummary();
+        if (byBinId != null && !byBinId.isEmpty()) {
+            stocks = byBinId;
+            log.debug("Found {} stock records by bin_id: {}", stocks.size(), binId);
         }
         
-        List<StockAvailability> stocks = new ArrayList<>();
-        
-        try {
-            // Method 1: Find by bin_id
-            Optional<StockAvailability> byBinId = stockAvailabilityRepository
-                    .findByBinIdAndItemCode(binId, null);
-            
-            if (byBinId.isPresent()) {
-                stocks = stockAvailabilityRepository
-                        .findByBinIdAndItemCode(binId, null)
-                        .map(List::of)
-                        .orElse(new ArrayList<>());
-                log.debug("Found {} stock records by bin_id: {}", stocks.size(), binId);
-            }
-            
-            // Method 2: If no results, try by bin_barcode
-            if (stocks.isEmpty()) {
-                stocks = stockAvailabilityRepository
-                        .findByBinBarcodeAndItemCode(binId, null);
+        // Method 2: If no results, try by bin_barcode
+        if (stocks.isEmpty()) {
+            List<StockAvailability> byBinBarcode = stockAvailabilityRepository
+                    .findByBinBarcodeAndItemCode(binId, null);
+            if (byBinBarcode != null && !byBinBarcode.isEmpty()) {
+                stocks = byBinBarcode;
                 log.debug("Found {} stock records by bin_barcode: {}", stocks.size(), binId);
             }
-            
-            // Method 3: If still no results, try by bin_id in the bin_id field with exact match
-            if (stocks.isEmpty()) {
-                stocks = stockAvailabilityRepository
-                        .findAll()
-                        .stream()
-                        .filter(s -> LocationLevel.BIN == s.getLocationLevel())
-                        .filter(s -> binId.equals(s.getBinId()) || binId.equals(s.getBinBarcode()))
-                        .collect(Collectors.toList());
-                log.debug("Found {} stock records by manual filtering: {}", stocks.size(), binId);
-            }
-            
-        } catch (Exception e) {
-            log.error("Error fetching bin stock summary for binId: {}", binId, e);
         }
         
-        return buildSummary(stocks);
+        // Method 3: Manual filtering as fallback
+        if (stocks.isEmpty()) {
+            stocks = stockAvailabilityRepository
+                    .findAll()
+                    .stream()
+                    .filter(s -> LocationLevel.BIN == s.getLocationLevel())
+                    .filter(s -> binId.equals(s.getBinId()) || binId.equals(s.getBinBarcode()))
+                    .collect(Collectors.toList());
+            
+            if (!stocks.isEmpty()) {
+                log.debug("Found {} stock records by manual filtering: {}", stocks.size(), binId);
+            }
+        }
+        
+    } catch (Exception e) {
+        log.error("Error fetching bin stock summary for binId: {}", binId, e);
     }
+    
+    // ✅ Always return a summary
+    return buildSummary(stocks);
+}
 
     // ====== Check Stock Availability ======
 
@@ -289,105 +295,199 @@ public class StockAvailabilityServiceImpl implements StockAvailabilityService {
 
     // ====== Private Helper Methods ======
 
-    private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
-        if (stocks == null || stocks.isEmpty()) {
-            return buildEmptyStockSummary();
-        }
+  // ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
 
-        int totalQty = 0;
-        int availableQty = 0;
-        int reservedQty = 0;
-        int inTransitQty = 0;
-        int maxCapacity = 0;
-        int binCount = 0;
-        
-        List<ItemStockSummary> itemSummaries = new ArrayList<>();
+// ====== FILE: src/main/java/com/warehouse/wms/service/impl/StockAvailabilityServiceImpl.java ======
 
-        for (StockAvailability stock : stocks) {
-            totalQty += stock.getTotalQuantity() != null ? stock.getTotalQuantity() : 0;
-            availableQty += stock.getAvailableQuantity() != null ? stock.getAvailableQuantity() : 0;
-            reservedQty += stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0;
-            inTransitQty += stock.getInTransitQuantity() != null ? stock.getInTransitQuantity() : 0;
-            
-            if (stock.getMaxCapacity() != null && stock.getMaxCapacity() > 0) {
-                maxCapacity += stock.getMaxCapacity();
-                binCount++;
-            }
-            
-            // Add item summary (avoid duplicates)
-            boolean exists = itemSummaries.stream()
-                    .anyMatch(item -> item.getItemCode().equals(stock.getItemCode()));
-            
-            if (!exists) {
-                itemSummaries.add(ItemStockSummary.builder()
-                        .itemCode(stock.getItemCode())
-                        .itemName(stock.getItemName())
-                        .uom(stock.getUom())
-                        .totalQuantity(stock.getTotalQuantity())
-                        .availableQuantity(stock.getAvailableQuantity())
-                        .reservedQuantity(stock.getReservedQuantity())
-                        .batchNumber(stock.getBatchNumber())
-                        .build());
-            }
-        }
-
-        // If no capacity found, use default based on location level
-        if (binCount == 0) {
-            String locationLevel = stocks.get(0).getLocationLevel() != null ? 
-                    stocks.get(0).getLocationLevel().name() : "UNKNOWN";
-            maxCapacity = getDefaultCapacityForLevel(locationLevel);
-        }
-
-        boolean hasStock = totalQty > 0;
-        boolean isAvailable = availableQty > 0;
-        boolean isFull = maxCapacity > 0 && totalQty >= maxCapacity;
-
-        // Calculate utilization percentage
-        Double utilization = null;
-        if (maxCapacity > 0) {
-            utilization = ((double) totalQty / maxCapacity) * 100;
-            if (utilization > 100) {
-                utilization = 100.0;
-            }
-        }
-
-        // Get location path from first stock
-        String locationPath = stocks.get(0).getFullLocationPath();
-        String locationLevel = stocks.get(0).getLocationLevel() != null ? 
-                stocks.get(0).getLocationLevel().name() : null;
-
-        // Get timestamps
-        String lastPutawayDate = stocks.stream()
-                .map(StockAvailability::getLastPutawayDate)
-                .filter(d -> d != null)
-                .max(LocalDateTime::compareTo)
-                .map(d -> d.toString())
-                .orElse(null);
-
-        String lastPickDate = stocks.stream()
-                .map(StockAvailability::getLastPickDate)
-                .filter(d -> d != null)
-                .max(LocalDateTime::compareTo)
-                .map(d -> d.toString())
-                .orElse(null);
-
-        return StockAvailabilitySummary.builder()
-                .totalQuantity(totalQty)
-                .availableQuantity(availableQty)
-                .reservedQuantity(reservedQty)
-                .inTransitQuantity(inTransitQty)
-                .uniqueItemsCount(itemSummaries.size())
-                .utilizationPercentage(utilization)
-                .locationPath(locationPath)
-                .locationLevel(locationLevel)
-                .items(itemSummaries)
-                .hasStock(hasStock)
-                .isAvailable(isAvailable)
-                .isFull(isFull)
-                .lastPutawayDate(lastPutawayDate)
-                .lastPickDate(lastPickDate)
-                .build();
+private StockAvailabilitySummary buildSummary(List<StockAvailability> stocks) {
+    if (stocks == null || stocks.isEmpty()) {
+        return buildEmptyStockSummary();
     }
+
+    int totalQty = 0;
+    int stockin = 0;
+    int reservedQty = 0;
+    int inTransitQty = 0;
+    int maxCapacity = 0;
+    int minCapacity = 0;
+    int binCount = 0;
+    int totalBinsUsed = 0;
+    int capacityFound = 0;
+    
+    // ✅ Use the MAX maxCapacity value from all stock records
+    Integer binMaxCapacity = null;
+    Integer binMinCapacity = null;
+    
+    List<ItemStockSummary> itemSummaries = new ArrayList<>();
+    List<String> uniqueItems = new ArrayList<>();
+
+    for (StockAvailability stock : stocks) {
+        totalQty += stock.getTotalQuantity() != null ? stock.getTotalQuantity() : 0;
+        stockin += stock.getAvailableQuantity() != null ? stock.getAvailableQuantity() : 0;
+        reservedQty += stock.getReservedQuantity() != null ? stock.getReservedQuantity() : 0;
+        inTransitQty += stock.getInTransitQuantity() != null ? stock.getInTransitQuantity() : 0;
+        
+        // Track unique items
+        if (stock.getItemCode() != null && !uniqueItems.contains(stock.getItemCode())) {
+            uniqueItems.add(stock.getItemCode());
+        }
+        
+        // ✅ Take the MAX maxCapacity (should be same for all items in same bin)
+        if (stock.getMaxCapacity() != null && stock.getMaxCapacity() > 0) {
+            if (binMaxCapacity == null || stock.getMaxCapacity() > binMaxCapacity) {
+                binMaxCapacity = stock.getMaxCapacity();
+            }
+            capacityFound++;
+            binCount++;
+        }
+        
+        // ✅ Take the MAX minCapacity
+        if (stock.getMinCapacity() != null && stock.getMinCapacity() > 0) {
+            if (binMinCapacity == null || stock.getMinCapacity() > binMinCapacity) {
+                binMinCapacity = stock.getMinCapacity();
+            }
+        }
+        
+        // Count bins used
+        if (stock.getTotalQuantity() != null && stock.getTotalQuantity() > 0) {
+            if (stock.getBinId() != null) {
+                totalBinsUsed++;
+            }
+        }
+        
+        // Add item summary (avoid duplicates)
+        boolean exists = itemSummaries.stream()
+                .anyMatch(item -> item.getItemCode().equals(stock.getItemCode()));
+        
+        if (!exists) {
+            itemSummaries.add(ItemStockSummary.builder()
+                    .itemCode(stock.getItemCode())
+                    .itemName(stock.getItemName())
+                    .uom(stock.getUom())
+                    .totalQuantity(stock.getTotalQuantity())
+                    .availableQuantity(stock.getAvailableQuantity())
+                    .reservedQuantity(stock.getReservedQuantity())
+                    .batchNumber(stock.getBatchNumber())
+                    .build());
+        }
+    }
+
+    // ✅ Use the MAX maxCapacity
+    if (binMaxCapacity != null) {
+        maxCapacity = binMaxCapacity;
+    } else {
+        // If no capacity found, use default based on location level
+        String locationLevel = stocks.get(0).getLocationLevel() != null ? 
+                stocks.get(0).getLocationLevel().name() : "UNKNOWN";
+        maxCapacity = getDefaultCapacityForLevel(locationLevel);
+        minCapacity = getDefaultMinCapacityForLevel(locationLevel);
+    }
+    
+    // ✅ Use the MAX minCapacity
+    if (binMinCapacity != null) {
+        minCapacity = binMinCapacity;
+    }
+
+    // Calculate available slots (maxCapacity - totalQuantity)
+    int availableSlots = Math.max(0, maxCapacity - totalQty);
+    int occupiedSlots = Math.min(maxCapacity, totalQty);
+    
+    // Calculate utilization
+    Double utilization = null;
+    if (maxCapacity > 0) {
+        utilization = ((double) totalQty / maxCapacity) * 100;
+        if (utilization > 100) {
+            utilization = 100.0;
+        }
+    }
+
+    // Determine stock status
+    boolean hasStock = totalQty > 0;
+    boolean isAvailable = stockin > 0;
+    boolean isFull = maxCapacity > 0 && totalQty >= maxCapacity;
+    boolean isLowStock = hasStock && utilization != null && utilization < 20.0;
+    boolean isHighStock = hasStock && utilization != null && utilization > 80.0;
+    
+    String stockStatus = "EMPTY";
+    if (hasStock) {
+        if (isFull) {
+            stockStatus = "FULL";
+        } else if (isHighStock) {
+            stockStatus = "HIGH";
+        } else if (isLowStock) {
+            stockStatus = "LOW";
+        } else {
+            stockStatus = "NORMAL";
+        }
+    }
+
+    // Get location path from first stock
+    String locationPath = stocks.get(0).getFullLocationPath();
+    String locationLevel = stocks.get(0).getLocationLevel() != null ? 
+            stocks.get(0).getLocationLevel().name() : null;
+
+    // Get timestamps
+    String lastPutawayDate = stocks.stream()
+            .map(StockAvailability::getLastPutawayDate)
+            .filter(d -> d != null)
+            .max(LocalDateTime::compareTo)
+            .map(d -> d.toString())
+            .orElse(null);
+
+    String lastPickDate = stocks.stream()
+            .map(StockAvailability::getLastPickDate)
+            .filter(d -> d != null)
+            .max(LocalDateTime::compareTo)
+            .map(d -> d.toString())
+            .orElse(null);
+
+    // Calculate stock turnover rate
+    Double stockTurnoverRate = null;
+    if (totalQty > 0 && stockin > 0) {
+        stockTurnoverRate = (double) totalQty / stockin;
+    }
+
+    return StockAvailabilitySummary.builder()
+            // Stock counts
+            .totalQuantity(totalQty)
+            .stockin(stockin)
+            .reservedQuantity(reservedQty)
+            .inTransitQuantity(inTransitQty)
+            
+            // Capacity - use MAX value
+            .maxCapacity(maxCapacity > 0 ? maxCapacity : null)
+            .minCapacity(minCapacity > 0 ? minCapacity : null)
+            .utilizationPercentage(utilization)
+            .availableSlots(availableSlots)
+            .occupiedSlots(occupiedSlots)
+            
+            // Stock status
+            .hasStock(hasStock)
+            .isAvailable(isAvailable)
+            .isFull(isFull)
+            .isLowStock(isLowStock)
+            .isHighStock(isHighStock)
+            .stockStatus(stockStatus)
+            
+            // Location
+            .locationPath(locationPath)
+            .locationLevel(locationLevel)
+            
+            // Items
+            .uniqueItemsCount(uniqueItems.size())
+            .items(itemSummaries)
+            
+            // Timestamps
+            .lastPutawayDate(lastPutawayDate)
+            .lastPickDate(lastPickDate)
+            
+            // Summary
+            .totalBinsUsed(totalBinsUsed)
+            .totalBinsAvailable(binCount > 0 ? binCount : null)
+            .stockTurnoverRate(stockTurnoverRate)
+            
+            .build();
+}
 
     private Integer getDefaultCapacityForLevel(String locationLevel) {
         if (locationLevel == null) return 1000;
@@ -402,22 +502,59 @@ public class StockAvailabilityServiceImpl implements StockAvailabilityService {
         }
     }
 
+    private Integer getDefaultMinCapacityForLevel(String locationLevel) {
+        if (locationLevel == null) return 0;
+        switch (locationLevel.toUpperCase()) {
+            case "WAREHOUSE": return 0;
+            case "ZONE": return 0;
+            case "AISLE": return 0;
+            case "RACK": return 0;
+            case "LEVEL": return 0;
+            case "BIN": return 10;
+            default: return 0;
+        }
+    }
+
     private StockAvailabilitySummary buildEmptyStockSummary() {
         return StockAvailabilitySummary.builder()
+                // Stock counts
                 .totalQuantity(0)
-                .availableQuantity(0)
+                .stockin(0)
                 .reservedQuantity(0)
                 .inTransitQuantity(0)
-                .uniqueItemsCount(0)
+                
+                // Capacity
+                .maxCapacity(null)
+                .minCapacity(null)
                 .utilizationPercentage(0.0)
-                .locationPath(null)
-                .locationLevel(null)
+                .availableSlots(0)
+                .occupiedSlots(0)
+                
+                // Stock status
                 .hasStock(false)
                 .isFull(false)
                 .isAvailable(false)
+                .isLowStock(false)
+                .isHighStock(false)
+                .stockStatus("EMPTY")
+                
+                // Location
+                .locationPath(null)
+                .locationLevel(null)
+                
+                // Items
+                .uniqueItemsCount(0)
+                .items(new ArrayList<>())
+                
+                // Timestamps
                 .lastPutawayDate(null)
                 .lastPickDate(null)
-                .items(new ArrayList<>())
+                
+                // Summary
+                .totalBinsUsed(0)
+                .totalBinsAvailable(0)
+                .stockTurnoverRate(0.0)
+                
                 .build();
     }
 }
