@@ -32,6 +32,11 @@ public class WarehouseResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
+    
     private StockAvailabilitySummary stockSummary;
 
 

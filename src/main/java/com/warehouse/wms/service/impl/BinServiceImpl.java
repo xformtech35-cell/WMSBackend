@@ -130,65 +130,112 @@ public class BinServiceImpl implements BinService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public BinResponse updateBin(Long id, BinCreateRequest request) {
-        log.info("📦 Updating bin: {}", id);
+   // ====== FILE: src/main/java/com/warehouse/wms/service/impl/BinServiceImpl.java ======
 
-        Bin bin = binRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Bin not found with ID: " + id));
+// ====== FILE: src/main/java/com/warehouse/wms/service/impl/BinServiceImpl.java ======
 
-        // Check uniqueness if barcode is changed
-        if (!request.getBarcode().equals(bin.getBarcode()) &&
-            binRepository.existsByBarcode(request.getBarcode())) {
-            throw new InvalidOperationException("Bin barcode already exists: " + request.getBarcode());
+@Override
+@Transactional
+public BinResponse updateBin(Long id, BinCreateRequest request) {
+    log.info("📦 Updating bin: {}", id);
+
+    Bin bin = binRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Bin not found with ID: " + id));
+
+    // ====== CHECK BARCODE UNIQUENESS (EXCLUDE CURRENT BIN) ======
+    if (request.getBarcode() != null && !request.getBarcode().isEmpty()) {
+        String newBarcode = request.getBarcode();
+        String currentBarcode = bin.getBarcode();
+        
+        // Only check if the barcode is actually changing
+        if (!newBarcode.equals(currentBarcode)) {
+            // ✅ FIX: Check if barcode exists for ANY OTHER bin (exclude current)
+            boolean exists = binRepository.existsByBarcodeAndIdNot(newBarcode, id);
+            if (exists) {
+                throw new InvalidOperationException("Bin barcode already exists: " + newBarcode);
+            }
+            bin.setBarcode(newBarcode);
         }
+    }
 
-        // ✅ Update level if changed (instead of rack)
-        if (request.getLevelId() != null && !request.getLevelId().equals(bin.getLevel().getId())) {
+    // ====== UPDATE LEVEL IF CHANGED ======
+    if (request.getLevelId() != null) {
+        // Only update if level is different from current
+        if (bin.getLevel() == null || !request.getLevelId().equals(bin.getLevel().getId())) {
             Level newLevel = levelRepository.findById(request.getLevelId())
                     .orElseThrow(() -> new ResourceNotFoundException("Level not found with ID: " + request.getLevelId()));
             
-            // Update bin's level
             bin.setLevel(newLevel);
-            // Update bin's rack from the new level
             bin.setRack(newLevel.getRack());
+            log.debug("Updated bin level to: {} and rack to: {}", 
+                newLevel.getLevelId(), 
+                newLevel.getRack() != null ? newLevel.getRack().getRackId() : "null");
         }
-
-        // Update fields
-        bin.setBarcode(request.getBarcode());
-        bin.setLengthCm(request.getLengthCm());
-        bin.setWidthCm(request.getWidthCm());
-        bin.setHeightCm(request.getHeightCm());
-        bin.setMaxWeightG(request.getMaxWeightG());
-        
-        // Recalculate volume
-        BigDecimal volume = request.getLengthCm()
-                .multiply(request.getWidthCm())
-                .multiply(request.getHeightCm());
-        bin.setVolumeCm3(volume);
-        
-        
-        
-        
-        
-        
-        if(bin.getBarcodeImage()==null)
-        {
-        	 binBarcodeService.generateBinBarcode(
-        			 bin.getLevel().getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
-        			 bin.getLevel().getRack().getAisle().getZone().getZoneId(),
-        			 bin.getLevel().getRack().getAisle().getAisleId(),
-        			 bin.getLevel().getRack().getRackId(),
-        			 bin.getLevel().getLevelId(),
-        			 bin.getBarcode());
-        }
-        
-
-        Bin updatedBin = binRepository.save(bin);
-        log.info("✅ Bin updated: {}", updatedBin.getBarcode());
-
-        return binMapper.toResponse(updatedBin);
     }
+
+    // ====== UPDATE FIELDS WITH NULL HANDLING ======
+    if (request.getLengthCm() != null) {
+        bin.setLengthCm(request.getLengthCm());
+    }
+    if (request.getWidthCm() != null) {
+        bin.setWidthCm(request.getWidthCm());
+    }
+    if (request.getHeightCm() != null) {
+        bin.setHeightCm(request.getHeightCm());
+    }
+    if (request.getMaxWeightG() != null) {
+        bin.setMaxWeightG(request.getMaxWeightG());
+    }
+    if (request.getMaxCapacity() != null) {
+        bin.setMaxCapacity(request.getMaxCapacity());
+    }
+    if (request.getMinCapacity() != null) {
+        bin.setMinCapacity(request.getMinCapacity());
+    }
+    if (request.getCapacityUnit() != null) {
+        bin.setCapacityUnit(request.getCapacityUnit());
+    }
+    if (request.getUnit() != null) {
+        bin.setUnit(request.getUnit());
+    }
+   
+
+    // ====== RECALCULATE VOLUME ======
+    if (request.getLengthCm() != null || request.getWidthCm() != null || request.getHeightCm() != null) {
+        BigDecimal volume = bin.getLengthCm()
+                .multiply(bin.getWidthCm())
+                .multiply(bin.getHeightCm());
+        bin.setVolumeCm3(volume);
+        log.debug("Recalculated volume: {}", volume);
+    }
+
+    // ====== GENERATE BARCODE IMAGE IF MISSING ======
+    try {
+        if (bin.getBarcodeImage() == null && bin.getLevel() != null) {
+            binBarcodeService.generateBinBarcode(
+                    bin.getLevel().getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
+                    bin.getLevel().getRack().getAisle().getZone().getZoneId(),
+                    bin.getLevel().getRack().getAisle().getAisleId(),
+                    bin.getLevel().getRack().getRackId(),
+                    bin.getLevel().getLevelId(),
+                    bin.getBarcode());
+            log.debug("Generated barcode image for bin: {}", bin.getBarcode());
+        }
+    } catch (Exception e) {
+        log.warn("Failed to generate barcode image: {}", e.getMessage());
+    }
+
+    // ====== UPDATE BARCODE DATA ======
+    String fullLocation = bin.getFullLocation();
+    if (fullLocation != null && !fullLocation.equals(bin.getBarcodeData())) {
+        bin.setBarcodeData(fullLocation);
+    }
+
+    Bin updatedBin = binRepository.save(bin);
+    log.info("✅ Bin updated successfully: {}", updatedBin.getBarcode());
+
+    return binMapper.toResponse(updatedBin);
+}
 
     @Override
     public BinResponse occupyBinSpace(Long id, BigDecimal volume, BigDecimal weight) {

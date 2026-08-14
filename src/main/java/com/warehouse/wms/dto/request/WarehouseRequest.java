@@ -32,4 +32,10 @@ public class WarehouseRequest {
     private Boolean isActive = true;
     private String createdBy;
     private String remarks;
+    
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
 }

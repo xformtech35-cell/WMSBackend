@@ -38,7 +38,10 @@ public class Warehouse {
     @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
-    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
     
     
     @Column(name = "barcode_data", length = 50)

@@ -25,6 +25,12 @@ public class AisleRequest {
     private Double width;
     private Double length;
     private String unit;
+    
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
 
     private String createdBy;
     private String remarks;

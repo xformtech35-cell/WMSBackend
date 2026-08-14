@@ -81,6 +81,12 @@ public class Level {
     private String barcodeFormat; // CODE128, CODE39, etc.
     
     
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
+    
+    
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rack_id")

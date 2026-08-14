@@ -27,6 +27,11 @@ public class ZoneRequest {
     private String createdBy;
     private String remarks;
 
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
+    
     @NotNull(message = "Warehouse ID is required")
     private Long warehouseId;
 }

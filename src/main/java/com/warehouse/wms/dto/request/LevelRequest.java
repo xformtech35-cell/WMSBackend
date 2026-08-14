@@ -23,7 +23,11 @@ public class LevelRequest {
     private String description;
     
     private String unit;
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
 
+    private String capacityUnit;
 
     @NotNull(message = "Level number is required")
     private Integer levelNumber;

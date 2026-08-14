@@ -30,6 +30,11 @@ public class RackRequest {
     private String createdBy;
     private String remarks;
 
+    private Integer maxCapacity;
+    private Integer minCapacity;
+    private String capacityUnit;
+    
+    
     @NotNull(message = "Aisle ID is required")
     private Long aisleId;
 }

@@ -73,7 +73,10 @@ public class Aisle {
     @Column(name = "created_by", length = 100)
     private String createdBy;
     
-    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
     
   
 

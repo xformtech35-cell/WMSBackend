@@ -69,6 +69,11 @@ public class Zone {
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "warehouse_id")

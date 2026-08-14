@@ -30,6 +30,11 @@ public class ZoneResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
+    
     // Stock availability - make sure this field exists
     private StockAvailabilitySummary stockSummary;
     

@@ -39,6 +39,12 @@ public class LevelResponse {
 
     private StockAvailabilitySummary stockSummary;
 
+    
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
 
     // ✅ Allow rack to show its full hierarchy
     @JsonIgnoreProperties({"levels", "bins", "compartments"})

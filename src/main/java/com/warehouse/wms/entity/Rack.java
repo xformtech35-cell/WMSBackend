@@ -47,7 +47,10 @@ public class Rack {
     private String unit;
     
     
-    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
     
     @Column(name = "barcode_data", length = 50)
     private String barcodeData; // Store the actual barcode data (warehouseId-zoneId-aisleId-rackId)
