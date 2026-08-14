@@ -37,6 +37,8 @@ public class LevelResponse {
 
     private String barcodeFormat; // CODE128, CODE39, etc.
 
+    private StockAvailabilitySummary stockSummary;
+
 
     // ✅ Allow rack to show its full hierarchy
     @JsonIgnoreProperties({"levels", "bins", "compartments"})

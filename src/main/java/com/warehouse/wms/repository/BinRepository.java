@@ -125,4 +125,14 @@ public interface BinRepository extends JpaRepository<Bin, Long> {
     
     boolean existsByLevel_Rack_Aisle_Zone_Warehouse_WarehouseIdAndLevel_Rack_Aisle_Zone_ZoneIdAndLevel_Rack_Aisle_AisleIdAndLevel_Rack_RackIdAndLevel_LevelIdAndBarcode(
             String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String barcode);
+    
+    
+    
+    
+    // ✅ Add this method to find bins by level ID
+    @Query("SELECT b FROM Bin b WHERE b.level.id = :levelId")
+    List<Bin> findByLevelId(@Param("levelId") String levelId);
+    
+    // Alternative: Find by level entity
+    List<Bin> findByLevelId(Long levelId);
 }

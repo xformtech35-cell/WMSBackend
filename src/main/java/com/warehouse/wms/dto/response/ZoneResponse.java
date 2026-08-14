@@ -30,7 +30,8 @@ public class ZoneResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    
+    // Stock availability - make sure this field exists
+    private StockAvailabilitySummary stockSummary;
     
     private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
 

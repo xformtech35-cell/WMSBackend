@@ -31,6 +31,9 @@ public class WarehouseResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    private StockAvailabilitySummary stockSummary;
+
 
     @JsonIgnoreProperties({"warehouse"})  // ✅ Break circular reference
     private List<ZoneResponse> zones;

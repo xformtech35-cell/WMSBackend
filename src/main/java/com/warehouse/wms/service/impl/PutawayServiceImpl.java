@@ -2,6 +2,8 @@
 package com.warehouse.wms.service.impl;
 
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,13 +26,21 @@ import com.warehouse.wms.dto.request.QRCodeGenerateRequest;
 import com.warehouse.wms.dto.response.LocationSuggestionResponse;
 import com.warehouse.wms.dto.response.PutawayTaskResponse;
 import com.warehouse.wms.dto.response.QRCodeResponse;
+import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Bin;
 import com.warehouse.wms.entity.BinLocation;
 import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.InventoryStock;
+import com.warehouse.wms.entity.Level;
 import com.warehouse.wms.entity.PutawayConfirmation;
 import com.warehouse.wms.entity.PutawayLine;
 import com.warehouse.wms.entity.PutawayTask;
+import com.warehouse.wms.entity.Rack;
+// Add these imports at the top
+import com.warehouse.wms.entity.StockAvailability;
+import com.warehouse.wms.entity.StockAvailability.LocationLevel;
+import com.warehouse.wms.entity.Warehouse;
+import com.warehouse.wms.entity.Zone;
 import com.warehouse.wms.exception.InvalidOperationException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.PutawayTaskMapper;
@@ -41,8 +51,13 @@ import com.warehouse.wms.repository.InventoryStockRepository;
 import com.warehouse.wms.repository.PutawayConfirmationRepository;
 import com.warehouse.wms.repository.PutawayLineRepository;
 import com.warehouse.wms.repository.PutawayTaskRepository;
+import com.warehouse.wms.repository.StockAvailabilityRepository;
+import com.warehouse.wms.repository.WarehouseRepository;
 import com.warehouse.wms.service.PutawayService;
 import com.warehouse.wms.service.QRCodeService;
+import com.warehouse.wms.service.StockAvailabilityService;
+
+// Add this field
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +69,10 @@ import lombok.extern.slf4j.Slf4j;
 public class PutawayServiceImpl implements PutawayService {
 
     private final BinRepository binRepository;
+    
+    private final WarehouseRepository warehouseRepository;
+
+    private final StockAvailabilityRepository stockAvailabilityRepository;
 
     private final PutawayTaskRepository putawayTaskRepository;
     private final PutawayLineRepository putawayLineRepository;
@@ -63,6 +82,9 @@ public class PutawayServiceImpl implements PutawayService {
     private final InboundLineRepository inboundLineRepository; // ✅ ADD THIS
     private final QRCodeService qrCodeService;
     private final PutawayTaskMapper putawayTaskMapper;
+    
+    private final StockAvailabilityService stockAvailabilityService;
+
 
     private static final String TASK_PREFIX = "PUT";
     private static final String CONFIRMATION_PREFIX = "PCN";
@@ -216,33 +238,17 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
                 task.setStage(PutawayStage.TRANSPORTED);
                 task.setTransportedAt(now);
                 break;
-                
-       case PLACED:
+// ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+// Replace your PLACED case with this improved version
+
+// ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+// Replace your PLACED case with this corrected version
+
+case PLACED:
     // Verify bin barcode is provided
-    	   
-    	   
     if (request.getBinBarcode() == null || request.getBinBarcode().trim().isEmpty()) {
         throw new InvalidOperationException("Bin barcode is required for PLACED stage");
     }
-    
-  
-    
-    // Fetch the bin for validation
-    Bin bin =new Bin();
-    
-    
-   if(bin.getFullLocation()==request.getBinBarcode())
-	   
-	   
-   {
-    
-    
-    
-    
-    
-    
-    
-    
     
     // Find the specific line by ID
     PutawayLine targetLine = null;
@@ -265,9 +271,111 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
             "Line " + targetLine.getLineNumber() + " is already " + targetLine.getStatus());
     }
     
-  
+    // ====== FIX: Extract the bin barcode from the full location ======
+    // The full location format: WH-002-XCXVCX-ASLE-1-WEEWRWE-EW34-DFDSDSD
+    // The bin barcode is the last part: DFDSDSD
     
-    // Update ONLY the specific line with its OWN suggested location
+    String fullLocationFromRequest = request.getBinBarcode().trim().replaceAll("\\s+", "");
+    log.info("Full location from request: {}", fullLocationFromRequest);
+    
+    // Extract the bin barcode (last part after the last dash)
+    String[] parts = fullLocationFromRequest.split("-");
+    String binBarcode = parts[parts.length - 1]; // Get the last part
+    log.info("Extracted bin barcode: {}", binBarcode);
+    
+    // ====== FIX: Search for bin using ONLY the bin barcode ======
+    Bin bin = binRepository.findByBarcode(binBarcode)
+        .orElseThrow(() -> new ResourceNotFoundException(
+            "Bin not found with barcode: " + binBarcode));
+    
+    // ====== FIX: Build expected full location from target line ======
+    String expectedFullLocation = targetLine.getSuggestedWarehouse() + "-" +
+                                  targetLine.getSuggestedZone() + "-" +
+                                  targetLine.getSuggestedAisle() + "-" +
+                                  targetLine.getSuggestedRack() + "-" +
+                                  (targetLine.getSuggestedLevel() != null ? targetLine.getSuggestedLevel() : "") + "-" +
+                                  (targetLine.getSuggestedBin() != null ? targetLine.getSuggestedBin() : "");
+    
+    log.info("Expected full location: {}", expectedFullLocation);
+    
+    // ====== FIX: Get actual full location from bin ======
+    String actualFullLocation = null;
+    
+    try {
+        // Try to get full location from bin
+        actualFullLocation = bin.getFullLocation();
+        
+        // If still null, build it manually with detailed checks
+        if (actualFullLocation == null || actualFullLocation.isEmpty()) {
+            Level level = bin.getLevel();
+            if (level == null) {
+                log.error("Bin has no level assigned. Bin ID: {}, Barcode: {}", bin.getId(), bin.getBarcode());
+                throw new InvalidOperationException(
+                    "Bin has no level assigned. Please assign a level to this bin. Bin: " + bin.getBarcode());
+            }
+            
+            Rack rack = level.getRack();
+            if (rack == null) {
+                log.error("Level has no rack assigned. Level ID: {}, Bin Barcode: {}", level.getId(), bin.getBarcode());
+                throw new InvalidOperationException(
+                    "Level has no rack assigned. Level: " + level.getLevelId());
+            }
+            
+            Aisle aisle = rack.getAisle();
+            if (aisle == null) {
+                log.error("Rack has no aisle assigned. Rack ID: {}", rack.getId());
+                throw new InvalidOperationException(
+                    "Rack has no aisle assigned. Rack: " + rack.getRackId());
+            }
+            
+            Zone zone = aisle.getZone();
+            if (zone == null) {
+                log.error("Aisle has no zone assigned. Aisle ID: {}", aisle.getId());
+                throw new InvalidOperationException(
+                    "Aisle has no zone assigned. Aisle: " + aisle.getAisleId());
+            }
+            
+            Warehouse warehouse = zone.getWarehouse();
+            if (warehouse == null) {
+                log.error("Zone has no warehouse assigned. Zone ID: {}", zone.getId());
+                throw new InvalidOperationException(
+                    "Zone has no warehouse assigned. Zone: " + zone.getZoneId());
+            }
+            
+            actualFullLocation = String.format("%s-%s-%s-%s-%s-%s",
+                    warehouse.getWarehouseId(),
+                    zone.getZoneId(),
+                    aisle.getAisleId(),
+                    rack.getRackId(),
+                    level.getLevelId(),
+                    bin.getBarcode());
+        }
+    } catch (NullPointerException e) {
+        log.error("Bin hierarchy incomplete. Bin ID: {}, Barcode: {}", bin.getId(), bin.getBarcode(), e);
+        throw new InvalidOperationException(
+            "Bin location hierarchy is incomplete. Please ensure the bin is properly assigned to: Level -> Rack -> Aisle -> Zone -> Warehouse");
+    }
+    
+    log.info("Actual full location from bin: {}", actualFullLocation);
+    log.info("Bin barcode from DB: {}", bin.getBarcode());
+    
+    // ====== FIX: Compare the full locations ======
+    // Clean both for comparison (remove all spaces)
+    String cleanedExpected = expectedFullLocation.replaceAll("\\s+", "");
+    String cleanedActual = actualFullLocation.replaceAll("\\s+", "");
+    
+    log.info("Cleaned Expected: {}", cleanedExpected);
+    log.info("Cleaned Actual: {}", cleanedActual);
+    
+    // ====== FIX: Validate that the scanned bin matches the suggested location ======
+    if (!cleanedExpected.equals(cleanedActual)) {
+        throw new InvalidOperationException(
+            "Scanned bin does not match suggested location. " +
+            "Expected: " + expectedFullLocation + ", " +
+            "Got: " + actualFullLocation);
+    }
+    
+    // ====== FIX: Update line with actual location ======
     targetLine.setActualWarehouse(targetLine.getSuggestedWarehouse());
     targetLine.setActualZone(targetLine.getSuggestedZone());
     targetLine.setActualAisle(targetLine.getSuggestedAisle());
@@ -276,12 +384,9 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
     targetLine.setActualLevel(targetLine.getSuggestedLevel());
     targetLine.setActualBin(targetLine.getSuggestedBin());
     targetLine.setBinBarcode(bin.getBarcode());
-    
-    // Update line status to PLACED
     targetLine.setStatus(PutawayLineStatus.PLACED);
     
     // Update task
-   // task.setStage(PutawayStage.PLACED);
     task.setPlacedAt(now);
     
     // Check if ALL lines are placed
@@ -304,8 +409,11 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
     log.info("Line {} (ID: {}) placed at bin: {}", 
         targetLine.getLineNumber(), targetLine.getId(), bin.getBarcode());
     
-   }
-    break;
+    
+    
+    
+    
+    
             case SCANNED:
                 task.setStage(PutawayStage.PLACED);
                 task.setPlacedAt(now);
@@ -451,91 +559,90 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
 
         return confirmation;
     }
-@Override
-@Transactional
-public void updateInventoryAfterPutaway(String confirmationNumber) {
-    log.info("Updating inventory for confirmation: {}", confirmationNumber);
-
-    PutawayConfirmation confirmation = putawayConfirmationRepository
-            .findByConfirmationNumber(confirmationNumber)
-            .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
-
-    if (confirmation.getInventoryUpdated()) {
-        log.info("Inventory already updated for confirmation: {}", confirmationNumber);
-        return;
-    }
-
-    PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
-            .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
-
-    // Update inventory for each line
-    for (PutawayLine line : task.getLines()) {
-        if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
-            continue;
-        }
-
-        // Check if stock exists in this bin
-        Optional<InventoryStock> existingStock = inventoryStockRepository
-                .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
-
-        InventoryStock stock;
-        if (existingStock.isPresent()) {
-            stock = existingStock.get();
-            stock.addQuantity(line.getPutawayQuantity());
-        } else {
-            // Create new stock entry
-            String serialNumbers = line.getSerialNumber() != null ? 
-                                   line.getSerialNumber() : null;
-            
-            stock = InventoryStock.builder()
-                    .inventoryNumber(generateInventoryNumber())
-                    .itemCode(line.getItemCode())
-                    .itemName(line.getItemName())
-                    .uom(line.getUom())
-                    .quantity(line.getPutawayQuantity())
-                    .availableQuantity(line.getPutawayQuantity())
-                    .warehouseId(line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId())
-                    .zone(line.getActualZone())
-                    .aisle(line.getActualAisle())
-                    .rack(line.getActualRack())
-                    .shelf(line.getActualShelf())
-                    .level(line.getActualLevel())
-                    .binId(line.getActualBin())
-                    .binBarcode(line.getBinBarcode())
-                    .batchNumber(line.getBatchNumber())
-                    .serialNumbers(serialNumbers)
-                    .grnNumber(task.getGrnNumber())
-                    .putawayTaskNumber(task.getTaskNumber())
-                    .confirmationNumber(confirmationNumber)
-                    .status(InventoryStatus.ACTIVE)
-                    .isAvailable(true)
-                    .receivedDate(LocalDateTime.now())
-                    .lastUpdatedDate(LocalDateTime.now())
-                    .build();
-        }
-
-        inventoryStockRepository.save(stock);
-
-        // ✅ FIX: Update bin capacity using the simple method
-        if (line.getActualBin() != null) {
-            binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), line.getPutawayQuantity());
-            binLocationRepository.updateLastPutaway(line.getActualBin());
-        }
-    }
-
-    // Update confirmation
-    confirmation.setInventoryUpdated(true);
-    confirmation.setInventoryUpdatedAt(LocalDateTime.now());
-    putawayConfirmationRepository.save(confirmation);
-
-    // Update task status
-    task.setStage(PutawayStage.COMPLETED);
-    task.setStatus(PutawayStatus.COMPLETED);
-    task.setCompletedAt(LocalDateTime.now());
-    putawayTaskRepository.save(task);
-
-    log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
-}
+//@Override
+//@Transactional
+//public void updateInventoryAfterPutaway(String confirmationNumber) {
+//    log.info("Updating inventory for confirmation: {}", confirmationNumber);
+//
+//    PutawayConfirmation confirmation = putawayConfirmationRepository
+//            .findByConfirmationNumber(confirmationNumber)
+//            .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
+//
+//    if (confirmation.getInventoryUpdated()) {
+//        log.info("Inventory already updated for confirmation: {}", confirmationNumber);
+//        return;
+//    }
+//
+//    PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
+//            .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+//
+//    // Update inventory for each line
+//    for (PutawayLine line : task.getLines()) {
+//        if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
+//            continue;
+//        }
+//
+//        // Check if stock exists in this bin
+//        Optional<InventoryStock> existingStock = inventoryStockRepository
+//                .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
+//
+//        InventoryStock stock;
+//        if (existingStock.isPresent()) {
+//            stock = existingStock.get();
+//            stock.addQuantity(line.getPutawayQuantity());
+//        } else {
+//            // Create new stock entry
+//            String serialNumbers = line.getSerialNumber() != null ? 
+//                                   line.getSerialNumber() : null;
+//            
+//            stock = InventoryStock.builder()
+//                    .inventoryNumber(generateInventoryNumber())
+//                    .itemCode(line.getItemCode())
+//                    .itemName(line.getItemName())
+//                    .uom(line.getUom())
+//                    .quantity(line.getPutawayQuantity())
+//                    .availableQuantity(line.getPutawayQuantity())
+//                    .warehouseId(line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId())
+//                    .zone(line.getActualZone())
+//                    .aisle(line.getActualAisle())
+//                    .rack(line.getActualRack())
+//                    .level(line.getActualLevel())
+//                    .binId(line.getActualBin())
+//                    .binBarcode(line.getBinBarcode())
+//                    .batchNumber(line.getBatchNumber())
+//                    .serialNumbers(serialNumbers)
+//                    .grnNumber(task.getGrnNumber())
+//                    .putawayTaskNumber(task.getTaskNumber())
+//                    .confirmationNumber(confirmationNumber)
+//                    .status(InventoryStatus.ACTIVE)
+//                    .isAvailable(true)
+//                    .receivedDate(LocalDateTime.now())
+//                    .lastUpdatedDate(LocalDateTime.now())
+//                    .build();
+//        }
+//
+//        inventoryStockRepository.save(stock);
+//
+//        // ✅ FIX: Update bin capacity using the simple method
+//        if (line.getActualBin() != null) {
+//            binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), line.getPutawayQuantity());
+//            binLocationRepository.updateLastPutaway(line.getActualBin());
+//        }
+//    }
+//
+//    // Update confirmation
+//    confirmation.setInventoryUpdated(true);
+//    confirmation.setInventoryUpdatedAt(LocalDateTime.now());
+//    putawayConfirmationRepository.save(confirmation);
+//
+//    // Update task status
+//    task.setStage(PutawayStage.COMPLETED);
+//    task.setStatus(PutawayStatus.COMPLETED);
+//    task.setCompletedAt(LocalDateTime.now());
+//    putawayTaskRepository.save(task);
+//
+//    log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
+//}
 
     @Override
     public LocationSuggestionResponse suggestLocation(String itemCode, Integer quantity, String warehouseId) {
@@ -733,4 +840,311 @@ public void updateInventoryAfterPutaway(String confirmationNumber) {
             qrCodeService.updateQRCodeStatus(qrCode.getId(), "USED");
         }
     }
+    
+    
+    
+    
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+
+
+ @Override
+ @Transactional
+ public void updateInventoryAfterPutaway(String confirmationNumber) {
+     log.info("Updating inventory for confirmation: {}", confirmationNumber);
+
+     PutawayConfirmation confirmation = putawayConfirmationRepository
+             .findByConfirmationNumber(confirmationNumber)
+             .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
+
+     if (confirmation.getInventoryUpdated()) {
+         log.info("Inventory already updated for confirmation: {}", confirmationNumber);
+         return;
+     }
+
+     PutawayTask task = putawayTaskRepository.findById(confirmation.getPutawayTaskId())
+             .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+
+     // Update inventory for each line
+     for (PutawayLine line : task.getLines()) {
+         if (line.getPutawayQuantity() == null || line.getPutawayQuantity() == 0) {
+             continue;
+         }
+
+         String warehouseId = line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId();
+         String zoneId = line.getActualZone();
+         String aisleId = line.getActualAisle();
+         String rackId = line.getActualRack();
+         String levelId = line.getActualLevel();
+         String binId = line.getActualBin();
+         String itemCode = line.getItemCode();
+         Integer quantity = line.getPutawayQuantity();
+
+         // ====== 1. UPDATE STOCK AVAILABILITY AT ALL HIERARCHICAL LEVELS ======
+         
+         // 1.1 Update at BIN level
+         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.BIN);
+
+         // 1.2 Update at LEVEL level
+         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, levelId, null, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.LEVEL);
+
+         // 1.3 Update at RACK level
+         updateStockAvailability(warehouseId, zoneId, aisleId, rackId, null, null, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.RACK);
+
+         // 1.4 Update at AISLE level
+         updateStockAvailability(warehouseId, zoneId, aisleId, null, null, null, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.AISLE);
+
+         // 1.5 Update at ZONE level
+         updateStockAvailability(warehouseId, zoneId, null, null, null, null, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.ZONE);
+
+         // 1.6 Update at WAREHOUSE level
+         updateStockAvailability(warehouseId, null, null, null, null, null, 
+                                itemCode, line.getItemName(), line.getUom(), quantity, LocationLevel.WAREHOUSE);
+
+         // ====== 2. UPDATE EXISTING INVENTORY STOCK (Backward Compatibility) ======
+         updateInventoryStock(line, task, confirmationNumber);
+
+         // ====== 3. UPDATE BIN CAPACITY ======
+         if (line.getActualBin() != null) {
+             binLocationRepository.allocateBinCapacitySimple(line.getActualBin(), quantity);
+             binLocationRepository.updateLastPutaway(line.getActualBin());
+         }
+     }
+
+     // Update confirmation
+     confirmation.setInventoryUpdated(true);
+     confirmation.setInventoryUpdatedAt(LocalDateTime.now());
+     putawayConfirmationRepository.save(confirmation);
+
+     // Update task status
+     task.setStage(PutawayStage.COMPLETED);
+     task.setStatus(PutawayStatus.COMPLETED);
+     task.setCompletedAt(LocalDateTime.now());
+     putawayTaskRepository.save(task);
+
+     log.info("✅ Inventory updated successfully for confirmation: {}", confirmationNumber);
+ }
+
+ /**
+  * Update stock availability at a specific hierarchical level
+  */
+// private void updateStockAvailability(String warehouseId, String zoneId, String aisleId, 
+//                                      String rackId, String levelId, String binId,
+//                                      String itemCode, String itemName, String uom, 
+//                                      Integer quantity, LocationLevel locationLevel) {
+//     
+//     Optional<StockAvailability> existingStock = stockAvailabilityRepository
+//             .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+//                                    itemCode, locationLevel);
+//
+//     StockAvailability stock;
+//     if (existingStock.isPresent()) {
+//         stock = existingStock.get();
+//         stock.addQuantity(quantity);
+//         stock.setUpdatedAt(LocalDateTime.now());
+//         log.debug("Updated stock at {} level for item {}: +{} (total: {})", 
+//             locationLevel, itemCode, quantity, stock.getTotalQuantity());
+//     } else {
+//         stock = StockAvailability.builder()
+//                 .warehouseId(warehouseId)
+//                 .zoneId(zoneId)
+//                 .aisleId(aisleId)
+//                 .rackId(rackId)
+//                 .levelId(levelId)
+//                 .binId(binId)
+//                 .itemCode(itemCode)
+//                 .itemName(itemName)
+//                 .uom(uom)
+//                 .totalQuantity(quantity)
+//                 .availableQuantity(quantity)
+//                 .reservedQuantity(0)
+//                 .inTransitQuantity(0)
+//                 .locationLevel(locationLevel)
+//                 .lastPutawayDate(LocalDateTime.now())
+//                 .build();
+//         log.debug("Created new stock at {} level for item {}: quantity {}", 
+//             locationLevel, itemCode, quantity);
+//     }
+//
+//     stockAvailabilityRepository.save(stock);
+// }
+
+ /**
+  * Update the existing InventoryStock entity (for backward compatibility)
+  */
+ private void updateInventoryStock(PutawayLine line, PutawayTask task, String confirmationNumber) {
+     Optional<InventoryStock> existingStock = inventoryStockRepository
+             .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
+
+     InventoryStock stock;
+     if (existingStock.isPresent()) {
+         stock = existingStock.get();
+         stock.addQuantity(line.getPutawayQuantity());
+         log.debug("Updated existing inventory stock for item {} in bin {}: +{}", 
+             line.getItemCode(), line.getActualBin(), line.getPutawayQuantity());
+     } else {
+         String serialNumbers = line.getSerialNumber() != null ? line.getSerialNumber() : null;
+         
+         stock = InventoryStock.builder()
+                 .inventoryNumber(generateInventoryNumber())
+                 .itemCode(line.getItemCode())
+                 .itemName(line.getItemName())
+                 .uom(line.getUom())
+                 .quantity(line.getPutawayQuantity())
+                 .availableQuantity(line.getPutawayQuantity())
+                 .warehouseId(line.getActualWarehouse() != null ? line.getActualWarehouse() : task.getWarehouseId())
+                 .zone(line.getActualZone())
+                 .aisle(line.getActualAisle())
+                 .rack(line.getActualRack())
+                 .level(line.getActualLevel())
+                 .binId(line.getActualBin())
+                 .binBarcode(line.getBinBarcode())
+                 .batchNumber(line.getBatchNumber())
+                 .serialNumbers(serialNumbers)
+                 .grnNumber(task.getGrnNumber())
+                 .putawayTaskNumber(task.getTaskNumber())
+                 .confirmationNumber(confirmationNumber)
+                 .status(InventoryStatus.ACTIVE)
+                 .isAvailable(true)
+                 .receivedDate(LocalDateTime.now())
+                 .lastUpdatedDate(LocalDateTime.now())
+                 .build();
+         log.debug("Created new inventory stock for item {} in bin {}", 
+             line.getItemCode(), line.getActualBin());
+     }
+
+     inventoryStockRepository.save(stock);
+ }
+
+ // ====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+ // Update the updateStockAvailability method
+//====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+//Completely updated updateStockAvailability method
+
+private void updateStockAvailability(String warehouseId, String zoneId, String aisleId, 
+                                   String rackId, String levelId, String binId,
+                                   String itemCode, String itemName, String uom, 
+                                   Integer quantity, LocationLevel locationLevel) {
+  
+  Optional<StockAvailability> existingStock = stockAvailabilityRepository
+          .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+                                 itemCode, locationLevel);
+
+  StockAvailability stock;
+  if (existingStock.isPresent()) {
+      stock = existingStock.get();
+      stock.addQuantity(quantity);
+      stock.setUpdatedAt(LocalDateTime.now());
+      log.debug("Updated stock at {} level for item {}: +{} (total: {})", 
+          locationLevel, itemCode, quantity, stock.getTotalQuantity());
+  } else {
+      // ====== FIX: Calculate max capacity from bin ======
+      Integer maxCapacity = calculateMaxCapacityFromBin(binId, locationLevel);
+      
+      stock = StockAvailability.builder()
+              .warehouseId(warehouseId)
+              .zoneId(zoneId)
+              .aisleId(aisleId)
+              .rackId(rackId)
+              .levelId(levelId)
+              .binId(binId)
+              .itemCode(itemCode)
+              .itemName(itemName)
+              .uom(uom)
+              .totalQuantity(quantity)
+              .availableQuantity(quantity)
+              .reservedQuantity(0)
+              .inTransitQuantity(0)
+              .locationLevel(locationLevel)
+              .maxCapacity(maxCapacity)  // ✅ Set from bin
+              .lastPutawayDate(LocalDateTime.now())
+              .build();
+      
+      log.debug("Created stock at {} level - item: {}, qty: {}, maxCapacity: {}, binId: {}", 
+          locationLevel, itemCode, quantity, maxCapacity, binId);
+  }
+
+  stockAvailabilityRepository.save(stock);
+}
+
+/**
+* Calculate max capacity from bin volume
+*/
+//====== FILE: src/main/java/com/warehouse/wms/service/impl/PutawayServiceImpl.java ======
+
+/**
+* Calculate max capacity from bin using the bin's capacity fields
+* Priority: maxCapacity > volume calculation > weight calculation > default
+*/
+private Integer calculateMaxCapacityFromBin(String binId, LocationLevel locationLevel) {
+ // Only calculate for BIN level
+ if (locationLevel != LocationLevel.BIN || binId == null) {
+     return getDefaultCapacity(locationLevel);
+ }
+ 
+ try {
+     Optional<Bin> binOpt = binRepository.findByBarcode(binId);
+     if (binOpt.isPresent()) {
+         Bin bin = binOpt.get();
+         
+         // ====== PRIORITY 1: Use maxCapacity from bin entity ======
+         if (bin.getMaxCapacity() != null && bin.getMaxCapacity() > 0) {
+             log.debug("Using bin maxCapacity: {} for bin: {}", bin.getMaxCapacity(), binId);
+             return bin.getMaxCapacity();
+         }
+         
+         // ====== PRIORITY 2: Calculate capacity from volume ======
+         if (bin.getVolumeCm3() != null && bin.getVolumeCm3().compareTo(BigDecimal.ZERO) > 0) {
+             // Each item takes 100 cm3
+             int capacity = bin.getVolumeCm3().divide(new BigDecimal(100), 0, RoundingMode.DOWN).intValue();
+             log.debug("Calculated bin capacity: {} from volume: {} cm3", capacity, bin.getVolumeCm3());
+             return Math.max(capacity, 1); // At least 1
+         }
+         
+         // ====== PRIORITY 3: Calculate capacity from max weight ======
+         if (bin.getMaxWeightG() != null && bin.getMaxWeightG().compareTo(BigDecimal.ZERO) > 0) {
+             // Each item weighs 100g
+             int capacity = bin.getMaxWeightG().divide(new BigDecimal(100), 0, RoundingMode.DOWN).intValue();
+             log.debug("Calculated bin capacity: {} from weight: {} g", capacity, bin.getMaxWeightG());
+             return Math.max(capacity, 1);
+         }
+         
+         // ====== PRIORITY 4: Use minCapacity as fallback ======
+         if (bin.getMinCapacity() != null && bin.getMinCapacity() > 0) {
+             log.debug("Using bin minCapacity: {} for bin: {}", bin.getMinCapacity(), binId);
+             return bin.getMinCapacity();
+         }
+     }
+ } catch (Exception e) {
+     log.warn("Error calculating bin capacity for binId: {}", binId, e);
+ }
+ 
+ return 100; // Default capacity
+}
+
+/**
+* Get default capacity for non-bin levels
+*/
+private Integer getDefaultCapacity(LocationLevel locationLevel) {
+ switch (locationLevel) {
+     case WAREHOUSE: return 100000;
+     case ZONE: return 50000;
+     case AISLE: return 10000;
+     case RACK: return 5000;
+     case LEVEL: return 1000;
+     case BIN: return 100;
+     default: return 1000;
+ }
+}
+
+ 
+    
+    
+    
+    
+    
 }

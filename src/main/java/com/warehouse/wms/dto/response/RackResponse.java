@@ -30,6 +30,9 @@ public class RackResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
+    private StockAvailabilitySummary stockSummary;
+
+    
     private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
 
     private String barcodeImage; // Base64 encoded barcode image

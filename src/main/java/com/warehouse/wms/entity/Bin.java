@@ -1,17 +1,30 @@
 // ====== FILE: src/main/java/com/warehouse/wms/entity/Bin.java ======
 package com.warehouse.wms.entity;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -31,6 +44,11 @@ public class Bin {
     private Rack rack;
 
     // ✅ ADD LEVEL RELATIONSHIP
+    
+    
+
+    
+    
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id")
@@ -54,7 +72,11 @@ public class Bin {
     @Column(name = "volume_cm3")
     private BigDecimal volumeCm3;
     
-    
+    private Integer maxCapacity;
+    private Integer minCapacity;
+
+    private String capacityUnit;
+
     
     @Column(name = "barcode_data", length = 100)
     private String barcodeData; // Store the actual full barcode data (warehouseId-zoneId-aisleId-rackId-levelId-barcode)
@@ -99,22 +121,44 @@ public class Bin {
         AVAILABLE, FULL, BLOCKED
     }
 
-    // ✅ UPDATED Helper methods with Level
+    // ✅ IMPROVED getFullLocation() with better error handling
     public String getFullLocation() {
-        if (level == null || level.getRack() == null || level.getRack().getAisle() == null || 
-            level.getRack().getAisle().getZone() == null || 
-            level.getRack().getAisle().getZone().getWarehouse() == null) {
+        try {
+            if (level == null) {
+                return null;
+            }
+            
+            Rack rack = level.getRack();
+            if (rack == null) {
+                return null;
+            }
+            
+            Aisle aisle = rack.getAisle();
+            if (aisle == null) {
+                return null;
+            }
+            
+            Zone zone = aisle.getZone();
+            if (zone == null) {
+                return null;
+            }
+            
+            Warehouse warehouse = zone.getWarehouse();
+            if (warehouse == null) {
+                return null;
+            }
+            
+            return String.format("%s-%s-%s-%s-%s-%s",
+                    warehouse.getWarehouseId(),
+                    zone.getZoneId(),
+                    aisle.getAisleId(),
+                    rack.getRackId(),
+                    level.getLevelId(),
+                    barcode);
+        } catch (Exception e) {
             return null;
         }
-        return String.format("%s-%s-%s-%s-%s-%s",
-                level.getRack().getAisle().getZone().getWarehouse().getWarehouseId(),
-                level.getRack().getAisle().getZone().getZoneId(),
-                level.getRack().getAisle().getAisleId(),
-                level.getRack().getRackId(),
-                level.getLevelId(),
-                barcode);
     }
-
     public BigDecimal getAvailableVolume() {
         if (volumeCm3 == null || occupiedVolumeCm3 == null) {
             return volumeCm3;
@@ -136,4 +180,10 @@ public class Bin {
         return getAvailableVolume().compareTo(volume) >= 0 && 
                getAvailableWeight().compareTo(weight) >= 0;
     }
+    
+    
+    
+    
+    
+  
 }

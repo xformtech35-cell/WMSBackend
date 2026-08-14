@@ -2,6 +2,7 @@
 package com.warehouse.wms.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class BinResponse {
     private Long id;
     private String barcode;
@@ -27,15 +29,30 @@ public class BinResponse {
     private BigDecimal utilizationPercentage;
     private String status;
     private String fullLocation;
-    private String barcodeData; // Store the actual barcode data (warehouseId-zoneId)
-	
-    private String barcodeImage; // Base64 encoded barcode image
+    
+    
+    private Integer maxCapacity;
+    private Integer minCapacity;
 
-    private String barcodeFormat; // CODE128, CODE39, etc.
+    private String capacityUnit;
+    
+    // ✅ Available space (calculated fields)
 
     
+    // Barcode fields
+    private String barcodeData;
+    private String barcodeImage;
+    private String barcodeFormat;
+
+    // Stock availability
+    private StockAvailabilitySummary stockSummary;
     
     private String unit;
+    private Boolean isActive;
+    private String remarks;
+    private String createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     // Rack information (only ID and Name, not full object)
     private Long rackId;
@@ -45,10 +62,7 @@ public class BinResponse {
     private Long levelId;
     private String levelName;
     
-    // ❌ REMOVE this - duplicate rack object
-    // private RackResponse rack;
-    
-    // ✅ Keep only level with full hierarchy
+    // ✅ Level with full hierarchy (break circular reference)
     @JsonIgnoreProperties({"bins"})
     private LevelResponse level;
 }
