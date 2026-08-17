@@ -117,8 +117,16 @@ public class QRCode {
     @Column(name = "shelf", length = 10)
     private String shelf;
     
+    // ✅ ADD ROCK RELATIONSHIP
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "rock_id")
+    private Rock rock;
     
     private String level;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isTaskAssinged = false ;
 
     
     @Column(name = "bin_id", length = 50)

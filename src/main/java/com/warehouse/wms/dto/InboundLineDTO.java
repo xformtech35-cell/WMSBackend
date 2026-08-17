@@ -21,6 +21,9 @@ public class InboundLineDTO {
     private Integer pendingQuantity;
     private Integer totalQuantity;
     private Integer acceptedQuantity;
+    private Integer remainingQuantity;
+
+    
     private Integer rejectedQuantity;
     private Integer defectiveQuantity;
     private String qualityStatus;

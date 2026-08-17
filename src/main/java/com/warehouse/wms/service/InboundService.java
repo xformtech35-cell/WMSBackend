@@ -260,6 +260,7 @@ public class InboundService {
 
             // Update line details
             line.setAcceptedQuantity(itemDTO.getAcceptedQuantity());
+            line.setRemainingQuantity(itemDTO.getAcceptedQuantity());
             line.setRejectedQuantity(itemDTO.getRejectedQuantity());
             line.setQualityStatus(itemDTO.getQualityStatus());
             line.setReason(itemDTO.getReason());
@@ -323,6 +324,7 @@ public class InboundService {
         inbound.setGrnStatus("PENDING");
         inbound.setStatus(InboundStatus.GRN_PENDING);
         inbound.setStage(InboundStage.GRN_GENERATED);
+   
 
         // Update inventory for accepted items
         for (InboundLine line : inbound.getLines()) {
@@ -565,6 +567,7 @@ public class InboundService {
                 .pendingQuantity(entity.getPendingQuantity())
                 .totalQuantity(entity.getTotalQuantity())
                 .acceptedQuantity(entity.getAcceptedQuantity())
+                .remainingQuantity(entity.getRemainingQuantity())
                 .rejectedQuantity(entity.getRejectedQuantity())
                 .qualityStatus(entity.getQualityStatus())
                 .reason(entity.getReason())

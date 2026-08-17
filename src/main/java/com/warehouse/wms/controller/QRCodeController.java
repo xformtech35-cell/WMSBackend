@@ -4,9 +4,9 @@ package com.warehouse.wms.controller;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -90,12 +90,35 @@ public class QRCodeController {
         return ResponseEntity.ok(responses);
     }
 
+//    @GetMapping
+//    @Operation(summary = "Get all QR Codes with pagination")
+//    public ResponseEntity<Page<QRCodeResponse>> getAllQRCodes(
+//            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+//        log.info("GET /api/qr-codes - Get all QR codes with pagination");
+//        Page<QRCodeResponse> responses = qrCodeService.getAllQRCodes(pageable);
+//        return ResponseEntity.ok(responses);
+//    }
+    
     @GetMapping
-    @Operation(summary = "Get all QR Codes with pagination")
     public ResponseEntity<Page<QRCodeResponse>> getAllQRCodes(
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("GET /api/qr-codes - Get all QR codes with pagination");
-        Page<QRCodeResponse> responses = qrCodeService.getAllQRCodes(pageable);
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isTaskAssinged) {
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<QRCodeResponse> responses =
+                qrCodeService.getAllQRCodes(
+                        pageable,
+                        search,
+                        isTaskAssinged
+                );
+
         return ResponseEntity.ok(responses);
     }
 

@@ -44,6 +44,9 @@ public class InboundLine {
     @Column(name = "accepted_quantity")
     private Integer acceptedQuantity = 0;
     
+    private Integer remainingQuantity = 0;
+
+    
     @Column(name = "rejected_quantity")
     private Integer rejectedQuantity = 0;
     

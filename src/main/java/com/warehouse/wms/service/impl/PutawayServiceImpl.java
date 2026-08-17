@@ -2,8 +2,6 @@
 package com.warehouse.wms.service.impl;
 
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +33,7 @@ import com.warehouse.wms.entity.Level;
 import com.warehouse.wms.entity.PutawayConfirmation;
 import com.warehouse.wms.entity.PutawayLine;
 import com.warehouse.wms.entity.PutawayTask;
+import com.warehouse.wms.entity.QRCode;
 import com.warehouse.wms.entity.Rack;
 // Add these imports at the top
 import com.warehouse.wms.entity.StockAvailability;
@@ -51,6 +50,7 @@ import com.warehouse.wms.repository.InventoryStockRepository;
 import com.warehouse.wms.repository.PutawayConfirmationRepository;
 import com.warehouse.wms.repository.PutawayLineRepository;
 import com.warehouse.wms.repository.PutawayTaskRepository;
+import com.warehouse.wms.repository.QRCodeRepository;
 import com.warehouse.wms.repository.StockAvailabilityRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
 import com.warehouse.wms.service.PutawayService;
@@ -81,6 +81,10 @@ public class PutawayServiceImpl implements PutawayService {
     private final InventoryStockRepository inventoryStockRepository;
     private final InboundLineRepository inboundLineRepository; // ✅ ADD THIS
     private final QRCodeService qrCodeService;
+    
+    private final QRCodeRepository qRCodeRepository; // ✅ ADD THIS
+
+    
     private final PutawayTaskMapper putawayTaskMapper;
     
     private final StockAvailabilityService stockAvailabilityService;
@@ -161,7 +165,7 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
 
         // Build the line first so we have the fullpath
         
-        InboundLine inboundLine1 = inboundLineRepository.findById(lineRequest.getInboundLineId())
+        QRCode inboundLine1 = qRCodeRepository.findById(lineRequest.getInboundLineId())
                 .orElse(null);
       
             lineBuilder.suggestedWarehouse(inboundLine1.getWarehouseId());
@@ -170,10 +174,12 @@ public PutawayTaskResponse initiatePutaway(PutawayInitiateRequest request) {
             lineBuilder.suggestedRack(inboundLine1.getRack());
             lineBuilder.suggestedLevel(inboundLine1.getLevel());
             lineBuilder.suggestedBin(inboundLine1.getBinId());
-            lineBuilder.fullpath(inboundLine1.getFullpath());
+//            lineBuilder.fullpath(inboundLine1.getFullpath());
             
+            inboundLine1.setTaskAssinged(true);
+            
+            qRCodeRepository.save(inboundLine1);
 
-        
         
         
         

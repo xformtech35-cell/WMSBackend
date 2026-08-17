@@ -36,7 +36,10 @@ public interface QRCodeService {
 
     void updateQRCodeStatus(Long id, String status);
 
-    Page<QRCodeResponse> getAllQRCodes(Pageable pageable);
+//    Page<QRCodeResponse> getAllQRCodes(Pageable pageable,String search);
+    
+    Page<QRCodeResponse> getAllQRCodes(Pageable pageable,String search,Boolean isTaskAssinged);
+
 
     byte[] generateQRCodeImage(String data);
 

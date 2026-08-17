@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -65,4 +67,31 @@ public interface QRCodeRepository extends JpaRepository<QRCode, Long> {
 
     @Query("SELECT q FROM QRCode q WHERE q.putawayTaskId = :putawayTaskId ORDER BY q.createdAt DESC")
     List<QRCode> findByPutawayTaskIdOrderByCreatedAtDesc(@Param("putawayTaskId") Long putawayTaskId);
+    
+    @Query("""
+    	    SELECT q
+    	    FROM QRCode q
+    	    WHERE
+    	        (
+    	            :search IS NULL
+    	            OR :search = ''
+    	            OR LOWER(q.qrId) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.qrCode) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.barcode) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.itemCode) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.itemName) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.grnNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.batchNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+    	            OR LOWER(q.binId) LIKE LOWER(CONCAT('%', :search, '%'))
+    	        )
+    	        AND (
+    	            :isTaskAssinged IS NULL
+    	            OR q.isTaskAssinged = :isTaskAssinged
+    	        )
+    	    """)
+    	Page<QRCode> searchQRCodes(
+    	        @Param("search") String search,
+    	        @Param("isTaskAssinged") Boolean isTaskAssinged,
+    	        Pageable pageable
+    	);
 }

@@ -1,12 +1,15 @@
 // ====== FILE: src/main/java/com/warehouse/wms/dto/response/QRCodeResponse.java ======
 package com.warehouse.wms.dto.response;
 
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -56,4 +59,13 @@ public class QRCodeResponse {
     private String remarks;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    @JsonProperty("isTaskAssinged")
+    @Builder.Default
+    private boolean isTaskAssinged = false;    
+    
+    
+    @JsonIgnoreProperties({"warehouse"})
+    private RockResponse rock;
+
 }

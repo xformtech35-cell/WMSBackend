@@ -23,11 +23,13 @@ import com.warehouse.wms.constant.QRStatus;
 import com.warehouse.wms.dto.request.QRCodeGenerateRequest;
 import com.warehouse.wms.dto.request.QRCodePrintRequest;
 import com.warehouse.wms.dto.response.QRCodeResponse;
+import com.warehouse.wms.entity.Inbound;
 import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.QRCode;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.QRCodeMapper;
 import com.warehouse.wms.repository.InboundLineRepository;
+import com.warehouse.wms.repository.InboundRepository;
 import com.warehouse.wms.repository.QRCodeRepository;
 import com.warehouse.wms.service.QRCodeService;
 import com.warehouse.wms.util.BarcodeGenerator;
@@ -45,6 +47,7 @@ public class QRCodeServiceImpl implements QRCodeService {
     private final QRCodeRepository qrCodeRepository;
     
     private final InboundLineRepository inboundLineRepository;
+    private final InboundRepository inboundRepository;
 
     private final QRCodeMapper qrCodeMapper;
     private final QRCodeGenerator qrCodeGenerator;
@@ -87,6 +90,7 @@ public class QRCodeServiceImpl implements QRCodeService {
                 inboundLine.setRack(request.getRack());
                 inboundLine.setLevel(request.getLevel());
                 inboundLine.setBinId(request.getBinId());
+                inboundLine.setRemainingQuantity((inboundLine.getRemainingQuantity())-(request.getQuantity()));
         
             
             
@@ -99,6 +103,9 @@ public class QRCodeServiceImpl implements QRCodeService {
             inboundLineRepository.save(inboundLine);
             log.info("✅ Barcode generate flag set to true for inbound line: {}", inboundLineId);
         }
+        
+        Inbound inbound = inboundRepository.findByGrnNumber(request.getGrnNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Inbound  not found with ID: " + request.getGrnNumber()));
         // Generate images
         String qrImage = qrCodeGenerator.generateQRCodeBase64(qrCodeValue, request.getItemCode());
         String barcodeImage = barcodeGenerator.generateBarcodeBase64(barcodeValue);
@@ -137,6 +144,8 @@ public class QRCodeServiceImpl implements QRCodeService {
                 .templateName(request.getTemplateName())
                 .labelFormat(request.getLabelFormat())
                 .remarks(request.getRemarks())
+                .rock(inbound.getRock())
+                
                 .build();
 
         QRCode savedQRCode = qrCodeRepository.save(qrCode);
@@ -338,11 +347,28 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
         log.info("QR Code status updated to: {}", status);
     }
 
+//    @Override
+//    public Page<QRCodeResponse> getAllQRCodes(Pageable pageable) {
+//        return qrCodeRepository.findAll(pageable)
+//                .map(qrCodeMapper::toResponse);
+//    }
+    
     @Override
-    public Page<QRCodeResponse> getAllQRCodes(Pageable pageable) {
-        return qrCodeRepository.findAll(pageable)
-                .map(qrCodeMapper::toResponse);
+    public Page<QRCodeResponse> getAllQRCodes(
+            Pageable pageable,
+            String search,
+            Boolean isTaskAssinged) {
+
+        Page<QRCode> qrCodes = qrCodeRepository.searchQRCodes(
+                search,
+                isTaskAssinged,
+                pageable
+        );
+
+        return qrCodes.map(qrCodeMapper::toResponse);
     }
+    
+    
 
     @Override
     public byte[] generateQRCodeImage(String data) {
