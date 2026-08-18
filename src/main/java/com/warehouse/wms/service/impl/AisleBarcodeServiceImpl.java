@@ -28,7 +28,7 @@ public class AisleBarcodeServiceImpl implements AisleBarcodeService {
 
     @Override
     public String generateAisleBarcode(String warehouseId, String zoneId, String aisleId) {
-        String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId;
+        String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId;
         return generateAisleBarcodeWithLabel(warehouseId, zoneId, aisleId, "Aisle: " + fullIdentifier);
     }
 
@@ -46,7 +46,7 @@ public class AisleBarcodeServiceImpl implements AisleBarcodeService {
     @Override
     public String generateAisleBarcodeWithLabel(String warehouseId, String zoneId, String aisleId, String label) {
         try {
-            String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId;
+            String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId;
             log.info("Generating barcode for aisle: {}", fullIdentifier);
             
             // Find aisle by warehouseId, zoneId and aisleId

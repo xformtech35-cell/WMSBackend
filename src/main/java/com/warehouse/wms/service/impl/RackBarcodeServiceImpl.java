@@ -28,7 +28,7 @@ public class RackBarcodeServiceImpl implements RackBarcodeService {
 
     @Override
     public String generateRackBarcode(String warehouseId, String zoneId, String aisleId, String rackId) {
-        String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId;
+        String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId;
         return generateRackBarcodeWithLabel(warehouseId, zoneId, aisleId, rackId, "Rack: " + fullIdentifier);
     }
 
@@ -47,7 +47,7 @@ public class RackBarcodeServiceImpl implements RackBarcodeService {
     @Override
     public String generateRackBarcodeWithLabel(String warehouseId, String zoneId, String aisleId, String rackId, String label) {
         try {
-            String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId;
+            String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId;
             log.info("Generating barcode for rack: {}", fullIdentifier);
             
             // Find rack by warehouseId, zoneId, aisleId and rackId

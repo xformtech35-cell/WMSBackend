@@ -28,7 +28,7 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
 
     @Override
     public String generateBinBarcode(String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String binBarcode) {
-        String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId + "-" + levelId + "-" + binBarcode;
+        String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId + "/" + levelId + "/" + binBarcode;
         return generateBinBarcodeWithLabel(warehouseId, zoneId, aisleId, rackId, levelId, binBarcode, "Bin: " + fullIdentifier);
     }
 
@@ -49,7 +49,7 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
     @Override
     public String generateBinBarcodeWithLabel(String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String binBarcode, String label) {
         try {
-            String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId + "-" + levelId + "-" + binBarcode;
+            String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId + "/" + levelId + "/" + binBarcode;
             log.info("Generating barcode for bin: {}", fullIdentifier);
             
             // Find bin by full path

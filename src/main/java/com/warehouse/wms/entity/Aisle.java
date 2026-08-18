@@ -110,8 +110,8 @@ public class Aisle {
     // Helper method to get full aisle identifier
     public String getFullAisleIdentifier() {
         if (zone != null && zone.getWarehouse() != null) {
-            return zone.getWarehouse().getWarehouseId() + "-" + 
-                   zone.getZoneId() + "-" + 
+            return zone.getWarehouse().getWarehouseId() + "/" + 
+                   zone.getZoneId() + "/" + 
                    aisleId;
         }
         return aisleId;

@@ -124,7 +124,7 @@ public class Level {
             rack.getAisle().getZone().getWarehouse() == null) {
             return null;
         }
-        return String.format("%s-%s-%s-%s-%s",
+        return String.format("%s/%s/%s/%s/%s",
                 rack.getAisle().getZone().getWarehouse().getWarehouseId(),
                 rack.getAisle().getZone().getZoneId(),
                 rack.getAisle().getAisleId(),

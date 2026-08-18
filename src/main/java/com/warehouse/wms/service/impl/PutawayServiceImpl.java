@@ -295,11 +295,11 @@ case PLACED:
             "Bin not found with barcode: " + binBarcode));
     
     // ====== FIX: Build expected full location from target line ======
-    String expectedFullLocation = targetLine.getSuggestedWarehouse() + "-" +
-                                  targetLine.getSuggestedZone() + "-" +
-                                  targetLine.getSuggestedAisle() + "-" +
-                                  targetLine.getSuggestedRack() + "-" +
-                                  (targetLine.getSuggestedLevel() != null ? targetLine.getSuggestedLevel() : "") + "-" +
+    String expectedFullLocation = targetLine.getSuggestedWarehouse() + "/" +
+                                  targetLine.getSuggestedZone() + "/" +
+                                  targetLine.getSuggestedAisle() + "/" +
+                                  targetLine.getSuggestedRack() + "/" +
+                                  (targetLine.getSuggestedLevel() != null ? targetLine.getSuggestedLevel() : "") + "/" +
                                   (targetLine.getSuggestedBin() != null ? targetLine.getSuggestedBin() : "");
     
     log.info("Expected full location: {}", expectedFullLocation);
@@ -348,7 +348,7 @@ case PLACED:
                     "Zone has no warehouse assigned. Zone: " + zone.getZoneId());
             }
             
-            actualFullLocation = String.format("%s-%s-%s-%s-%s-%s",
+            actualFullLocation = String.format("%s/%s/%s/%s/%s/%s",
                     warehouse.getWarehouseId(),
                     zone.getZoneId(),
                     aisle.getAisleId(),

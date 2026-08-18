@@ -68,11 +68,11 @@ public class QRCodeServiceImpl implements QRCodeService {
         String barcodeValue = generateBarcodeValue(request);
         String qrId = generateQRId();
         
-        String fullPath = request.getWarehouseId() + "-" + 
-                request.getZone() + "-" + 
-                request.getAisle() + "-" + 
-                request.getRack() + "-" + 
-                request.getLevel() + "-" + 
+        String fullPath = request.getWarehouseId() + "/" + 
+                request.getZone() + "/" + 
+                request.getAisle() + "/" + 
+                request.getRack() + "/" + 
+                request.getLevel() + "/" + 
                 request.getBinId();
         
         Long inboundLineId = request.getInboundLineId();
@@ -593,11 +593,11 @@ private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
     }
 
     private String generateBarcodeValue(QRCodeGenerateRequest request) {
-        String fullPath = request.getWarehouseId() + "-" + 
-                request.getZone() + "-" + 
-                request.getAisle() + "-" + 
-                request.getRack() + "-" + 
-                request.getLevel() + "-" + 
+        String fullPath = request.getWarehouseId() + "/" + 
+                request.getZone() + "/" + 
+                request.getAisle() + "/" + 
+                request.getRack() + "/" + 
+                request.getLevel() + "/" + 
                 request.getBinId();
         return fullPath;
     }

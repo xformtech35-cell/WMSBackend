@@ -118,9 +118,9 @@ public class Rack {
     // Helper method to get full rack identifier
     public String getFullRackIdentifier() {
         if (aisle != null && aisle.getZone() != null && aisle.getZone().getWarehouse() != null) {
-            return aisle.getZone().getWarehouse().getWarehouseId() + "-" + 
-                   aisle.getZone().getZoneId() + "-" + 
-                   aisle.getAisleId() + "-" + 
+            return aisle.getZone().getWarehouse().getWarehouseId() + "/" + 
+                   aisle.getZone().getZoneId() + "/" + 
+                   aisle.getAisleId() + "/" + 
                    rackId;
         }
         return rackId;

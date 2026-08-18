@@ -148,7 +148,7 @@ public class Bin {
                 return null;
             }
             
-            return String.format("%s-%s-%s-%s-%s-%s",
+            return String.format("%s/%s/%s/%s/%s/%s",
                     warehouse.getWarehouseId(),
                     zone.getZoneId(),
                     aisle.getAisleId(),

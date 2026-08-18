@@ -103,7 +103,7 @@ public class Zone {
     
     public String getFullZoneIdentifier() {
         if (warehouse != null && warehouse.getWarehouseId() != null) {
-            return warehouse.getWarehouseId() + "-" + zoneId;
+            return warehouse.getWarehouseId() + "/" + zoneId;
         }
         return zoneId;
     }

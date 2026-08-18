@@ -31,7 +31,7 @@ public class ZoneBarcodeServiceImpl implements ZoneBarcodeService {
 
     @Override
     public String generateZoneBarcode(String warehouseId, String zoneId) {
-        String fullIdentifier = warehouseId + "-" + zoneId;
+        String fullIdentifier = warehouseId + "/" + zoneId;
         return generateZoneBarcodeWithLabel(warehouseId, zoneId, "Zone: " + fullIdentifier);
     }
 
@@ -45,13 +45,13 @@ public class ZoneBarcodeServiceImpl implements ZoneBarcodeService {
     @Override
     public String generateZoneBarcodeWithLabel(String warehouseId, String zoneId, String label) {
         try {
-            String fullIdentifier = warehouseId + "-" + zoneId;
+            String fullIdentifier = warehouseId + "/" + zoneId;
             log.info("Generating barcode for zone: {}", fullIdentifier);
             
             // Find zone by warehouseId and zoneId
             Zone zone = zoneRepository.findByWarehouse_WarehouseIdAndZoneId(warehouseId, zoneId)
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Zone not found: " + warehouseId + "-" + zoneId));
+                            "Zone not found: " + warehouseId + "/" + zoneId));
             
             // Generate barcode
             String barcodeBase64 = barcodeGenerator.generateBarcodeBase64(

@@ -28,7 +28,7 @@ public class LevelBarcodeServiceImpl implements LevelBarcodeService {
 
     @Override
     public String generateLevelBarcode(String warehouseId, String zoneId, String aisleId, String rackId, String levelId) {
-        String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId + "-" + levelId;
+        String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId + "/" + levelId;
         return generateLevelBarcodeWithLabel(warehouseId, zoneId, aisleId, rackId, levelId, "Level: " + fullIdentifier);
     }
 
@@ -48,7 +48,7 @@ public class LevelBarcodeServiceImpl implements LevelBarcodeService {
     @Override
     public String generateLevelBarcodeWithLabel(String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String label) {
         try {
-            String fullIdentifier = warehouseId + "-" + zoneId + "-" + aisleId + "-" + rackId + "-" + levelId;
+            String fullIdentifier = warehouseId + "/" + zoneId + "/" + aisleId + "/" + rackId + "/" + levelId;
             log.info("Generating barcode for level: {}", fullIdentifier);
             
             // Find level by full path
