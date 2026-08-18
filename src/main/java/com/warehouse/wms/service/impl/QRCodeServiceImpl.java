@@ -80,7 +80,6 @@ public class QRCodeServiceImpl implements QRCodeService {
                     .orElseThrow(() -> new ResourceNotFoundException("Inbound Line not found with ID: " + inboundLineId));
             
             // Set barcodeGenerate to true
-            inboundLine.setBarcodeGenerate(true);
             
            
                 inboundLine.setFullpath(fullPath);
@@ -93,8 +92,17 @@ public class QRCodeServiceImpl implements QRCodeService {
                 inboundLine.setRemainingQuantity((inboundLine.getRemainingQuantity())-(request.getQuantity()));
         
             
+            if (inboundLine.getRemainingQuantity()==0) {
+                inboundLine.setBarcodeGenerate(true);
+
+			}
+            else
+            {
+                inboundLine.setBarcodeGenerate(false);
+
+            }
             
-            
+
             
             
             

@@ -75,4 +75,37 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
     @Transactional
     @Query("UPDATE InventoryStock i SET i.isFrozen = :frozen WHERE i.id = :id")
     int updateFrozenStatus(@Param("id") Long id, @Param("frozen") Boolean frozen);
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    @Query("SELECT s FROM InventoryStock s WHERE " +
+           "s.warehouseId = :warehouseId AND " +
+           "(:zone IS NULL OR s.zone = :zone) AND " +
+           "(:aisle IS NULL OR s.aisle = :aisle) AND " +
+           "(:rack IS NULL OR s.rack = :rack) AND " +
+           "(:level IS NULL OR s.level = :level) AND " +
+           "(:binId IS NULL OR s.binId = :binId) AND " +
+           "s.itemCode = :itemCode")
+    Optional<InventoryStock> findByLocationAndItemCode(
+        @Param("warehouseId") String warehouseId,
+        @Param("zone") String zone,
+        @Param("aisle") String aisle,
+        @Param("rack") String rack,
+        @Param("level") String level,
+        @Param("binId") String binId,
+        @Param("itemCode") String itemCode
+    );
+    
+    @Query("SELECT s FROM InventoryStock s WHERE s.inventoryNumber = :inventoryNumber AND s.binId = :binId")
+    Optional<InventoryStock> findByInventoryNumberAndBinId(
+        @Param("inventoryNumber") String inventoryNumber,
+        @Param("binId") String binId
+    );
 }
