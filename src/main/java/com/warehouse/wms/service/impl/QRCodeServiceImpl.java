@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -26,11 +27,13 @@ import com.warehouse.wms.dto.response.QRCodeResponse;
 import com.warehouse.wms.entity.Inbound;
 import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.QRCode;
+import com.warehouse.wms.entity.StockAvailability;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.QRCodeMapper;
 import com.warehouse.wms.repository.InboundLineRepository;
 import com.warehouse.wms.repository.InboundRepository;
 import com.warehouse.wms.repository.QRCodeRepository;
+import com.warehouse.wms.repository.StockAvailabilityRepository;
 import com.warehouse.wms.service.QRCodeService;
 import com.warehouse.wms.util.BarcodeGenerator;
 import com.warehouse.wms.util.QRCodeGenerator;
@@ -45,10 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 public class QRCodeServiceImpl implements QRCodeService {
 
     private final QRCodeRepository qrCodeRepository;
-    
     private final InboundLineRepository inboundLineRepository;
     private final InboundRepository inboundRepository;
-
+    private final StockAvailabilityRepository stockAvailabilityRepository;
     private final QRCodeMapper qrCodeMapper;
     private final QRCodeGenerator qrCodeGenerator;
     private final BarcodeGenerator barcodeGenerator;
@@ -66,54 +68,40 @@ public class QRCodeServiceImpl implements QRCodeService {
         String barcodeValue = generateBarcodeValue(request);
         String qrId = generateQRId();
         
-        
-      String  fullPath = request.getWarehouseId() + "-" + 
-    		  request.getZone() + "-" + 
-    		  request.getAisle() + "-" + 
-    		  request.getRack() + "-" + 
-    		  request.getLevel() + "-" + 
-    		  request.getBinId();
+        String fullPath = request.getWarehouseId() + "-" + 
+                request.getZone() + "-" + 
+                request.getAisle() + "-" + 
+                request.getRack() + "-" + 
+                request.getLevel() + "-" + 
+                request.getBinId();
         
         Long inboundLineId = request.getInboundLineId();
         if (inboundLineId != null) {
             InboundLine inboundLine = inboundLineRepository.findById(inboundLineId)
                     .orElseThrow(() -> new ResourceNotFoundException("Inbound Line not found with ID: " + inboundLineId));
             
-            // Set barcodeGenerate to true
-            
-           
-                inboundLine.setFullpath(fullPath);
-                inboundLine.setWarehouseId(request.getWarehouseId());
-                inboundLine.setZone(request.getZone());
-                inboundLine.setAisle(request.getAisle());
-                inboundLine.setRack(request.getRack());
-                inboundLine.setLevel(request.getLevel());
-                inboundLine.setBinId(request.getBinId());
-                inboundLine.setRemainingQuantity((inboundLine.getRemainingQuantity())-(request.getQuantity()));
+            inboundLine.setFullpath(fullPath);
+            inboundLine.setWarehouseId(request.getWarehouseId());
+            inboundLine.setZone(request.getZone());
+            inboundLine.setAisle(request.getAisle());
+            inboundLine.setRack(request.getRack());
+            inboundLine.setLevel(request.getLevel());
+            inboundLine.setBinId(request.getBinId());
+            inboundLine.setRemainingQuantity((inboundLine.getRemainingQuantity()) - (request.getQuantity()));
         
-            
-            if (inboundLine.getRemainingQuantity()==0) {
+            if (inboundLine.getRemainingQuantity() == 0) {
                 inboundLine.setBarcodeGenerate(true);
-
-			}
-            else
-            {
+            } else {
                 inboundLine.setBarcodeGenerate(false);
-
             }
-            
-
-            
-            
-            
-            
             
             inboundLineRepository.save(inboundLine);
             log.info("✅ Barcode generate flag set to true for inbound line: {}", inboundLineId);
         }
         
         Inbound inbound = inboundRepository.findByGrnNumber(request.getGrnNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("Inbound  not found with ID: " + request.getGrnNumber()));
+                .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with ID: " + request.getGrnNumber()));
+        
         // Generate images
         String qrImage = qrCodeGenerator.generateQRCodeBase64(qrCodeValue, request.getItemCode());
         String barcodeImage = barcodeGenerator.generateBarcodeBase64(barcodeValue);
@@ -153,13 +141,132 @@ public class QRCodeServiceImpl implements QRCodeService {
                 .labelFormat(request.getLabelFormat())
                 .remarks(request.getRemarks())
                 .rock(inbound.getRock())
-                
                 .build();
 
         QRCode savedQRCode = qrCodeRepository.save(qrCode);
+        
+        // ✅ Update StockAvailability with reservedQuantity when QR Code is generated
+        updateStockAvailabilityWithReservedQuantity(savedQRCode);
+        
         log.info("QR Code generated successfully with ID: {}", savedQRCode.getQrId());
 
         return qrCodeMapper.toResponse(savedQRCode);
+    }
+
+    /**
+     * ✅ Update StockAvailability with reservedQuantity when QR Code is generated
+     */
+    private void updateStockAvailabilityWithReservedQuantity(QRCode qrCode) {
+        try {
+            String warehouseId = qrCode.getWarehouseId();
+            String zoneId = qrCode.getZone();
+            String aisleId = qrCode.getAisle();
+            String rackId = qrCode.getRack();
+            String levelId = qrCode.getLevel();
+            String binId = qrCode.getBinId();
+            String itemCode = qrCode.getItemCode();
+            Integer quantity = qrCode.getQuantity();
+            
+            if (binId == null || itemCode == null || quantity == null || quantity <= 0) {
+                log.warn("Cannot update StockAvailability - missing required data for QR Code: {}", qrCode.getQrCode());
+                return;
+            }
+            
+            // ✅ 1. Update at BIN level with reservedQuantity
+            updateStockAvailabilityLevel(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+                    itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                    StockAvailability.LocationLevel.BIN, qrCode.getId(), qrCode.getQrCode());
+            
+            // ✅ 2. Update at LEVEL level
+            if (levelId != null) {
+                updateStockAvailabilityLevel(warehouseId, zoneId, aisleId, rackId, levelId, null, 
+                        itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                        StockAvailability.LocationLevel.LEVEL, qrCode.getId(), qrCode.getQrCode());
+            }
+            
+            // ✅ 3. Update at RACK level
+            updateStockAvailabilityLevel(warehouseId, zoneId, aisleId, rackId, null, null, 
+                    itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                    StockAvailability.LocationLevel.RACK, qrCode.getId(), qrCode.getQrCode());
+            
+            // ✅ 4. Update at AISLE level
+            updateStockAvailabilityLevel(warehouseId, zoneId, aisleId, null, null, null, 
+                    itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                    StockAvailability.LocationLevel.AISLE, qrCode.getId(), qrCode.getQrCode());
+            
+            // ✅ 5. Update at ZONE level
+            updateStockAvailabilityLevel(warehouseId, zoneId, null, null, null, null, 
+                    itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                    StockAvailability.LocationLevel.ZONE, qrCode.getId(), qrCode.getQrCode());
+            
+            // ✅ 6. Update at WAREHOUSE level
+            updateStockAvailabilityLevel(warehouseId, null, null, null, null, null, 
+                    itemCode, qrCode.getItemName(), qrCode.getUom(), quantity, 
+                    StockAvailability.LocationLevel.WAREHOUSE, qrCode.getId(), qrCode.getQrCode());
+            
+            log.info("✅ StockAvailability updated with reservedQuantity for QR Code: {}", qrCode.getQrCode());
+            
+        } catch (Exception e) {
+            log.error("Error updating StockAvailability with reservedQuantity for QR Code: {}", qrCode.getQrCode(), e);
+        }
+    }
+
+    /**
+     * ✅ Update stock availability at a specific level with reservedQuantity
+     */
+    private void updateStockAvailabilityLevel(String warehouseId, String zoneId, String aisleId, 
+            String rackId, String levelId, String binId,
+            String itemCode, String itemName, String uom, Integer quantity, 
+            StockAvailability.LocationLevel locationLevel, Long qrCodeId, String qrCodeValue) {
+        
+        try {
+            Optional<StockAvailability> existingStock = stockAvailabilityRepository
+                    .findByLocationAndItem(warehouseId, zoneId, aisleId, rackId, levelId, binId, 
+                            itemCode, locationLevel);
+
+            StockAvailability stock;
+            if (existingStock.isPresent()) {
+                stock = existingStock.get();
+                // ✅ Add quantity to total and available
+                stock.addQuantity(quantity);
+                // ✅ Set reservedQuantity
+                stock.setReservedQuantity(quantity);
+                // ✅ Set QR Code reference
+                stock.setQrCodeId(qrCodeId);
+                stock.setQrCodeValue(qrCodeValue);
+                stock.setUpdatedAt(LocalDateTime.now());
+                log.debug("Updated stock at {} level for item {}: +{} (total: {}, reserved: {})", 
+                    locationLevel, itemCode, quantity, stock.getTotalQuantity(), stock.getReservedQuantity());
+            } else {
+                // Create new stock availability
+                stock = StockAvailability.builder()
+                        .warehouseId(warehouseId)
+                        .zoneId(zoneId)
+                        .aisleId(aisleId)
+                        .rackId(rackId)
+                        .levelId(levelId)
+                        .binId(binId)
+                        .itemCode(itemCode)
+                        .itemName(itemName)
+                        .uom(uom)
+                        .totalQuantity(quantity)
+                        .availableQuantity(quantity)
+                        .reservedQuantity(quantity) // ✅ Set reservedQuantity
+                        .inTransitQuantity(0)
+                        .locationLevel(locationLevel)
+                        .qrCodeId(qrCodeId) // ✅ Set QR Code reference
+                        .qrCodeValue(qrCodeValue)
+                        .lastPutawayDate(LocalDateTime.now())
+                        .build();
+                log.debug("Created new stock at {} level for item {}: quantity {}, reserved {}", 
+                    locationLevel, itemCode, quantity, quantity);
+            }
+
+            stockAvailabilityRepository.save(stock);
+            
+        } catch (Exception e) {
+            log.warn("Error updating StockAvailability at {} level: {}", locationLevel, e.getMessage());
+        }
     }
 
     @Override
@@ -238,51 +345,8 @@ public class QRCodeServiceImpl implements QRCodeService {
     }
 
     @Override
-@Transactional
-public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
-    log.info("Scanning QR Code: {}", qrCode);
-    
-    // Validate inputs
-    if (qrCode == null || qrCode.trim().isEmpty()) {
-        throw new IllegalArgumentException("QR Code cannot be empty");
-    }
-    if (scannedBy == null || scannedBy.trim().isEmpty()) {
-        throw new IllegalArgumentException("Scanned by cannot be empty");
-    }
-    
-    QRCode qrCodeEntity = qrCodeRepository.findByQrCode(qrCode)
-            .orElseThrow(() -> new ResourceNotFoundException("QR Code not found: " + qrCode));
-
-    if (qrCodeEntity.getStatus() == QRStatus.USED) {
-        throw new IllegalStateException("QR Code already used");
-    }
-    
-    if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
-        throw new IllegalStateException("QR Code has expired");
-    }
-
-    // ✅ FIX: Handle null scanCount safely
-    Integer currentScanCount = qrCodeEntity.getScanCount();
-    if (currentScanCount == null) {
-        currentScanCount = 0;
-    }
-    int newScanCount = currentScanCount + 1;
-
-    qrCodeEntity.setStatus(QRStatus.SCANNED);
-    qrCodeEntity.setScannedBy(scannedBy);
-    qrCodeEntity.setScannedAt(LocalDateTime.now());
-    qrCodeEntity.setScanCount(newScanCount);
-
-    QRCode updatedQRCode = qrCodeRepository.save(qrCodeEntity);
-    log.info("✅ QR Code scanned successfully: {} (Scan count: {})", qrCode, newScanCount);
-
-    return qrCodeMapper.toResponse(updatedQRCode);
-}
-    
-    
-    @Override
     @Transactional
-    public QRCodeResponse scanBarCode(String qrCode, String scannedBy) {
+    public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
         log.info("Scanning QR Code: {}", qrCode);
         
         // Validate inputs
@@ -293,7 +357,7 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
             throw new IllegalArgumentException("Scanned by cannot be empty");
         }
         
-        QRCode qrCodeEntity = qrCodeRepository.findByBarcode(qrCode)
+        QRCode qrCodeEntity = qrCodeRepository.findByQrCode(qrCode)
                 .orElseThrow(() -> new ResourceNotFoundException("QR Code not found: " + qrCode));
 
         if (qrCodeEntity.getStatus() == QRStatus.USED) {
@@ -304,7 +368,10 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
             throw new IllegalStateException("QR Code has expired");
         }
 
-        // ✅ FIX: Handle null scanCount safely
+        // ✅ Update StockAvailability - reserve quantity when QR is scanned
+        updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
+
+        // Update QR Code status
         Integer currentScanCount = qrCodeEntity.getScanCount();
         if (currentScanCount == null) {
             currentScanCount = 0;
@@ -322,6 +389,112 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
         return qrCodeMapper.toResponse(updatedQRCode);
     }
 
+    /**
+     * ✅ Update reservedQuantity when QR Code is scanned
+     */
+   // ====== FILE: src/main/java/com/warehouse/wms/service/impl/QRCodeServiceImpl.java ======
+// Updated method with correct type handling
+
+private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
+    try {
+        String binId = qrCode.getBinId();
+        String itemCode = qrCode.getItemCode();
+        Integer quantity = qrCode.getQuantity();
+        
+        if (binId == null || itemCode == null || quantity == null || quantity <= 0) {
+            log.warn("Cannot update reservedQuantity - missing data for QR Code: {}", qrCode.getQrCode());
+            return;
+        }
+        
+        // ✅ CORRECTED: findByBinIdAndItemCode returns List<StockAvailability>
+        List<StockAvailability> binStocks = stockAvailabilityRepository
+                .findByBinIdAndItemCode(binId, itemCode);
+        
+        if (binStocks != null && !binStocks.isEmpty()) {
+            // Get the first matching stock
+            StockAvailability stock = binStocks.get(0);
+            
+            // ✅ Call reserveQuantity method
+            stock.reserveQuantity(quantity);
+            stock.setQrCodeId(qrCode.getId());
+            stock.setQrCodeValue(qrCode.getQrCode());
+            stock.setUpdatedBy(scannedBy);
+            stock.setUpdatedAt(LocalDateTime.now());
+            stockAvailabilityRepository.save(stock);
+            log.info("✅ Reserved {} units at BIN level for item {} at bin {}", quantity, itemCode, binId);
+        } else {
+            // ✅ Try to find by bin barcode if binId not found
+            String binBarcode = qrCode.getBarcode();
+            if (binBarcode != null) {
+                List<StockAvailability> binBarcodeStocks = stockAvailabilityRepository
+                        .findByBinBarcodeAndItemCode(binBarcode, itemCode);
+                if (binBarcodeStocks != null && !binBarcodeStocks.isEmpty()) {
+                    StockAvailability stock = binBarcodeStocks.get(0);
+                    stock.reserveQuantity(quantity);
+                    stock.setQrCodeId(qrCode.getId());
+                    stock.setQrCodeValue(qrCode.getQrCode());
+                    stock.setUpdatedBy(scannedBy);
+                    stock.setUpdatedAt(LocalDateTime.now());
+                    stockAvailabilityRepository.save(stock);
+                    log.info("✅ Reserved {} units at BIN level for item {} at bin barcode {}", quantity, itemCode, binBarcode);
+                } else {
+                    log.warn("StockAvailability not found for item {} at bin {} or barcode {}", itemCode, binId, binBarcode);
+                }
+            } else {
+                log.warn("StockAvailability not found for item {} at bin {}", itemCode, binId);
+            }
+        }
+        
+    } catch (Exception e) {
+        log.error("Error updating reservedQuantity on scan: {}", e.getMessage(), e);
+    }
+}
+
+    @Override
+    @Transactional
+    public QRCodeResponse scanBarCode(String qrCode, String scannedBy) {
+        log.info("Scanning Barcode: {}", qrCode);
+        
+        // Validate inputs
+        if (qrCode == null || qrCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Barcode cannot be empty");
+        }
+        if (scannedBy == null || scannedBy.trim().isEmpty()) {
+            throw new IllegalArgumentException("Scanned by cannot be empty");
+        }
+        
+        QRCode qrCodeEntity = qrCodeRepository.findByBarcode(qrCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Barcode not found: " + qrCode));
+
+        if (qrCodeEntity.getStatus() == QRStatus.USED) {
+            throw new IllegalStateException("Barcode already used");
+        }
+        
+        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
+            throw new IllegalStateException("Barcode has expired");
+        }
+
+        // ✅ Update StockAvailability - reserve quantity when barcode is scanned
+        updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
+
+        // Update QR Code status
+        Integer currentScanCount = qrCodeEntity.getScanCount();
+        if (currentScanCount == null) {
+            currentScanCount = 0;
+        }
+        int newScanCount = currentScanCount + 1;
+
+        qrCodeEntity.setStatus(QRStatus.SCANNED);
+        qrCodeEntity.setScannedBy(scannedBy);
+        qrCodeEntity.setScannedAt(LocalDateTime.now());
+        qrCodeEntity.setScanCount(newScanCount);
+
+        QRCode updatedQRCode = qrCodeRepository.save(qrCodeEntity);
+        log.info("✅ Barcode scanned successfully: {} (Scan count: {})", qrCode, newScanCount);
+
+        return qrCodeMapper.toResponse(updatedQRCode);
+    }
+
     @Override
     @Transactional
     public QRCodeResponse scanBarcode(String barcode, String scannedBy) {
@@ -333,6 +506,9 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
         if (qrCode.getStatus() == QRStatus.USED) {
             throw new IllegalStateException("Barcode already used");
         }
+
+        // ✅ Update StockAvailability - reserve quantity when barcode is scanned
+        updateReservedQuantityOnScan(qrCode, scannedBy);
 
         qrCode.setStatus(QRStatus.SCANNED);
         qrCode.setScannedBy(scannedBy);
@@ -355,12 +531,6 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
         log.info("QR Code status updated to: {}", status);
     }
 
-//    @Override
-//    public Page<QRCodeResponse> getAllQRCodes(Pageable pageable) {
-//        return qrCodeRepository.findAll(pageable)
-//                .map(qrCodeMapper::toResponse);
-//    }
-    
     @Override
     public Page<QRCodeResponse> getAllQRCodes(
             Pageable pageable,
@@ -375,8 +545,6 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
 
         return qrCodes.map(qrCodeMapper::toResponse);
     }
-    
-    
 
     @Override
     public byte[] generateQRCodeImage(String data) {
@@ -425,15 +593,12 @@ public QRCodeResponse scanQRCode(String qrCode, String scannedBy) {
     }
 
     private String generateBarcodeValue(QRCodeGenerateRequest request) {
-        // Build the full path from the request
         String fullPath = request.getWarehouseId() + "-" + 
                 request.getZone() + "-" + 
                 request.getAisle() + "-" + 
                 request.getRack() + "-" + 
                 request.getLevel() + "-" + 
                 request.getBinId();
-        
-        // Use the full path as the barcode value
         return fullPath;
     }
 

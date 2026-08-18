@@ -94,7 +94,11 @@ public class StockAvailability {
     private Integer minCapacity;
     
     
-    
+    @Column(name = "qr_code_id")
+    private Long qrCodeId;
+
+    @Column(name = "qr_code_value", length = 100)
+    private String qrCodeValue;
  
     
     

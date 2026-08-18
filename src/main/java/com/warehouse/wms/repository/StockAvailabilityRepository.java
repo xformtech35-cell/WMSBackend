@@ -37,7 +37,8 @@ public interface StockAvailabilityRepository extends JpaRepository<StockAvailabi
             @Param("locationLevel") LocationLevel locationLevel);
 
     // ====== Find by warehouse level ======
-    
+//    Optional<StockAvailability> findByBinIdAndItemCode(String binId, String itemCode);
+
     List<StockAvailability> findByWarehouseIdAndLocationLevel(String warehouseId, LocationLevel locationLevel);
     
     List<StockAvailability> findByWarehouseIdAndItemCodeAndLocationLevel(
