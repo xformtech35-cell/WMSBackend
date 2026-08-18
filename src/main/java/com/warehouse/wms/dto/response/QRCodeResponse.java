@@ -65,7 +65,7 @@ public class QRCodeResponse {
     private boolean isTaskAssinged = false;    
     
     
-    @JsonIgnoreProperties({"warehouse"})
+    @JsonIgnoreProperties({"stockSummary"})
     private RockResponse rock;
 
 }
