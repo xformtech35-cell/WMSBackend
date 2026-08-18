@@ -63,6 +63,8 @@ public class PutawayTaskResponse {
         private String suggestedAisle;
         private String suggestedRack;
         private String suggestedShelf;
+        private String suggestedLevel;
+
         private String suggestedBin;
         private String fullpath;
         private String actualWarehouse;
@@ -70,6 +72,8 @@ public class PutawayTaskResponse {
         private String actualAisle;
         private String actualRack;
         private String actualShelf;
+        private String actualLevel;
+
         private String actualBin;
         private String binBarcode;
         private String batchNumber;
