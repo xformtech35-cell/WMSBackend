@@ -75,6 +75,7 @@ public class InventoryStockMapper {
             .shelf(stock.getShelf())
             .level(stock.getLevel())
             .binId(stock.getBinId())
+            .fullLocation(stock.getFullLocation())
             .binBarcode(stock.getBinBarcode())
             .batchNumber(stock.getBatchNumber())
             .serialNumbers(stock.getSerialNumbers())

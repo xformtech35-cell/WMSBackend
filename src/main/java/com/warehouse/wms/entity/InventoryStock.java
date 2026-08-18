@@ -82,6 +82,9 @@ public class InventoryStock {
 
     @Column(name = "bin_id", length = 50)
     private String binId;
+    
+    private String fullLocation;
+
 
     @Column(name = "bin_barcode", length = 100)
     private String binBarcode;

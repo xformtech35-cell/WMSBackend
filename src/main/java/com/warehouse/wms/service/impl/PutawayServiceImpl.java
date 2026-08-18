@@ -985,9 +985,13 @@ case PLACED:
   * Update the existing InventoryStock entity (for backward compatibility)
   */
  private void updateInventoryStock(PutawayLine line, PutawayTask task, String confirmationNumber) {
+	 
+	   String fullPath = null;
+
      Optional<InventoryStock> existingStock = inventoryStockRepository
              .findByBinIdAndItemCode(line.getActualBin(), line.getItemCode());
 
+   
      InventoryStock stock;
      if (existingStock.isPresent()) {
          stock = existingStock.get();
@@ -997,6 +1001,13 @@ case PLACED:
      } else {
          String serialNumbers = line.getSerialNumber() != null ? line.getSerialNumber() : null;
          
+         fullPath = line.getActualWarehouse() + "/" + 
+        		 line.getActualZone() + "/" + 
+        		 line.getActualAisle() + "/" + 
+        		 line.getActualRack() + "/" + 
+        		 line.getActualLevel() + "/" + 
+        		 line.getActualBin();
+
          stock = InventoryStock.builder()
                  .inventoryNumber(generateInventoryNumber())
                  .itemCode(line.getItemCode())
@@ -1010,6 +1021,7 @@ case PLACED:
                  .rack(line.getActualRack())
                  .level(line.getActualLevel())
                  .binId(line.getActualBin())
+                 .fullLocation(fullPath)
                  .binBarcode(line.getBinBarcode())
                  .batchNumber(line.getBatchNumber())
                  .serialNumbers(serialNumbers)

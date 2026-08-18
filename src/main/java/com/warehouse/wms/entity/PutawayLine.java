@@ -136,4 +136,6 @@ public class PutawayLine {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "putaway_task_id")
     private PutawayTask putawayTask;
+
+	
 }
