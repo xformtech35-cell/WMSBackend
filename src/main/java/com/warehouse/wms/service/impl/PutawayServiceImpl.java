@@ -285,7 +285,7 @@ case PLACED:
     log.info("Full location from request: {}", fullLocationFromRequest);
     
     // Extract the bin barcode (last part after the last dash)
-    String[] parts = fullLocationFromRequest.split("-");
+    String[] parts = fullLocationFromRequest.split("/");
     String binBarcode = parts[parts.length - 1]; // Get the last part
     log.info("Extracted bin barcode: {}", binBarcode);
     

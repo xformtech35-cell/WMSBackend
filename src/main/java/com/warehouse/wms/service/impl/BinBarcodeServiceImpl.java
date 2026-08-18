@@ -23,8 +23,8 @@ public class BinBarcodeServiceImpl implements BinBarcodeService {
     private final BarcodeGenerator barcodeGenerator;
     private final BinRepository binRepository;
 
-    private static final int DEFAULT_WIDTH = 300;
-    private static final int DEFAULT_HEIGHT = 100;
+    private static final int DEFAULT_WIDTH = 400;  // ✅ Increased from 300
+    private static final int DEFAULT_HEIGHT = 150; // ✅ Increased from 100
 
     @Override
     public String generateBinBarcode(String warehouseId, String zoneId, String aisleId, String rackId, String levelId, String binBarcode) {
