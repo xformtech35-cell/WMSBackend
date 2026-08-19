@@ -72,6 +72,32 @@ public class User implements UserDetails {
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @Column(length = 10)
+    private String otp;
+
+    private LocalDateTime otpExpiry;
+
+    private LocalDateTime otpRequestedAt;
+
+    private Integer otpAttempts = 0;
+
+    private Boolean isOtpVerified = false;
+
+
 
     @PrePersist
     protected void onCreate() {

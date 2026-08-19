@@ -14,8 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.warehouse.wms.dto.CreateUserRequest;
+import com.warehouse.wms.dto.ForgotPasswordRequest;
+import com.warehouse.wms.dto.PasswordResetResponse;
+import com.warehouse.wms.dto.ResetPasswordRequest;
 import com.warehouse.wms.dto.UpdateUserRequest;
 import com.warehouse.wms.dto.UserResponse;
+import com.warehouse.wms.dto.VerifyOtpRequest;
 import com.warehouse.wms.entity.User;
 import com.warehouse.wms.repository.UserRepository;
 
@@ -31,6 +35,12 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final RoleService roleService;
     private final FileUploadService fileUploadService;
+    
+    
+    
+  
+    private final OtpGeneratorService otpGeneratorService;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public List<UserResponse> listAll() {
@@ -224,4 +234,216 @@ public class UserService {
                 u.getUpdatedAt()
         );
     }
+    
+    
+    
+    
+    
+    // ========== OTP BASED PASSWORD RESET ==========
+
+    /**
+     * Initiate password reset - Generate and send OTP
+     */
+    @Transactional
+    public PasswordResetResponse initiatePasswordReset(ForgotPasswordRequest request) {
+        String email = request.getEmail();
+        
+        // Find user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User with this email not found"));
+
+        // Check if user is active
+        if (!user.getIsActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is deactivated. Please contact administrator.");
+        }
+
+        // Generate OTP
+        String otp = otpGeneratorService.generateOtp();
+        LocalDateTime otpExpiry = otpGeneratorService.getOtpExpiry();
+
+        // Save OTP to user
+        user.setOtp(otp);
+        user.setOtpExpiry(otpExpiry);
+        user.setOtpRequestedAt(LocalDateTime.now());
+        user.setOtpAttempts(0);
+        user.setIsOtpVerified(false);
+        userRepository.save(user);
+
+        // Send OTP via email
+        try {
+            emailService.sendOtpEmail(email, otp, user.getFullName() != null ? user.getFullName() : user.getUsername());
+        } catch (Exception e) {
+            log.error("Failed to send OTP email: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send OTP. Please try again.");
+        }
+
+        log.info("Password reset initiated for user: {} ({})", user.getUsername(), email);
+        
+        return new PasswordResetResponse(true, "OTP sent to your email address", email, user.getId());
+    }
+
+    /**
+     * Verify OTP
+     */
+    @Transactional
+    public PasswordResetResponse verifyOtp(VerifyOtpRequest request) {
+        String email = request.getEmail();
+        String inputOtp = request.getOtp();
+
+        // Find user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // Check if user is active
+        if (!user.getIsActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is deactivated");
+        }
+
+        // Check if OTP is present
+        if (user.getOtp() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No OTP request found. Please request a new OTP.");
+        }
+
+        // Check OTP attempts
+        if (user.getOtpAttempts() >= 5) {
+            // Clear OTP after too many attempts
+            clearOtpData(user);
+            userRepository.save(user);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Too many invalid attempts. Please request a new OTP.");
+        }
+
+        // Validate OTP
+        boolean isValid = otpGeneratorService.validateOtp(inputOtp, user.getOtp(), user.getOtpExpiry());
+        
+        if (!isValid) {
+            user.setOtpAttempts(user.getOtpAttempts() + 1);
+            userRepository.save(user);
+            int remainingAttempts = 5 - user.getOtpAttempts();
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                String.format("Invalid OTP. %d attempts remaining.", remainingAttempts));
+        }
+
+        // Mark OTP as verified
+        user.setIsOtpVerified(true);
+        userRepository.save(user);
+
+        log.info("OTP verified successfully for user: {} ({})", user.getUsername(), email);
+        
+        return new PasswordResetResponse(true, "OTP verified successfully. You can now reset your password.", email, user.getId());
+    }
+
+    /**
+     * Reset password using OTP
+     */
+    @Transactional
+    public PasswordResetResponse resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail();
+        String otp = request.getOtp();
+        String newPassword = request.getNewPassword();
+        String confirmPassword = request.getConfirmPassword();
+
+        // Validate passwords match
+        if (!newPassword.equals(confirmPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match");
+        }
+
+        // Find user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // Check if user is active
+        if (!user.getIsActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is deactivated");
+        }
+
+        // Check if OTP is verified
+        if (!user.getIsOtpVerified()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP not verified. Please verify OTP first.");
+        }
+
+        // Validate OTP again (ensure it's still valid)
+        boolean isValidOtp = otpGeneratorService.validateOtp(otp, user.getOtp(), user.getOtpExpiry());
+        if (!isValidOtp) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP. Please request a new OTP.");
+        }
+
+        // Check if password is same as old password
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "New password cannot be the same as the old password. Please choose a different password.");
+        }
+
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        
+        // Clear OTP data
+        clearOtpData(user);
+        userRepository.save(user);
+
+        // Send confirmation email
+        try {
+            emailService.sendPasswordResetConfirmation(email, user.getFullName() != null ? user.getFullName() : user.getUsername());
+        } catch (Exception e) {
+            log.warn("Failed to send password reset confirmation email: {}", e.getMessage());
+            // Don't throw exception for confirmation email failure
+        }
+
+        log.info("Password reset successfully for user: {} ({})", user.getUsername(), email);
+        
+        return new PasswordResetResponse(true, "Password reset successfully", email, user.getId());
+    }
+
+    /**
+     * Resend OTP
+     */
+    @Transactional
+    public PasswordResetResponse resendOtp(String email) {
+        // Find user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!user.getIsActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is deactivated");
+        }
+
+        // Generate new OTP
+        String otp = otpGeneratorService.generateOtp();
+        LocalDateTime otpExpiry = otpGeneratorService.getOtpExpiry();
+
+        // Save new OTP
+        user.setOtp(otp);
+        user.setOtpExpiry(otpExpiry);
+        user.setOtpRequestedAt(LocalDateTime.now());
+        user.setOtpAttempts(0);
+        user.setIsOtpVerified(false);
+        userRepository.save(user);
+
+        // Send OTP via email
+        try {
+            emailService.sendOtpEmail(email, otp, user.getFullName() != null ? user.getFullName() : user.getUsername());
+        } catch (Exception e) {
+            log.error("Failed to resend OTP email: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to resend OTP. Please try again.");
+        }
+
+        log.info("OTP resent for user: {} ({})", user.getUsername(), email);
+        
+        return new PasswordResetResponse(true, "OTP resent to your email address", email, user.getId());
+    }
+
+    // ========== HELPERS ==========
+
+  
+
+ 
+
+    private void clearOtpData(User user) {
+        user.setOtp(null);
+        user.setOtpExpiry(null);
+        user.setOtpRequestedAt(null);
+        user.setOtpAttempts(0);
+        user.setIsOtpVerified(false);
+    }
+
+   
 }

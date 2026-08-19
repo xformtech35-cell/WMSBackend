@@ -51,7 +51,7 @@ public class SecurityConfig {
                                         "/actuator/**",
                                         "/swagger-ui/**", "/swagger-ui.html",
                                         "/v3/api-docs/**", "/api-docs/**",
-                                        "/ws/**", "/api/carrier/webhook/**")
+                                        "/ws/**", "/api/carrier/webhook/**","/api/auth/password/forgot","/api/auth/password/verify-otp","/api/auth/password/reset","/api/auth/password/resend-otp")
                                 .permitAll()
                                 .anyRequest().authenticated()
                 )
