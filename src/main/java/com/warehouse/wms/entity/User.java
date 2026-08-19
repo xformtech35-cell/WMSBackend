@@ -1,18 +1,12 @@
 package com.warehouse.wms.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +30,60 @@ public class User implements UserDetails {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    /** Returns ROLE_<name> + every individual Permission granted to this role. */
+    // ========== NEW PROFILE FIELDS ==========
+    
+    @Column(length = 100)
+    private String fullName;
+
+    @Column(length = 20)
+    private String mobileNumber;
+
+    @Column(length = 100)
+    private String designation;
+
+    @Column(length = 50)
+    private String employeeId;
+
+    @Column(length = 100)
+    private String email;
+
+    @Column(length = 255)
+    private String profilePhotoPath;
+
+    @Column(length = 255)
+    private String profilePhotoUrl;
+
+    @Column(length = 100)
+    private String department;
+
+    @Column(length = 100)
+    private String location;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
+    private LocalDateTime joiningDate;
+    
+    private LocalDateTime lastLoginAt;
+
+    @Column(columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private Boolean isActive = true;
+
+    private LocalDateTime createdAt;
+    
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
@@ -62,6 +109,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return isActive != null && isActive;
     }
 }
