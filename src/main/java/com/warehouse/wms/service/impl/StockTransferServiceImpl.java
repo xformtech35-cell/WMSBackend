@@ -370,7 +370,7 @@ public class StockTransferServiceImpl implements StockTransferService {
     }
     
     private LocationInfo parseLocationPath(String locationPath) {
-        String[] parts = locationPath.split("-");
+        String[] parts = locationPath.split("/");
         LocationInfo info = new LocationInfo();
         
         if (parts.length > 0) info.warehouseId = parts[0];
