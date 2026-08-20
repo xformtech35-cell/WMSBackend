@@ -73,19 +73,6 @@ public class User implements UserDetails {
     
     private LocalDateTime updatedAt;
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     @Column(length = 10)
     private String otp;
 

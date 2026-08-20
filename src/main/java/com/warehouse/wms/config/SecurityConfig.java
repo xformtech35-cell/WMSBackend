@@ -1,12 +1,14 @@
 package com.warehouse.wms.config;
 
 import com.warehouse.wms.service.UserDetailsServiceImpl;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,9 +23,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @Configuration
 @EnableWebSecurity
@@ -47,11 +46,28 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(req ->
-                        req.requestMatchers("/api/auth/**", "/error",
+                        req.requestMatchers(
+                                        // ===== AUTH ENDPOINTS =====
+                                        "/api/auth/**",
+                                        "/api/auth/password/forgot",
+                                        "/api/auth/password/verify-otp",
+                                        "/api/auth/password/reset",
+                                        "/api/auth/password/resend-otp",
+                                        
+                                        // ===== PUBLIC ENDPOINTS =====
+                                        "/error",
                                         "/actuator/**",
-                                        "/swagger-ui/**", "/swagger-ui.html",
-                                        "/v3/api-docs/**", "/api-docs/**",
-                                        "/ws/**", "/api/carrier/webhook/**","/api/auth/password/forgot","/api/auth/password/verify-otp","/api/auth/password/reset","/api/auth/password/resend-otp")
+                                        
+                                        // ===== SWAGGER =====
+                                        "/swagger-ui/**", 
+                                        "/swagger-ui.html",
+                                        "/v3/api-docs/**", 
+                                        "/api-docs/**",
+                                        
+                                        // ===== WEBSOCKET =====
+                                        "/ws/**",
+                                        "/api/carrier/webhook/**"
+                                )
                                 .permitAll()
                                 .anyRequest().authenticated()
                 )
@@ -60,7 +76,7 @@ public class SecurityConfig {
                         (request, response, authException) -> {
                             response.setStatus(401);
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"error\":\"Unauthorized\"}");
+                            response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
                         }
                 ))
                 .authenticationProvider(authenticationProvider())
@@ -77,6 +93,8 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
