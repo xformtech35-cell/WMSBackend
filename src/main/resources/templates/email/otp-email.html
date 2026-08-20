@@ -4,175 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Reset OTP</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #1a237e, #0d47a1);
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .header p {
-            margin: 5px 0 0;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        .content {
-            padding: 30px 30px 20px;
-        }
-        .greeting {
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-        .otp-box {
-            background: #f8f9fa;
-            border: 2px dashed #1a237e;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin: 25px 0;
-        }
-        .otp-code {
-            font-size: 42px;
-            font-weight: 700;
-            color: #1a237e;
-            letter-spacing: 8px;
-            font-family: 'Courier New', monospace;
-        }
-        .otp-label {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .info-box {
-            background: #e3f2fd;
-            border-left: 4px solid #1a237e;
-            padding: 15px 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .info-box p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .warning {
-            color: #d32f2f;
-            font-weight: 500;
-        }
-        .divider {
-            border-top: 1px solid #e0e0e0;
-            margin: 20px 0;
-        }
-        .footer {
-            background: #f8f9fa;
-            padding: 20px 30px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-        }
-        .footer a {
-            color: #1a237e;
-            text-decoration: none;
-        }
-        .button {
-            display: inline-block;
-            background: #1a237e;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 500;
-            margin: 10px 0;
-        }
-        .button:hover {
-            background: #0d47a1;
-        }
-        @media only screen and (max-width: 600px) {
-            .container {
-                margin: 10px;
-                border-radius: 5px;
-            }
-            .content {
-                padding: 20px;
-            }
-            .otp-code {
-                font-size: 32px;
-                letter-spacing: 4px;
-            }
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1 th:text="${appName}">Warehouse WMS</h1>
-            <p>Password Reset Request</p>
-        </div>
+<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#1a1a1a;background-color:#f5f5f5;">
 
-        <!-- Content -->
-        <div class="content">
-            <div class="greeting">
-                Dear <strong th:text="${username}">User</strong>,
-            </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+        <tr>
+            <td style="padding:0;">
+                <!-- ===== HEADER ===== -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a237e;padding:26px 30px 20px;">
+                    <tr>
+                        <td>
+                            <h1 style="color:#ffffff;font-size:22px;font-weight:600;letter-spacing:0.3px;margin:0;">Warehouse WMS</h1>
+                            <p style="color:rgba(255,255,255,0.75);font-size:13px;font-weight:400;margin:2px 0 0;">Password Reset Request</p>
+                        </td>
+                    </tr>
+                </table>
 
-            <p>We received a request to reset your password for your <strong th:text="${appName}">Warehouse WMS</strong> account.</p>
+                <!-- ===== CONTENT ===== -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:28px 35px 20px;">
+                    <tr>
+                        <td>
+                            <!-- Greeting -->
+                            <p style="font-size:16px;color:#1a1a1a;margin:0 0 14px;">
+                                Dear <strong style="color:#1a237e;" th:text="${username}">User</strong>,
+                            </p>
 
-            <!-- OTP Box -->
-            <div class="otp-box">
-                <div class="otp-label">Your One-Time Password (OTP)</div>
-                <div class="otp-code" th:text="${otp}">123456</div>
-                <div class="otp-label">Valid for <strong th:text="${otpExpiryMinutes}">5</strong> minutes</div>
-            </div>
+                            <!-- Request Text -->
+                            <p style="font-size:15px;color:#333;margin:0 0 22px;line-height:1.7;">
+                                We received a request to reset your password for your <strong style="color:#1a237e;" th:text="${appName}">Warehouse WMS</strong> account.
+                            </p>
 
-            <div class="info-box">
-                <p><strong>📌 Important:</strong></p>
-                <p>• This OTP is valid for <strong th:text="${otpExpiryMinutes}">5</strong> minutes only</p>
-                <p>• Do not share this OTP with anyone</p>
-                <p>• If you didn't request this, please ignore this email</p>
-            </div>
+                            <!-- ===== OTP BOX ===== -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f9ff;border:2px dashed #1a237e;border-radius:10px;padding:22px 20px 18px;margin:18px 0 22px;">
+                                <tr>
+                                    <td style="text-align:center;">
+                                        <p style="font-size:14px;color:#555;font-weight:500;letter-spacing:0.3px;margin:0 0 8px;">Your One-Time Password (OTP)</p>
+                                        <p style="font-size:44px;font-weight:700;color:#1a237e;letter-spacing:12px;font-family:'Courier New',monospace;background:#ffffff;padding:8px 16px;border-radius:8px;display:inline-block;box-shadow:0 2px 4px rgba(0,0,0,0.06);margin:0;" th:text="${otp}">306017</p>
+                                        <p style="font-size:13px;color:#666;margin:10px 0 0;">
+                                            Valid for <strong style="color:#1a237e;" th:text="${otpExpiryMinutes}">5</strong> minutes
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
 
-            <div class="divider"></div>
+                            <!-- ===== IMPORTANT SECTION ===== -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f4ff;border-left:4px solid #1a237e;padding:14px 20px;margin:20px 0 18px;border-radius:4px;">
+                                <tr>
+                                    <td>
+                                        <p style="font-weight:600;color:#1a237e;font-size:14px;margin:0 0 4px;">📌 Important:</p>
+                                        <ul style="list-style:none;padding:0;margin:0;">
+                                            <li style="font-size:14px;color:#444;padding:2px 0 2px 20px;position:relative;">
+                                                This OTP is valid for <strong style="color:#1a237e;" th:text="${otpExpiryMinutes}">5</strong> minutes only
+                                            </li>
+                                            <li style="font-size:14px;color:#444;padding:2px 0 2px 20px;position:relative;">
+                                                Do not share this OTP with anyone
+                                            </li>
+                                            <li style="font-size:14px;color:#444;padding:2px 0 2px 20px;position:relative;">
+                                                If you didn't request this, please ignore this email
+                                            </li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </table>
 
-            <div style="text-align: center; margin: 20px 0;">
-                <p style="font-size: 14px; color: #666;">
-                    Need help? Contact our support team at 
-                    <a href="mailto:support@warehouse.com" style="color: #1a237e;">support@warehouse.com</a>
-                </p>
-            </div>
-        </div>
+                            <!-- ===== DIVIDER ===== -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e8e8e8;margin:20px 0 16px;">
+                                <tr><td style="padding:0;"></td></tr>
+                            </table>
 
-        <!-- Footer -->
-        <div class="footer">
-            <p>
-                <span th:text="${appName}">Warehouse WMS</span> &bull; 
-                <span th:text="${currentYear}">2024</span>
-            </p>
-            <p>
-                This is an automated message. Please do not reply to this email.
-            </p>
-            
-        </div>
-    </div>
+                            <!-- ===== SUPPORT ===== -->
+                            <p style="text-align:center;font-size:14px;color:#666;margin:16px 0 6px;">
+                                Need help? Contact our support team at<br>
+                                <a href="mailto:support@warehouse.com" style="color:#1a237e;text-decoration:none;font-weight:500;">support@warehouse.com</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- ===== FOOTER ===== -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f9fa;padding:16px 30px;border-top:1px solid #e8e8e8;">
+                    <tr>
+                        <td style="text-align:center;">
+                            <p style="font-size:13px;color:#555;font-weight:500;margin:0;">
+                                <span style="color:#1a237e;" th:text="${appName}">Warehouse WMS</span> 
+                                <span style="color:#888;font-weight:400;">• <span th:text="${currentYear}">2026</span></span>
+                            </p>
+                            <p style="font-size:12px;color:#999;margin:4px 0 0;">
+                                This is an automated message. Please do not reply to this email.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
 </body>
 </html>
