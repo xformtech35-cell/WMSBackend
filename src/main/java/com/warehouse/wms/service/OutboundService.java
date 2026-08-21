@@ -59,7 +59,7 @@ public interface OutboundService {
     void cancelSalesOrder(String soNumber);
 
     // Stock Reservation
-    //StockReservation reserveStock(String soNumber);
+    StockReservation reserveStock(String soNumber);
     StockReservationResponse getReservationByNumber(String reservationNumber);
     void releaseReservation(String reservationNumber);
 

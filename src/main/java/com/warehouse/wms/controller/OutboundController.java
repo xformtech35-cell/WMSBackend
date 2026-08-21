@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -107,7 +108,7 @@ public class OutboundController {
     }
     
     
-    @PatchMapping("/sales-order/{soNumber}/status")
+    @PutMapping("/sales-order/{soNumber}/status")
     public ResponseEntity<SalesOrderResponse> updateSalesOrderStatus(
             @PathVariable String soNumber,
             @RequestParam String status) {

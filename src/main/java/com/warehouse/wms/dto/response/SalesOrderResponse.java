@@ -33,4 +33,7 @@ public class SalesOrderResponse {
     private LocalDateTime updatedAt;
 
     private List<SalesOrderItemResponse> items;
+    
+    private List<StockReservationResponse> reservations;
+
 }

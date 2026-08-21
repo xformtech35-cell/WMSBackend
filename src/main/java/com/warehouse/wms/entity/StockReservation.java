@@ -46,6 +46,9 @@ public class StockReservation {
 
     @Column(name = "available_quantity")
     private Integer availableQuantity = 0;
+    
+    private Integer pysicalQuantity = 0;
+
 
     @Column(name = "reserved_quantity", nullable = false)
     private Integer reservedQuantity = 0;
@@ -85,6 +88,10 @@ public class StockReservation {
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
+    
+    
+    private String updatedBy;
+
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

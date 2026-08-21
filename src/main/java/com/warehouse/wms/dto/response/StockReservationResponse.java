@@ -8,11 +8,20 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.persistence.Column;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class StockReservationResponse {
+	
+    private Long id;
+    private LocalDateTime expiryDate;
+
     private String reservationNumber;
     private String soNumber;
     private String itemCode;
@@ -20,6 +29,8 @@ public class StockReservationResponse {
     private String uom;
     private Integer requiredQuantity;
     private Integer availableQuantity;
+    private Integer pysicalQuantity;
+
     private Integer reservedQuantity;
     private String warehouseId;
     private String zoneId;
@@ -32,6 +43,16 @@ public class StockReservationResponse {
     private LocalDateTime reservationDate;
     private String remarks;
     private LocalDateTime createdAt;
+    
+    
+    
+    
+    private String createdBy;
+
+
+
+ 
+    private LocalDateTime updatedAt;
 }
 
 // ShippingLabelResponse.java

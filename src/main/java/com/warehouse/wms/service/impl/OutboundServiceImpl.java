@@ -222,10 +222,25 @@ public class OutboundServiceImpl implements OutboundService {
         salesOrder.setStatus(status);
         salesOrder.setUpdatedBy("SYSTEM");
         SalesOrder updated = salesOrderRepository.save(salesOrder);
+        
+//        if(status=="CONFIRMED") {
+//        	
+//                reserveStock(salesOrder.getSoNumber());
+//           }      
+//	
+        
+        
+        	
+
 
         return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
     }
+    
+    
 
+    
+    
+    
     @Override
     public void cancelSalesOrder(String soNumber) {
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
@@ -248,82 +263,82 @@ public class OutboundServiceImpl implements OutboundService {
 
     // ====== STOCK RESERVATION ======
 
-// @Override
-//public StockReservation reserveStock(String soNumber) {
-//    log.info("Reserving stock for SO: {}", soNumber);
-//
-//    SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
-//            .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
-//
-//    List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
-//
-//    for (SalesOrderItem item : items) {
-//        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
-//        int totalAvailable = stocks.stream()
-//                .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
-//                .sum();
-//
-//        if (totalAvailable < item.getOrderedQuantity()) {
-//            throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
-//                    ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
-//        }
-//
-//        int remainingToReserve = item.getOrderedQuantity();
-//        for (InventoryStock stock : stocks) {
-//            if (remainingToReserve <= 0) break;
-//
-//            // Initialize null values
-//            if (stock.getReservedQuantity() == null) {
-//                stock.setReservedQuantity(0);
-//            }
-//            if (stock.getAvailableQuantity() == null) {
-//                stock.setAvailableQuantity(0);
-//            }
-//
-//            int available = stock.getAvailableQuantity();
-//            int toReserve = Math.min(available, remainingToReserve);
-//
-//            if (toReserve > 0) {
-//                stock.reserveQuantity(toReserve);
-//                inventoryStockRepository.save(stock);
-//
-//                String reservationNumber = generateReservationNumber();
-//                StockReservation reservation = StockReservation.builder()
-//                        .reservationNumber(reservationNumber)
-//                        .soNumber(soNumber)
-//                        .itemCode(item.getItemCode())
-//                        .itemName(item.getItemName())
-//                        .uom(item.getUom())
-//                        .requiredQuantity(item.getOrderedQuantity())
-//                        .availableQuantity(available)
-//                        .reservedQuantity(toReserve)
-//                        .warehouseId(stock.getWarehouseId())
-//                        .zoneId(stock.getZone())
-//                        .aisleId(stock.getAisle())
-//                        .rackId(stock.getRack())
-//                        .levelId(stock.getLevel())
-//                        .binId(stock.getBinId())
-//                        .batchNumber(stock.getBatchNumber())
-//                        .status("RESERVED")
-//                        .reservationDate(LocalDateTime.now())
-//                        .createdBy("SYSTEM")
-//                        .build();
-//                stockReservationRepository.save(reservation);
-//
-//                remainingToReserve -= toReserve;
-//            }
-//        }
-//
-//        salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
-//    }
-//
-//    salesOrder.setStatus("PROCESSING");
-//    salesOrder.setUpdatedBy("SYSTEM");
-//    salesOrderRepository.save(salesOrder);
-//
-//    log.info("Stock reserved successfully for SO: {}", soNumber);
-//    return null;
-//}
+ @Override
+public StockReservation reserveStock(String soNumber) {
+    log.info("Reserving stock for SO: {}", soNumber);
+
+    SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+            .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+    List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+
+    for (SalesOrderItem item : items) {
+        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
+        int totalAvailable = stocks.stream()
+                .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+                .sum();
+
+        if (totalAvailable < item.getOrderedQuantity()) {
+            throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
+                    ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
+        }
+
+        int remainingToReserve = item.getOrderedQuantity();
+        for (InventoryStock stock : stocks) {
+            if (remainingToReserve <= 0) break;
+
+            // Initialize null values
+            if (stock.getReservedQuantity() == null) {
+                stock.setReservedQuantity(0);
+            }
+            if (stock.getAvailableQuantity() == null) {
+                stock.setAvailableQuantity(0);
+            }
+
+            int available = stock.getAvailableQuantity();
+            int toReserve = Math.min(available, remainingToReserve);
+
+            if (toReserve > 0) {
+                stock.reserveQuantity(toReserve);
+                inventoryStockRepository.save(stock);
+
+                String reservationNumber = generateReservationNumber();
+                StockReservation reservation = StockReservation.builder()
+                        .reservationNumber(reservationNumber)
+                        .soNumber(soNumber)
+                        .itemCode(item.getItemCode())
+                        .itemName(item.getItemName())
+                        .uom(item.getUom())
+                        .requiredQuantity(item.getOrderedQuantity())
+                        .availableQuantity(available)
+                        .reservedQuantity(toReserve)
+                        .warehouseId(stock.getWarehouseId())
+                        .zoneId(stock.getZone())
+                        .aisleId(stock.getAisle())
+                        .rackId(stock.getRack())
+                        .levelId(stock.getLevel())
+                        .binId(stock.getBinId())
+                        .batchNumber(stock.getBatchNumber())
+                        .status("RESERVED")
+                        .reservationDate(LocalDateTime.now())
+                        .createdBy("SYSTEM")
+                        .build();
+                stockReservationRepository.save(reservation);
+
+                remainingToReserve -= toReserve;
+            }
+        }
+
+        salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
+    }
+
+    salesOrder.setStatus("PROCESSING");
+    salesOrder.setUpdatedBy("SYSTEM");
+    salesOrderRepository.save(salesOrder);
+
+    log.info("Stock reserved successfully for SO: {}", soNumber);
+    return null;
+}
 
     @Override
     public StockReservationResponse getReservationByNumber(String reservationNumber) {
@@ -1240,6 +1255,38 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
     // ====== RESPONSE BUILDERS ======
 
     private SalesOrderResponse buildSalesOrderResponse(SalesOrder order, List<SalesOrderItem> items) {
+        
+        // Get reservations for this SO
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(order.getSoNumber());
+        List<StockReservationResponse> reservationResponses = reservations.stream()
+                .map(this::buildStockReservationResponse)
+                .collect(Collectors.toList());
+        
+        // Build item responses with their reservations
+        List<SalesOrderItemResponse> itemResponses = items.stream()
+                .map(item -> {
+                    // Get reservations for this specific item
+                    List<StockReservationResponse> itemReservations = reservations.stream()
+                            .filter(r -> r.getItemCode().equals(item.getItemCode()))
+                            .map(this::buildStockReservationResponse)
+                            .collect(Collectors.toList());
+                    
+                    return SalesOrderItemResponse.builder()
+                            .id(item.getId())
+                            .itemCode(item.getItemCode())
+                            .itemName(item.getItemName())
+                            .uom(item.getUom())
+                            .orderedQuantity(item.getOrderedQuantity())
+                            .reservedQuantity(item.getReservedQuantity())
+                            .pickedQuantity(item.getPickedQuantity())
+                            .shippedQuantity(item.getShippedQuantity())
+                            .batchNumber(item.getBatchNumber())
+                            .sourceLocation(item.getSourceLocation())
+                            .reservations(itemReservations)  // Add item-specific reservations
+                            .build();
+                })
+                .collect(Collectors.toList());
+        
         return SalesOrderResponse.builder()
                 .id(order.getId())
                 .soNumber(order.getSoNumber())
@@ -1258,7 +1305,40 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .createdBy(order.getCreatedBy())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
-                .items(items.stream().map(this::buildSalesOrderItemResponse).collect(Collectors.toList()))
+                .items(itemResponses)
+                .reservations(reservationResponses)  // Add all reservations
+                .build();
+    }
+    
+    
+    
+    private StockReservationResponse buildStockReservationResponse(StockReservation reservation) {
+        return StockReservationResponse.builder()
+                .id(reservation.getId())
+                .reservationNumber(reservation.getReservationNumber())
+                .soNumber(reservation.getSoNumber())
+                .itemCode(reservation.getItemCode())
+                .itemName(reservation.getItemName())
+                .uom(reservation.getUom())
+                .requiredQuantity(reservation.getRequiredQuantity())
+                .availableQuantity(reservation.getAvailableQuantity())
+                .pysicalQuantity(reservation.getPysicalQuantity())
+
+                .reservedQuantity(reservation.getReservedQuantity())
+                .warehouseId(reservation.getWarehouseId())
+                .zoneId(reservation.getZoneId())
+                .aisleId(reservation.getAisleId())
+                .rackId(reservation.getRackId())
+                .levelId(reservation.getLevelId())
+                .binId(reservation.getBinId())
+                .batchNumber(reservation.getBatchNumber())
+                .status(reservation.getStatus())
+                .reservationDate(reservation.getReservationDate())
+                .expiryDate(reservation.getExpiryDate())
+                .remarks(reservation.getRemarks())
+                .createdBy(reservation.getCreatedBy())
+                .createdAt(reservation.getCreatedAt())
+                .updatedAt(reservation.getUpdatedAt())
                 .build();
     }
 
