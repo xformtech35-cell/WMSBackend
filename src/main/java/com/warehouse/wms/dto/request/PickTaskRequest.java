@@ -35,6 +35,12 @@ public class PickTaskRequest {
     private String batchNumber;
 
     private String pickerId;
+    
+    private Long inventoryId;  // ADD THIS FIELD
+    
+    private Long salesOrderLineId;  // ADD THIS FIELD
+
+    
 
     private String pickerName;
 

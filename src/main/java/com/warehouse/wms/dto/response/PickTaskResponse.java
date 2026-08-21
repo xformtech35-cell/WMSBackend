@@ -32,4 +32,11 @@ public class PickTaskResponse {
     private Boolean isScanned;
     private String remarks;
     private LocalDateTime createdAt;
+    
+    private Long salesOrderLineId;  // ADD THIS FIELD
+
+    private Long inventoryId;  // ADD THIS
+
+    private Integer quantityToPick;  // ADD THIS
+
 }

@@ -74,6 +74,15 @@ public class PickTask {
     @Column(name = "status", nullable = false, length = 30)
     private String status = "PENDING"; // PENDING, SCANNED, CONFIRMED, CANCELLED
 
+    @Column(name = "quantity_to_pick", nullable = false)  // ADD THIS FIELD
+    private Integer quantityToPick = 0;
+    
+    @Column(name = "inventory_id")  // ADD THIS FIELD
+    private Long inventoryId;
+    
+    @Column(name = "sales_order_line_id")  // ADD THIS FIELD
+    private Long salesOrderLineId;
+    
     @Column(name = "is_scanned")
     private Boolean isScanned = false;
 

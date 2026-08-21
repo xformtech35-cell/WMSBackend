@@ -151,7 +151,7 @@ public class OutboundServiceImpl implements OutboundService {
         log.info("Sales Order created successfully: {}", request.getSoNumber());
 
         // Auto-reserve stock
-        reserveStock(request.getSoNumber());
+       // reserveStock(request.getSoNumber());
 
         return buildSalesOrderResponse(savedOrder, items);
     }
@@ -248,82 +248,82 @@ public class OutboundServiceImpl implements OutboundService {
 
     // ====== STOCK RESERVATION ======
 
- @Override
-public StockReservation reserveStock(String soNumber) {
-    log.info("Reserving stock for SO: {}", soNumber);
-
-    SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
-            .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
-
-    List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
-
-    for (SalesOrderItem item : items) {
-        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
-        int totalAvailable = stocks.stream()
-                .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
-                .sum();
-
-        if (totalAvailable < item.getOrderedQuantity()) {
-            throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
-                    ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
-        }
-
-        int remainingToReserve = item.getOrderedQuantity();
-        for (InventoryStock stock : stocks) {
-            if (remainingToReserve <= 0) break;
-
-            // Initialize null values
-            if (stock.getReservedQuantity() == null) {
-                stock.setReservedQuantity(0);
-            }
-            if (stock.getAvailableQuantity() == null) {
-                stock.setAvailableQuantity(0);
-            }
-
-            int available = stock.getAvailableQuantity();
-            int toReserve = Math.min(available, remainingToReserve);
-
-            if (toReserve > 0) {
-                stock.reserveQuantity(toReserve);
-                inventoryStockRepository.save(stock);
-
-                String reservationNumber = generateReservationNumber();
-                StockReservation reservation = StockReservation.builder()
-                        .reservationNumber(reservationNumber)
-                        .soNumber(soNumber)
-                        .itemCode(item.getItemCode())
-                        .itemName(item.getItemName())
-                        .uom(item.getUom())
-                        .requiredQuantity(item.getOrderedQuantity())
-                        .availableQuantity(available)
-                        .reservedQuantity(toReserve)
-                        .warehouseId(stock.getWarehouseId())
-                        .zoneId(stock.getZone())
-                        .aisleId(stock.getAisle())
-                        .rackId(stock.getRack())
-                        .levelId(stock.getLevel())
-                        .binId(stock.getBinId())
-                        .batchNumber(stock.getBatchNumber())
-                        .status("RESERVED")
-                        .reservationDate(LocalDateTime.now())
-                        .createdBy("SYSTEM")
-                        .build();
-                stockReservationRepository.save(reservation);
-
-                remainingToReserve -= toReserve;
-            }
-        }
-
-        salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
-    }
-
-    salesOrder.setStatus("PROCESSING");
-    salesOrder.setUpdatedBy("SYSTEM");
-    salesOrderRepository.save(salesOrder);
-
-    log.info("Stock reserved successfully for SO: {}", soNumber);
-    return null;
-}
+// @Override
+//public StockReservation reserveStock(String soNumber) {
+//    log.info("Reserving stock for SO: {}", soNumber);
+//
+//    SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+//            .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+//
+//    List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+//
+//    for (SalesOrderItem item : items) {
+//        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
+//        int totalAvailable = stocks.stream()
+//                .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+//                .sum();
+//
+//        if (totalAvailable < item.getOrderedQuantity()) {
+//            throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
+//                    ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
+//        }
+//
+//        int remainingToReserve = item.getOrderedQuantity();
+//        for (InventoryStock stock : stocks) {
+//            if (remainingToReserve <= 0) break;
+//
+//            // Initialize null values
+//            if (stock.getReservedQuantity() == null) {
+//                stock.setReservedQuantity(0);
+//            }
+//            if (stock.getAvailableQuantity() == null) {
+//                stock.setAvailableQuantity(0);
+//            }
+//
+//            int available = stock.getAvailableQuantity();
+//            int toReserve = Math.min(available, remainingToReserve);
+//
+//            if (toReserve > 0) {
+//                stock.reserveQuantity(toReserve);
+//                inventoryStockRepository.save(stock);
+//
+//                String reservationNumber = generateReservationNumber();
+//                StockReservation reservation = StockReservation.builder()
+//                        .reservationNumber(reservationNumber)
+//                        .soNumber(soNumber)
+//                        .itemCode(item.getItemCode())
+//                        .itemName(item.getItemName())
+//                        .uom(item.getUom())
+//                        .requiredQuantity(item.getOrderedQuantity())
+//                        .availableQuantity(available)
+//                        .reservedQuantity(toReserve)
+//                        .warehouseId(stock.getWarehouseId())
+//                        .zoneId(stock.getZone())
+//                        .aisleId(stock.getAisle())
+//                        .rackId(stock.getRack())
+//                        .levelId(stock.getLevel())
+//                        .binId(stock.getBinId())
+//                        .batchNumber(stock.getBatchNumber())
+//                        .status("RESERVED")
+//                        .reservationDate(LocalDateTime.now())
+//                        .createdBy("SYSTEM")
+//                        .build();
+//                stockReservationRepository.save(reservation);
+//
+//                remainingToReserve -= toReserve;
+//            }
+//        }
+//
+//        salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
+//    }
+//
+//    salesOrder.setStatus("PROCESSING");
+//    salesOrder.setUpdatedBy("SYSTEM");
+//    salesOrderRepository.save(salesOrder);
+//
+//    log.info("Stock reserved successfully for SO: {}", soNumber);
+//    return null;
+//}
 
     @Override
     public StockReservationResponse getReservationByNumber(String reservationNumber) {
@@ -509,6 +509,29 @@ public StockReservation reserveStock(String soNumber) {
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
 
         // Generate pick task number
+        
+        
+        // Find inventory for this item (if needed)
+        Long inventoryId = request.getInventoryId();
+        if (inventoryId == null) {
+            // Try to find available inventory for this item
+            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(request.getItemCode());
+            if (!stocks.isEmpty()) {
+                inventoryId = stocks.get(0).getId(); // Use first available stock
+            }
+        }
+        
+        
+        // Find Sales Order Line ID
+        Long salesOrderLineId = request.getSalesOrderLineId();
+        if (salesOrderLineId == null) {
+            // Try to find from SalesOrderItem
+            List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
+            if (!orderItems.isEmpty()) {
+                salesOrderLineId = orderItems.get(0).getId();
+            }
+        }
+        
         String pickTaskNumber = generatePickTaskNumber();
 
         // Create Pick Task
@@ -520,6 +543,10 @@ public StockReservation reserveStock(String soNumber) {
                 .itemName(pickItem.getItemName())
                 .uom(pickItem.getUom())
                 .requiredQuantity(request.getRequiredQuantity())
+                .quantityToPick(request.getRequiredQuantity())  // ADD THIS LINE
+                .inventoryId(inventoryId)  // SET INVENTORY ID
+                .salesOrderLineId(salesOrderLineId)  // SET SALES ORDER LINE ID
+
                 .pickedQuantity(0)
                 .locationBarcode(request.getLocationBarcode())
                 .itemBarcode(request.getItemBarcode())
@@ -1274,6 +1301,9 @@ public StockReservation reserveStock(String soNumber) {
                 .locationBarcode(task.getLocationBarcode())
                 .itemBarcode(task.getItemBarcode())
                 .binId(task.getBinId())
+                .inventoryId(task.getInventoryId())
+                .quantityToPick(task.getQuantityToPick())
+                .salesOrderLineId(task.getSalesOrderLineId())
                 .batchNumber(task.getBatchNumber())
                 .pickerId(task.getPickerId())
                 .pickerName(task.getPickerName())
