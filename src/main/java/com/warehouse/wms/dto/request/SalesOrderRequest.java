@@ -19,8 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SalesOrderRequest {
 
-    @NotBlank(message = "SO Number is required")
-    private String soNumber;
+   
 
 //    @NotNull(message = "SO Date is required")
     private LocalDateTime soDate;

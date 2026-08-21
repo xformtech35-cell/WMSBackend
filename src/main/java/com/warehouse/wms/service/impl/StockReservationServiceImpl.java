@@ -120,7 +120,7 @@ public class StockReservationServiceImpl implements StockReservationService {
 
             salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
             
-            salesOrder.setStatus("CONFIRMED");
+            salesOrder.setStatus("");
             
             salesOrderRepository.save(salesOrder);
 
@@ -514,9 +514,9 @@ public class StockReservationServiceImpl implements StockReservationService {
                 .id(reservation.getId())
                 .reservationNumber(reservation.getReservationNumber())
                 .soNumber(reservation.getSoNumber())
-                .itemCode(reservation.getItemCode())
-                .itemName(reservation.getItemName())
-                .uom(reservation.getUom())
+//                .itemCode(reservation.getItemCode())
+//                .itemName(reservation.getItemName())
+//                .uom(reservation.getUom())
                 .requiredQuantity(reservation.getRequiredQuantity())
                 .availableQuantity(reservation.getAvailableQuantity())
                 .pysicalQuantity(reservation.getPysicalQuantity())

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.warehouse.wms.dto.request.DeliveryRequest;
 import com.warehouse.wms.dto.request.DispatchRequest;
@@ -63,7 +64,7 @@ import com.warehouse.wms.repository.ShipmentConfirmationRepository;
 import com.warehouse.wms.repository.ShippingLabelRepository;
 import com.warehouse.wms.repository.StockReservationRepository;
 import com.warehouse.wms.service.OutboundService;
-import org.springframework.util.StringUtils;
+import com.warehouse.wms.util.SoNumberGenerator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,17 +88,29 @@ public class OutboundServiceImpl implements OutboundService {
     private final ShipmentConfirmationRepository shipmentConfirmationRepository;
     private final DeliveryRepository deliveryRepository;
     private final InventoryStockRepository inventoryStockRepository;
+    private final SoNumberGenerator soNumberGenerator;  // ADD THIS
 
     // ====== SALES ORDER ======
 
     @Override
     public SalesOrderResponse createSalesOrder(SalesOrderRequest request) {
-        log.info("Creating Sales Order: {}", request.getSoNumber());
+        
+        
+        
+        
+        
+        
+        String soNumber;
+            soNumber = soNumberGenerator.generateSoNumber();
+            log.info("Auto-generated SO Number: {}", soNumber);
+      
+            // Check if custom SO number already exists
+            if (salesOrderRepository.findBySoNumber(soNumber).isPresent()) {
+                throw new BusinessException("Sales Order already exists: " + soNumber);
+            }
+        
 
-        // Check if SO already exists
-        if (salesOrderRepository.findBySoNumber(request.getSoNumber()).isPresent()) {
-            throw new BusinessException("Sales Order already exists: " + request.getSoNumber());
-        }
+      
 
         // Validate items
         int totalQuantity = 0;
@@ -112,7 +125,7 @@ public class OutboundServiceImpl implements OutboundService {
 
         // Create Sales Order
         SalesOrder salesOrder = SalesOrder.builder()
-                .soNumber(request.getSoNumber())
+                .soNumber(soNumber)
                 .orderDate(request.getSoDate() != null ? request.getSoDate() : LocalDateTime.now())
                 .customerCode(request.getCustomerCode())
                 .customerName(request.getCustomerName())
@@ -122,7 +135,7 @@ public class OutboundServiceImpl implements OutboundService {
                 .deliveryAddress(request.getDeliveryAddress())
                 .totalQuantity(totalQuantity)
                 .shippingMethod(request.getShippingMethod())
-                .status("CONFIRMED")
+                .status("DRAFT")
                 .remarks(request.getRemarks())
                 .createdBy(request.getCreatedBy())
                 .build();
@@ -133,7 +146,7 @@ public class OutboundServiceImpl implements OutboundService {
         List<SalesOrderItem> items = new ArrayList<>();
         for (SalesOrderItemRequest itemReq : request.getItems()) {
             SalesOrderItem item = SalesOrderItem.builder()
-                    .soNumber(request.getSoNumber())
+                    .soNumber(soNumber)
                     .itemCode(itemReq.getItemCode())
                     .itemName(itemReq.getItemName())
                     .uom(itemReq.getUom() != null ? itemReq.getUom() : "EA")
@@ -148,7 +161,7 @@ public class OutboundServiceImpl implements OutboundService {
             items.add(salesOrderItemRepository.save(item));
         }
 
-        log.info("Sales Order created successfully: {}", request.getSoNumber());
+        log.info("Sales Order created successfully: {}", soNumber);
 
         // Auto-reserve stock
        // reserveStock(request.getSoNumber());
@@ -221,16 +234,12 @@ public class OutboundServiceImpl implements OutboundService {
 
         salesOrder.setStatus(status);
         salesOrder.setUpdatedBy("SYSTEM");
-        SalesOrder updated = salesOrderRepository.save(salesOrder);
         
-//        if(status=="CONFIRMED") {
-//        	
-//                reserveStock(salesOrder.getSoNumber());
-//           }      
-//	
-        
-        
+        if(status=="PENDING") {
         	
+                reserveStock(salesOrder.getSoNumber());
+           }      
+        SalesOrder updated = salesOrderRepository.save(salesOrder);
 
 
         return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
@@ -296,6 +305,8 @@ public StockReservation reserveStock(String soNumber) {
             }
 
             int available = stock.getAvailableQuantity();
+            
+            int pysical=stock.getQuantity();
             int toReserve = Math.min(available, remainingToReserve);
 
             if (toReserve > 0) {
@@ -311,6 +322,7 @@ public StockReservation reserveStock(String soNumber) {
                         .uom(item.getUom())
                         .requiredQuantity(item.getOrderedQuantity())
                         .availableQuantity(available)
+                        .pysicalQuantity(pysical)
                         .reservedQuantity(toReserve)
                         .warehouseId(stock.getWarehouseId())
                         .zoneId(stock.getZone())
@@ -319,7 +331,7 @@ public StockReservation reserveStock(String soNumber) {
                         .levelId(stock.getLevel())
                         .binId(stock.getBinId())
                         .batchNumber(stock.getBatchNumber())
-                        .status("RESERVED")
+                        .status("PENDING")
                         .reservationDate(LocalDateTime.now())
                         .createdBy("SYSTEM")
                         .build();
@@ -1317,9 +1329,9 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .id(reservation.getId())
                 .reservationNumber(reservation.getReservationNumber())
                 .soNumber(reservation.getSoNumber())
-                .itemCode(reservation.getItemCode())
-                .itemName(reservation.getItemName())
-                .uom(reservation.getUom())
+//                .itemCode(reservation.getItemCode())
+//                .itemName(reservation.getItemName())
+//                .uom(reservation.getUom())
                 .requiredQuantity(reservation.getRequiredQuantity())
                 .availableQuantity(reservation.getAvailableQuantity())
                 .pysicalQuantity(reservation.getPysicalQuantity())
@@ -1361,9 +1373,9 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         return StockReservationResponse.builder()
                 .reservationNumber(reservation.getReservationNumber())
                 .soNumber(reservation.getSoNumber())
-                .itemCode(reservation.getItemCode())
-                .itemName(reservation.getItemName())
-                .uom(reservation.getUom())
+//                .itemCode(reservation.getItemCode())
+//                .itemName(reservation.getItemName())
+//                .uom(reservation.getUom())
                 .requiredQuantity(reservation.getRequiredQuantity())
                 .availableQuantity(reservation.getAvailableQuantity())
                 .reservedQuantity(reservation.getReservedQuantity())
