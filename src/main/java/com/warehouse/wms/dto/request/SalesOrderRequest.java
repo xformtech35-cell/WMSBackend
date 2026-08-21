@@ -1,16 +1,16 @@
-// ====== FILE: src/main/java/com/warehouse/wms/dto/SalesOrderRequest.java ======
 package com.warehouse.wms.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -22,35 +22,31 @@ public class SalesOrderRequest {
     @NotBlank(message = "SO Number is required")
     private String soNumber;
 
+//    @NotNull(message = "SO Date is required")
+    private LocalDateTime soDate;
+
+    @NotBlank(message = "Customer code is required")
+    private String customerCode;
+
     @NotBlank(message = "Customer name is required")
     private String customerName;
 
-    private LocalDate orderDate;
+    @NotBlank(message = "Warehouse ID is required")
+    private String warehouseId;
 
-    private String status; // PENDING, PROCESSING, COMPLETED, CANCELLED
+    private LocalDateTime deliveryDate;
 
-    private String createdBy;
+    private String priority; // HIGH, MEDIUM, LOW
+
+    private String deliveryAddress;
+
+    private String shippingMethod;
 
     private String remarks;
 
+    private String createdBy;
+
+    @NotEmpty(message = "At least one item is required")
     @Valid
-    @NotEmpty(message = "At least one line item is required")
-    private List<SalesOrderLineRequest> lines;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SalesOrderLineRequest {
-
-        @NotNull(message = "SKU ID is required")
-        private Long skuId;
-
-        private String skuCode;
-
-        @NotNull(message = "Quantity is required")
-        private Integer quantity;
-        
-        
-    }
+    private List<SalesOrderItemRequest> items;
 }

@@ -11,28 +11,25 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wms_pick_task", indexes = {
-    @Index(name = "idx_pt_number", columnList = "pick_task_number"),
-    @Index(name = "idx_pt_pl_number", columnList = "pick_list_number"),
-    @Index(name = "idx_pt_status", columnList = "status")
+@Table(name = "wms_stock_reservation", indexes = {
+    @Index(name = "idx_res_so_number", columnList = "so_number"),
+    @Index(name = "idx_res_item_code", columnList = "item_code"),
+    @Index(name = "idx_res_status", columnList = "status")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PickTask {
+public class StockReservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "pick_task_number", unique = true, nullable = false, length = 50)
-    private String pickTaskNumber;
+    @Column(name = "reservation_number", unique = true, nullable = false, length = 50)
+    private String reservationNumber;
 
-    @Column(name = "pick_list_number", nullable = false, length = 50)
-    private String pickListNumber;
-
-    @Column(name = "so_number", length = 50)
+    @Column(name = "so_number", nullable = false, length = 50)
     private String soNumber;
 
     @Column(name = "item_code", nullable = false, length = 50)
@@ -47,14 +44,26 @@ public class PickTask {
     @Column(name = "required_quantity", nullable = false)
     private Integer requiredQuantity = 0;
 
-    @Column(name = "picked_quantity")
-    private Integer pickedQuantity = 0;
+    @Column(name = "available_quantity")
+    private Integer availableQuantity = 0;
 
-    @Column(name = "location_barcode", length = 100)
-    private String locationBarcode;
+    @Column(name = "reserved_quantity", nullable = false)
+    private Integer reservedQuantity = 0;
 
-    @Column(name = "item_barcode", length = 100)
-    private String itemBarcode;
+    @Column(name = "warehouse_id", length = 20)
+    private String warehouseId;
+
+    @Column(name = "zone_id", length = 20)
+    private String zoneId;
+
+    @Column(name = "aisle_id", length = 20)
+    private String aisleId;
+
+    @Column(name = "rack_id", length = 20)
+    private String rackId;
+
+    @Column(name = "level_id", length = 20)
+    private String levelId;
 
     @Column(name = "bin_id", length = 50)
     private String binId;
@@ -62,28 +71,20 @@ public class PickTask {
     @Column(name = "batch_number", length = 50)
     private String batchNumber;
 
-    @Column(name = "picker_id", length = 100)
-    private String pickerId;
-
-    @Column(name = "picker_name", length = 100)
-    private String pickerName;
-
-    @Column(name = "scan_time")
-    private LocalDateTime scanTime;
-
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, SCANNED, CONFIRMED, CANCELLED
+    private String status = "RESERVED"; // RESERVED, PICKED, CANCELLED
 
-    @Column(name = "is_scanned")
-    private Boolean isScanned = false;
+    @Column(name = "reservation_date", nullable = false)
+    private LocalDateTime reservationDate;
+
+    @Column(name = "expiry_date")
+    private LocalDateTime expiryDate;
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
-    
-    private String updatedBy;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

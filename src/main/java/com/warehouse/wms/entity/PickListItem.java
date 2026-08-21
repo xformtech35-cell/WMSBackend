@@ -11,23 +11,19 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wms_pick_task", indexes = {
-    @Index(name = "idx_pt_number", columnList = "pick_task_number"),
-    @Index(name = "idx_pt_pl_number", columnList = "pick_list_number"),
-    @Index(name = "idx_pt_status", columnList = "status")
+@Table(name = "wms_pick_list_item", indexes = {
+    @Index(name = "idx_pli_pl_number", columnList = "pick_list_number"),
+    @Index(name = "idx_pli_item_code", columnList = "item_code")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PickTask {
+public class PickListItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "pick_task_number", unique = true, nullable = false, length = 50)
-    private String pickTaskNumber;
 
     @Column(name = "pick_list_number", nullable = false, length = 50)
     private String pickListNumber;
@@ -50,40 +46,23 @@ public class PickTask {
     @Column(name = "picked_quantity")
     private Integer pickedQuantity = 0;
 
-    @Column(name = "location_barcode", length = 100)
-    private String locationBarcode;
+    @Column(name = "short_quantity")
+    private Integer shortQuantity = 0;
 
-    @Column(name = "item_barcode", length = 100)
-    private String itemBarcode;
-
-    @Column(name = "bin_id", length = 50)
-    private String binId;
+    @Column(name = "source_location", length = 200)
+    private String sourceLocation;
 
     @Column(name = "batch_number", length = 50)
     private String batchNumber;
 
-    @Column(name = "picker_id", length = 100)
-    private String pickerId;
+    @Column(name = "status", length = 30)
+    private String status = "PENDING"; // PENDING, PICKING, COMPLETED, SHORT
 
-    @Column(name = "picker_name", length = 100)
-    private String pickerName;
-
-    @Column(name = "scan_time")
-    private LocalDateTime scanTime;
-
-    @Column(name = "status", nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, SCANNED, CONFIRMED, CANCELLED
-
-    @Column(name = "is_scanned")
-    private Boolean isScanned = false;
+    @Column(name = "priority", length = 20)
+    private String priority;
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
-
-    @Column(name = "created_by", length = 100)
-    private String createdBy;
-    
-    private String updatedBy;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -92,4 +71,8 @@ public class PickTask {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pick_list_id")
+    private PickList pickList;
 }

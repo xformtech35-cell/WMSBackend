@@ -12,25 +12,20 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SalesOrderResponse {
+public class PickListResponse {
 
-    private Long id;
+    private String pickListNumber;
     private String soNumber;
-    private LocalDateTime soDate;
-    private String customerCode;
-    private String customerName;
     private String warehouseId;
-    private LocalDateTime deliveryDate;
     private String priority;
-    private String deliveryAddress;
+    private Integer totalItems;
     private Integer totalQuantity;
-    private Double totalWeight;
-    private String shippingMethod;
     private String status;
-    private String remarks;
     private String createdBy;
+    private String assignedTo;
+    private LocalDateTime completedDate;
+    private String remarks;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
-    private List<SalesOrderItemResponse> items;
+    private List<PickListItemResponse> items;
 }

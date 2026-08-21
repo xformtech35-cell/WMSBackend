@@ -21,16 +21,12 @@ import com.warehouse.wms.entity.GoodsReceipt;
 import com.warehouse.wms.entity.GoodsReceiptLine;
 import com.warehouse.wms.entity.Inventory;
 import com.warehouse.wms.entity.Permission;
-import com.warehouse.wms.entity.PickTask;
 import com.warehouse.wms.entity.PurchaseOrder;
 import com.warehouse.wms.entity.PurchaseOrderLine;
 import com.warehouse.wms.entity.PurchaseOrderStatus;
 import com.warehouse.wms.entity.Rack;
 import com.warehouse.wms.entity.RackCompartment;
 import com.warehouse.wms.entity.Role;
-import com.warehouse.wms.entity.SalesOrder;
-import com.warehouse.wms.entity.SalesOrderLine;
-import com.warehouse.wms.entity.ShipmentRecord;
 import com.warehouse.wms.entity.Sku;
 import com.warehouse.wms.entity.SkuDimension;
 import com.warehouse.wms.entity.Trolley;
@@ -42,15 +38,12 @@ import com.warehouse.wms.repository.BinRepository;
 import com.warehouse.wms.repository.GoodsReceiptLineRepository;
 import com.warehouse.wms.repository.GoodsReceiptRepository;
 import com.warehouse.wms.repository.InventoryRepository;
-import com.warehouse.wms.repository.PickTaskRepository;
 import com.warehouse.wms.repository.PurchaseOrderLineRepository;
 import com.warehouse.wms.repository.PurchaseOrderRepository;
 import com.warehouse.wms.repository.PutawayTaskRepository;
 import com.warehouse.wms.repository.RackCompartmentRepository;
 import com.warehouse.wms.repository.RackRepository;
 import com.warehouse.wms.repository.RoleRepository;
-import com.warehouse.wms.repository.SalesOrderLineRepository;
-import com.warehouse.wms.repository.SalesOrderRepository;
 import com.warehouse.wms.repository.ShipmentRecordRepository;
 import com.warehouse.wms.repository.SkuDimensionRepository;
 import com.warehouse.wms.repository.SkuRepository;
@@ -80,16 +73,13 @@ public class DataInitializer implements CommandLineRunner {
     private final SkuDimensionRepository skuDimensionRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderLineRepository purchaseOrderLineRepository;
-    private final SalesOrderRepository salesOrderRepository;
-    private final SalesOrderLineRepository salesOrderLineRepository;
-    private final InventoryRepository inventoryRepository;
     private final ShipmentRecordRepository shipmentRecordRepository;
     private final RackCompartmentRepository rackCompartmentRepository;
     private final TrolleyRepository trolleyRepository;
-    private final PickTaskRepository pickTaskRepository;
     private final PutawayTaskRepository putawayTaskRepository;
     private final GoodsReceiptRepository goodsReceiptRepository;
     private final GoodsReceiptLineRepository goodsReceiptLineRepository;
+    private final InventoryRepository inventoryRepository;
     private final JdbcTemplate jdbc;
 
     public DataInitializer(
@@ -105,16 +95,13 @@ public class DataInitializer implements CommandLineRunner {
             SkuDimensionRepository skuDimensionRepository,
             PurchaseOrderRepository purchaseOrderRepository,
             PurchaseOrderLineRepository purchaseOrderLineRepository,
-            SalesOrderRepository salesOrderRepository,
-            SalesOrderLineRepository salesOrderLineRepository,
-            InventoryRepository inventoryRepository,
             ShipmentRecordRepository shipmentRecordRepository,
             RackCompartmentRepository rackCompartmentRepository,
             TrolleyRepository trolleyRepository,
-            PickTaskRepository pickTaskRepository,
             PutawayTaskRepository putawayTaskRepository,
             GoodsReceiptRepository goodsReceiptRepository,
             GoodsReceiptLineRepository goodsReceiptLineRepository,
+            InventoryRepository inventoryRepository,
             JdbcTemplate jdbc) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -128,16 +115,13 @@ public class DataInitializer implements CommandLineRunner {
         this.skuDimensionRepository = skuDimensionRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.purchaseOrderLineRepository = purchaseOrderLineRepository;
-        this.salesOrderRepository = salesOrderRepository;
-        this.salesOrderLineRepository = salesOrderLineRepository;
-        this.inventoryRepository = inventoryRepository;
         this.shipmentRecordRepository = shipmentRecordRepository;
         this.rackCompartmentRepository = rackCompartmentRepository;
         this.trolleyRepository = trolleyRepository;
-        this.pickTaskRepository = pickTaskRepository;
         this.putawayTaskRepository = putawayTaskRepository;
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.goodsReceiptLineRepository = goodsReceiptLineRepository;
+        this.inventoryRepository = inventoryRepository;
         this.jdbc = jdbc;
     }
 
@@ -159,7 +143,6 @@ public class DataInitializer implements CommandLineRunner {
             seedSkus();
             seedPurchaseOrders();
             seedGoodsReceipts();
-            seedSalesOrdersAndShipments();
             seedInventory();
         }
     }
@@ -346,35 +329,33 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("[DataInitializer] Seeded 24 rack compartments");
     }
 
-private void seedTrolleys() {
-    // Define which racks belong to which trolley
-    Map<String, String> trolleyAssignments = Map.of(
-        "TROLLEY-01", "A1-R1",
-        "TROLLEY-02", "A2-R1"
-    );
+    private void seedTrolleys() {
+        Map<String, String> trolleyAssignments = Map.of(
+            "TROLLEY-01", "A1-R1",
+            "TROLLEY-02", "A2-R1"
+        );
 
-    trolleyAssignments.forEach((trolleyId, rackId) -> {
-        Trolley trolley = new Trolley();
-        trolley.setTrolleyIdentifier(trolleyId);
-        trolley = trolleyRepository.save(trolley);
+        trolleyAssignments.forEach((trolleyId, rackId) -> {
+            Trolley trolley = new Trolley();
+            trolley.setTrolleyIdentifier(trolleyId);
+            trolley = trolleyRepository.save(trolley);
 
-        for (int i = 1; i <= 3; i++) {
-            String compartmentId = String.format("COMP-%s-%02d", rackId, i);
-            RackCompartment comp = rackCompartmentRepository
-                .findByCompartmentId(compartmentId)
-                .orElseThrow(() -> new RuntimeException("Compartment not found: " + compartmentId));
-            comp.setTrolley(trolley);
-            rackCompartmentRepository.save(comp);
-        }
-    });
+            for (int i = 1; i <= 3; i++) {
+                String compartmentId = String.format("COMP-%s-%02d", rackId, i);
+                RackCompartment comp = rackCompartmentRepository
+                    .findByCompartmentId(compartmentId)
+                    .orElseThrow(() -> new RuntimeException("Compartment not found: " + compartmentId));
+                comp.setTrolley(trolley);
+                rackCompartmentRepository.save(comp);
+            }
+        });
 
-    // Create Trolley 3 (unassigned)
-    Trolley t3 = new Trolley();
-    t3.setTrolleyIdentifier("TROLLEY-03");
-    t3 = trolleyRepository.save(t3);
+        Trolley t3 = new Trolley();
+        t3.setTrolleyIdentifier("TROLLEY-03");
+        t3 = trolleyRepository.save(t3);
 
-    System.out.println("[DataInitializer] Seeded 3 trolleys");
-}
+        System.out.println("[DataInitializer] Seeded 3 trolleys");
+    }
 
     // ── SKUs ──────────────────────────────────────────────────────────────────
     private static final Object[][] SKU_DATA = {
@@ -501,78 +482,6 @@ private void seedTrolleys() {
         System.out.println("[DataInitializer] Seeded goods receipts");
     }
 
-    // ── Sales Orders & Shipments ───────────────────────────────────────────────
-    private void seedSalesOrdersAndShipments() {
-        List<Sku> skus = skuRepository.findAll();
-        if (skus.size() < 10) return;
-
-        String[][] orderData = {
-            {"SO-2026-001", "Acme Corporation",    "SHIPPED",  "6"},
-            {"SO-2026-002", "GlobalTech Ltd",      "SHIPPED",  "5"},
-            {"SO-2026-003", "Metro Electronics",   "SHIPPED",  "3"},
-            {"SO-2026-004", "DataCenter Pro",      "PACKING",  "0"},
-            {"SO-2026-005", "StartupHub Inc",      "PICKING",  "0"},
-            {"SO-2026-006", "TechVentures",        "PENDING",  "0"},
-            {"SO-2026-007", "CloudBase Ltd",       "PENDING",  "0"},
-            {"SO-2026-008", "NetSystems Ltd",      "PENDING",  "0"},
-        };
-
-        int[][] soLines = {
-            {0,2},{1,5},  {2,3},{4,1},  {3,2},{5,4},  {6,3},{7,2},
-            {0,1},{8,5},  {1,10},{2,7}, {4,2},{9,3},  {3,4},{6,2},
-        };
-
-        SalesOrder[] savedOrders = new SalesOrder[8];
-        for (int i = 0; i < orderData.length; i++) {
-            String[] d = orderData[i];
-            int days = Integer.parseInt(d[3]);
-            SalesOrder so = new SalesOrder();
-            so.setSoNumber(d[0]);
-            so.setCustomerName(d[1]);
-            so.setOrderDate(LocalDate.now().minusDays(days));
-            so.setStatus(d[2]);
-            savedOrders[i] = salesOrderRepository.save(so);
-
-            SalesOrderLine l1 = new SalesOrderLine();
-            l1.setSalesOrder(savedOrders[i]);
-            l1.setSku(skus.get(soLines[i * 2][0]));
-            l1.setQuantity(soLines[i * 2][1]);
-            l1 = salesOrderLineRepository.save(l1);
-
-            SalesOrderLine l2 = new SalesOrderLine();
-            l2.setSalesOrder(savedOrders[i]);
-            l2.setSku(skus.get(soLines[i * 2 + 1][0]));
-            l2.setQuantity(soLines[i * 2 + 1][1]);
-            l2 = salesOrderLineRepository.save(l2);
-
-            if (savedOrders[i].getLines() == null) {
-                savedOrders[i].setLines(new ArrayList<>());
-            }
-            savedOrders[i].getLines().add(l1);
-            savedOrders[i].getLines().add(l2);
-        }
-
-        for (int i = 0; i < 3; i++) {
-            int days = Integer.parseInt(orderData[i][3]);
-            LocalDateTime ts = LocalDateTime.now().minusDays(days).withHour(9).withMinute(0).withSecond(0).withNano(0);
-            jdbc.update("UPDATE wms_sales_order SET created_at = ? WHERE id = ?", ts, savedOrders[i].getId());
-        }
-
-        String[] couriers = {"DHL", "FedEx", "UPS"};
-        for (int i = 0; i < 3; i++) {
-            int days = Integer.parseInt(orderData[i][3]);
-            ShipmentRecord sr = new ShipmentRecord();
-            sr.setSalesOrder(savedOrders[i]);
-            sr.setAwbNumber(String.format("AWB%04d%04d", i + 1, savedOrders[i].getId()));
-            sr.setCourierName(couriers[i]);
-            ShipmentRecord saved = shipmentRecordRepository.save(sr);
-            LocalDateTime shipTs = LocalDateTime.now().minusDays(days).withHour(14).withMinute(0).withSecond(0).withNano(0);
-            jdbc.update("UPDATE wms_shipment_record SET created_at = ? WHERE id = ?", shipTs, saved.getId());
-        }
-
-        System.out.println("[DataInitializer] Seeded 8 sales orders + 3 shipment records");
-    }
-
     // ── Inventory ─────────────────────────────────────────────────────────────
     private void seedInventory() {
         List<Sku> skus = skuRepository.findAll();
@@ -614,75 +523,5 @@ private void seedTrolleys() {
         }
 
         System.out.println("[DataInitializer] Seeded 60 AVAILABLE + 20 SHIPPED inventory items");
-    }
-
-    // ── Pick Tasks ─────────────────────────────────────────────────────────────
-    private void seedPickTasks() {
-        SalesOrder so4 = salesOrderRepository.findBySoNumber("SO-2026-004").orElseThrow();
-        SalesOrder so5 = salesOrderRepository.findBySoNumber("SO-2026-005").orElseThrow();
-        Trolley trolley1 = trolleyRepository.findByTrolleyIdentifier("TROLLEY-01").orElseThrow();
-        List<RackCompartment> compartments = rackCompartmentRepository.findByTrolleyId(trolley1.getId());
-
-        compartments.get(0).setSalesOrder(so4);
-        rackCompartmentRepository.save(compartments.get(0));
-
-        int compIdx = 0;
-        for (SalesOrderLine line : so4.getLines()) {
-            Inventory inv = inventoryRepository.findAll().stream()
-                    .filter(i -> i.getSku().getId().equals(line.getSku().getId()) && i.getState() == Inventory.InventoryState.AVAILABLE)
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No available inventory for SKU " + line.getSku().getSkuCode()));
-
-            inv.setState(Inventory.InventoryState.PICKED);
-            inv.setSerialNo("SN-PICKED-" + line.getId());
-            inventoryRepository.save(inv);
-
-            PickTask task = new PickTask();
-            task.setSalesOrderLine(line);
-            task.setInventory(inv);
-            task.setBinBarcode(inv.getBin().getBarcode());
-            task.setSkuCode(line.getSku().getSkuCode());
-            task.setQuantityToPick(line.getQuantity());
-            task.setStatus("COMPLETED");
-            task.setTrolley(trolley1);
-            task.setRackCompartment(compartments.get(compIdx));
-            pickTaskRepository.save(task);
-        }
-
-        compartments.get(1).setSalesOrder(so5);
-        rackCompartmentRepository.save(compartments.get(1));
-
-        boolean first = true;
-        for (SalesOrderLine line : so5.getLines()) {
-            Inventory inv = inventoryRepository.findAll().stream()
-                    .filter(i -> i.getSku().getId().equals(line.getSku().getId()) && i.getState() == Inventory.InventoryState.AVAILABLE)
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No available inventory for SKU " + line.getSku().getSkuCode()));
-
-            PickTask task = new PickTask();
-            task.setSalesOrderLine(line);
-            task.setInventory(inv);
-            task.setBinBarcode(inv.getBin().getBarcode());
-            task.setSkuCode(line.getSku().getSkuCode());
-            task.setQuantityToPick(line.getQuantity());
-
-            if (first) {
-                inv.setState(Inventory.InventoryState.PICKED);
-                inv.setSerialNo("SN-PICKED-" + line.getId());
-                inventoryRepository.save(inv);
-
-                task.setStatus("COMPLETED");
-                task.setTrolley(trolley1);
-                task.setRackCompartment(compartments.get(1));
-                first = false;
-            } else {
-                inv.setState(Inventory.InventoryState.RESERVED);
-                inventoryRepository.save(inv);
-                task.setStatus("PENDING");
-            }
-            pickTaskRepository.save(task);
-        }
-
-        System.out.println("[DataInitializer] Seeded pick tasks");
     }
 }

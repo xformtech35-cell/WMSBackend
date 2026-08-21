@@ -4,7 +4,7 @@ import com.warehouse.wms.dto.CarrierRateDto;
 import com.warehouse.wms.entity.ShipmentRecord;
 import com.warehouse.wms.service.DelhiveryCarrierService;
 import com.warehouse.wms.service.ShiprocketCarrierService;
-import com.warehouse.wms.service.ShippingService;
+//import com.warehouse.wms.service.ShippingService;
 import com.warehouse.wms.dto.ShipmentRequest;
 import com.warehouse.wms.service.EventBroadcastService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class CarrierController {
 
     private final DelhiveryCarrierService delhiveryCarrierService;
     private final ShiprocketCarrierService shiprocketCarrierService;
-    private final ShippingService shippingService;
+//    private final ShippingService shippingService;
     private final EventBroadcastService eventBroadcastService;
 
     @GetMapping("/rates")
@@ -38,27 +38,27 @@ public class CarrierController {
         return ResponseEntity.ok(rates);
     }
 
-    @PostMapping("/generate-awb")
-    @PreAuthorize("hasAuthority('SHIPPING_CONFIRM')")
-    public ResponseEntity<ShipmentRecord> generateAwb(
-            @RequestParam Long orderId,
-            @RequestParam String carrierName) {
-
-        String awbNumber;
-        if ("Delhivery".equalsIgnoreCase(carrierName)) {
-            awbNumber = delhiveryCarrierService.generateAWB(orderId);
-        } else {
-            awbNumber = shiprocketCarrierService.generateAWB(orderId);
-        }
-
-        ShipmentRequest req = new ShipmentRequest();
-        req.setOrderId(orderId);
-        req.setAwbNumber(awbNumber);
-        req.setCourierName(carrierName);
-
-        ShipmentRecord record = shippingService.confirmShipment(req);
-        return ResponseEntity.ok(record);
-    }
+//    @PostMapping("/generate-awb")
+//    @PreAuthorize("hasAuthority('SHIPPING_CONFIRM')")
+//    public ResponseEntity<ShipmentRecord> generateAwb(
+//            @RequestParam Long orderId,
+//            @RequestParam String carrierName) {
+//
+//        String awbNumber;
+//        if ("Delhivery".equalsIgnoreCase(carrierName)) {
+//            awbNumber = delhiveryCarrierService.generateAWB(orderId);
+//        } else {
+//            awbNumber = shiprocketCarrierService.generateAWB(orderId);
+//        }
+//
+//        ShipmentRequest req = new ShipmentRequest();
+//        req.setOrderId(orderId);
+//        req.setAwbNumber(awbNumber);
+//        req.setCourierName(carrierName);
+//
+//        ShipmentRecord record = shippingService.confirmShipment(req);
+//        return ResponseEntity.ok(record);
+//    }
 
     @PostMapping("/webhook/update-status")
     public ResponseEntity<String> carrierWebhook(@RequestBody Map<String, Object> payload) {
