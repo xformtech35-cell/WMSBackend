@@ -124,12 +124,12 @@ public class OutboundController {
 
     // ====== STOCK RESERVATION ======
 
-    @PostMapping("/reserve/{soNumber}")
-    public ResponseEntity<Void> reserveStock(@PathVariable String soNumber) {
-        log.info("POST /api/outbound/reserve/{} - Reserving Stock", soNumber);
-        outboundService.reserveStock(soNumber);
-        return ResponseEntity.ok().build();
-    }
+//    @PostMapping("/reserve/{soNumber}")
+//    public ResponseEntity<Void> reserveStock(@PathVariable String soNumber) {
+//        log.info("POST /api/outbound/reserve/{} - Reserving Stock", soNumber);
+//        outboundService.reserveStock(soNumber);
+//        return ResponseEntity.ok().build();
+//    }
 
     @GetMapping("/reservation/{reservationNumber}")
     public ResponseEntity<StockReservationResponse> getReservation(@PathVariable String reservationNumber) {
@@ -238,6 +238,53 @@ public class OutboundController {
         log.info("PATCH /api/outbound/pick-task/{}/scan - Scanning Pick Task", pickTaskNumber);
         return ResponseEntity.ok(outboundService.scanPickTask(pickTaskNumber, pickerId, pickerName));
     }
+    
+    
+    @GetMapping("/pick-tasks")
+    public ResponseEntity<Page<PickTaskResponse>> getAllPickTasks(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String pickTaskNumber,
+            @RequestParam(required = false) String pickListNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String pickerId,
+            @RequestParam(required = false) String pickerName,
+            @RequestParam(required = false) String binId,
+            @RequestParam(required = false) String locationBarcode,
+            @RequestParam(required = false) String batchNumber,
+            @RequestParam(required = false) Boolean isScanned,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startScanDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endScanDate,
+            @RequestParam(required = false) Integer minRequiredQuantity,
+            @RequestParam(required = false) Integer maxRequiredQuantity,
+            @RequestParam(required = false) Integer minPickedQuantity,
+            @RequestParam(required = false) Integer maxPickedQuantity,
+            @RequestParam(required = false) String createdBy,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/pick-tasks - Getting all Pick Tasks with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchPickTasks(search, pageable));
+        }
+
+        Page<PickTaskResponse> response = outboundService.getAllPickTasksWithFilters(
+                pickTaskNumber, pickListNumber, soNumber, itemCode, itemName,
+                status, pickerId, pickerName, binId, locationBarcode,
+                batchNumber, isScanned, startDate, endDate,
+                startScanDate, endScanDate,
+                minRequiredQuantity, maxRequiredQuantity,
+                minPickedQuantity, maxPickedQuantity,
+                createdBy, pageable);
+
+        return ResponseEntity.ok(response);
+    }
+
 
     // ====== PICK CONFIRMATION ======
 

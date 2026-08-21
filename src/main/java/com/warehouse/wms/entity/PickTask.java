@@ -77,8 +77,8 @@ public class PickTask {
     @Column(name = "quantity_to_pick", nullable = false)  // ADD THIS FIELD
     private Integer quantityToPick = 0;
     
-    @Column(name = "inventory_id")  // ADD THIS FIELD
-    private Long inventoryId;
+    @Column(name = "inventory_id")
+    private Long inventoryId;  // Already nullable by default
     
     @Column(name = "sales_order_line_id")  // ADD THIS FIELD
     private Long salesOrderLineId;

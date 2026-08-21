@@ -77,7 +77,7 @@ public class SalesOrder {
     private String shippingMethod;
 
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "CONFIRMED"; // CONFIRMED, PROCESSING, PICKING, PACKING, DISPATCHED, DELIVERED, CANCELLED
+    private String status = "PENDING"; // CONFIRMED, PROCESSING, PICKING, PACKING, DISPATCHED, DELIVERED, CANCELLED
 
     @Column(columnDefinition = "TEXT")
     private String remarks;

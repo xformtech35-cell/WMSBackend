@@ -130,4 +130,34 @@ public interface OutboundService {
             Pageable pageable);
     
     Page<PickListResponse> searchPickLists(String search, Pageable pageable);
+    
+    
+    // NEW: Pick Task with filters
+    Page<PickTaskResponse> getAllPickTasksWithFilters(
+            String pickTaskNumber,
+            String pickListNumber,
+            String soNumber,
+            String itemCode,
+            String itemName,
+            String status,
+            String pickerId,
+            String pickerName,
+            String binId,
+            String locationBarcode,
+            String batchNumber,
+            Boolean isScanned,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startScanDate,
+            LocalDateTime endScanDate,
+            Integer minRequiredQuantity,
+            Integer maxRequiredQuantity,
+            Integer minPickedQuantity,
+            Integer maxPickedQuantity,
+            String createdBy,
+            Pageable pageable);
+    
+    Page<PickTaskResponse> searchPickTasks(String search, Pageable pageable);
+    
+    
 }

@@ -492,87 +492,74 @@ public class OutboundServiceImpl implements OutboundService {
     }
 
     // ====== PICK TASK ======
+@Override
+public PickTaskResponse createPickTask(PickTaskRequest request) {
+    log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
 
-    @Override
-    public PickTaskResponse createPickTask(PickTaskRequest request) {
-        log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
+    // Verify Pick List exists
+    PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
+            .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
 
-        // Verify Pick List exists
-        PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
+    // Verify Pick List Item exists
+    List<PickListItem> items = pickListItemRepository.findByPickListNumber(request.getPickListNumber());
+    PickListItem pickItem = items.stream()
+            .filter(item -> item.getItemCode().equals(request.getItemCode()))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
 
-        // Verify Pick List Item exists
-        List<PickListItem> items = pickListItemRepository.findByPickListNumber(request.getPickListNumber());
-        PickListItem pickItem = items.stream()
-                .filter(item -> item.getItemCode().equals(request.getItemCode()))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
+    String pickTaskNumber = generatePickTaskNumber();
 
-        // Generate pick task number
-        
-        
-        // Find inventory for this item (if needed)
-        Long inventoryId = request.getInventoryId();
-        if (inventoryId == null) {
-            // Try to find available inventory for this item
-            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(request.getItemCode());
-            if (!stocks.isEmpty()) {
-                inventoryId = stocks.get(0).getId(); // Use first available stock
-            }
+    // DON'T set inventoryId - keep it null
+    // The foreign key constraint requires a valid ID from wms_inventory table
+    Long inventoryId = null;  // Set to null to avoid foreign key violation
+
+    // Find Sales Order Line ID
+    Long salesOrderLineId = request.getSalesOrderLineId();
+    if (salesOrderLineId == null) {
+        List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
+        if (!orderItems.isEmpty()) {
+            salesOrderLineId = orderItems.get(0).getId();
         }
-        
-        
-        // Find Sales Order Line ID
-        Long salesOrderLineId = request.getSalesOrderLineId();
-        if (salesOrderLineId == null) {
-            // Try to find from SalesOrderItem
-            List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
-            if (!orderItems.isEmpty()) {
-                salesOrderLineId = orderItems.get(0).getId();
-            }
-        }
-        
-        String pickTaskNumber = generatePickTaskNumber();
-
-        // Create Pick Task
-        PickTask pickTask = PickTask.builder()
-                .pickTaskNumber(pickTaskNumber)
-                .pickListNumber(request.getPickListNumber())
-                .soNumber(pickList.getSoNumber())
-                .itemCode(request.getItemCode())
-                .itemName(pickItem.getItemName())
-                .uom(pickItem.getUom())
-                .requiredQuantity(request.getRequiredQuantity())
-                .quantityToPick(request.getRequiredQuantity())  // ADD THIS LINE
-                .inventoryId(inventoryId)  // SET INVENTORY ID
-                .salesOrderLineId(salesOrderLineId)  // SET SALES ORDER LINE ID
-
-                .pickedQuantity(0)
-                .locationBarcode(request.getLocationBarcode())
-                .itemBarcode(request.getItemBarcode())
-                .binId(request.getBinId())
-                .batchNumber(request.getBatchNumber())
-                .pickerId(request.getPickerId())
-                .pickerName(request.getPickerName())
-                .status("PENDING")
-                .isScanned(false)
-                .createdBy(request.getCreatedBy())
-                .build();
-
-        PickTask savedTask = pickTaskRepository.save(pickTask);
-
-        // Update Pick List status
-        pickList.setStatus("PICKING");
-        pickList.setUpdatedBy(request.getCreatedBy());
-        pickListRepository.save(pickList);
-
-        // Update item status
-        pickItem.setStatus("PICKING");
-        pickListItemRepository.save(pickItem);
-
-        log.info("Pick Task created successfully: {}", pickTaskNumber);
-        return buildPickTaskResponse(savedTask);
     }
+
+    // Create Pick Task
+    PickTask pickTask = PickTask.builder()
+            .pickTaskNumber(pickTaskNumber)
+            .pickListNumber(request.getPickListNumber())
+            .soNumber(pickList.getSoNumber())
+            .itemCode(request.getItemCode())
+            .itemName(pickItem.getItemName())
+            .uom(pickItem.getUom())
+            .requiredQuantity(request.getRequiredQuantity())
+            .quantityToPick(request.getRequiredQuantity())
+            .inventoryId(null)  // Set to null
+            .salesOrderLineId(salesOrderLineId)
+            .pickedQuantity(0)
+            .locationBarcode(request.getLocationBarcode())
+            .itemBarcode(request.getItemBarcode())
+            .binId(request.getBinId())
+            .batchNumber(request.getBatchNumber())
+            .pickerId(request.getPickerId())
+            .pickerName(request.getPickerName())
+            .status("PENDING")
+            .isScanned(false)
+            .createdBy(request.getCreatedBy())
+            .build();
+
+    PickTask savedTask = pickTaskRepository.save(pickTask);
+
+    // Update Pick List status
+    pickList.setStatus("PICKING");
+    pickList.setUpdatedBy(request.getCreatedBy());
+    pickListRepository.save(pickList);
+
+    // Update item status
+    pickItem.setStatus("PICKING");
+    pickListItemRepository.save(pickItem);
+
+    log.info("Pick Task created successfully: {}", pickTaskNumber);
+    return buildPickTaskResponse(savedTask);
+}
 
     @Override
     public PickTaskResponse getPickTaskByNumber(String pickTaskNumber) {
@@ -628,6 +615,66 @@ public class OutboundServiceImpl implements OutboundService {
         log.info("Pick Task scanned successfully: {}", pickTaskNumber);
         return buildPickTaskResponse(updated);
     }
+    
+    
+    
+    @Override
+    public Page<PickTaskResponse> getAllPickTasksWithFilters(
+            String pickTaskNumber,
+            String pickListNumber,
+            String soNumber,
+            String itemCode,
+            String itemName,
+            String status,
+            String pickerId,
+            String pickerName,
+            String binId,
+            String locationBarcode,
+            String batchNumber,
+            Boolean isScanned,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startScanDate,
+            LocalDateTime endScanDate,
+            Integer minRequiredQuantity,
+            Integer maxRequiredQuantity,
+            Integer minPickedQuantity,
+            Integer maxPickedQuantity,
+            String createdBy,
+            Pageable pageable) {
+
+        log.info("Fetching pick tasks with filters");
+
+        Page<PickTask> pickTaskPage = pickTaskRepository.findByFilters(
+                pickTaskNumber, pickListNumber, soNumber, itemCode, itemName,
+                status, pickerId, pickerName, binId, locationBarcode,
+                batchNumber, isScanned, startDate, endDate,
+                startScanDate, endScanDate,
+                minRequiredQuantity, maxRequiredQuantity,
+                minPickedQuantity, maxPickedQuantity,
+                createdBy, pageable);
+
+        return pickTaskPage.map(this::buildPickTaskResponse);
+    }
+
+    @Override
+    public Page<PickTaskResponse> searchPickTasks(String search, Pageable pageable) {
+        log.info("Searching pick tasks with keyword: {}", search);
+        return pickTaskRepository.searchPickTasks(search, pageable)
+                .map(this::buildPickTaskResponse);
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     // ====== PICK CONFIRMATION ======
 
