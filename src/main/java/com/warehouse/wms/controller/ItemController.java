@@ -1,5 +1,27 @@
 package com.warehouse.wms.controller;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.CreateItemDTO;
 import com.warehouse.wms.dto.ItemDTO;
@@ -7,18 +29,10 @@ import com.warehouse.wms.dto.ItemFilterDTO;
 import com.warehouse.wms.dto.UpdateItemDTO;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.service.ItemService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/items")
@@ -79,21 +93,53 @@ public class ItemController {
         }
     }
     
+    
+    // ====== GET ALL WITH FILTERS AND SEARCH ======
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ItemDTO>>> getAllItems(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String uom,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Integer minStock,
+            @RequestParam(required = false) Integer maxStock,
+            @RequestParam(required = false) Long supplierId,
+            @RequestParam(required = false) Boolean isGstApplicable,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "itemName") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
+        
         try {
+            log.info("GET /api/items - Getting all items with filters");
+            
             Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
             Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-            Page<ItemDTO> items = itemService.getAllItems(pageable);
+            
+            Page<ItemDTO> items;
+            
+            if (search != null && !search.isEmpty()) {
+                items = itemService.searchItems(search, pageable);
+            } else {
+                items = itemService.getAllItemsWithFilters(
+                        itemCode, itemName, category, brand, uom,
+                        isActive, minPrice, maxPrice, minStock, maxStock,
+                        supplierId, isGstApplicable, startDate, endDate, pageable);
+            }
+            
             return ResponseEntity.ok(ApiResponse.success(items));
         } catch (Exception e) {
             log.error("Error getting items", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Error retrieving items"));
+                    .body(ApiResponse.error("Error retrieving items: " + e.getMessage()));
         }
     }
     

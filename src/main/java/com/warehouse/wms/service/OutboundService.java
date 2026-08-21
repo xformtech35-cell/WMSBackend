@@ -66,7 +66,7 @@ public interface OutboundService {
     // Pick List
     PickListResponse createPickList(PickListRequest request);
     PickListResponse getPickListByNumber(String pickListNumber);
-    Page<PickListResponse> getAllPickLists(Pageable pageable);
+//    Page<PickListResponse> getAllPickLists(Pageable pageable);
     PickListResponse updatePickListStatus(String pickListNumber, String status);
 
     // Pick Task
@@ -104,4 +104,30 @@ public interface OutboundService {
     DeliveryResponse confirmDelivery(DeliveryRequest request);
     DeliveryResponse getDeliveryByNumber(String deliveryNumber);
     DeliveryResponse updateDeliveryStatus(String deliveryNumber, String status);
+    
+    
+    
+    // NEW: Pick List with filters
+    Page<PickListResponse> getAllPickListsWithFilters(
+            String pickListNumber,
+            String soNumber,
+            String warehouseId,
+            String status,
+            String priority,
+            String assignedTo,
+            String createdBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startCreatedDate,
+            LocalDateTime endCreatedDate,
+            LocalDateTime startCompletedDate,
+            LocalDateTime endCompletedDate,
+            Integer minTotalItems,
+            Integer maxTotalItems,
+            Integer minTotalQuantity,
+            Integer maxTotalQuantity,
+            String itemCode,
+            Pageable pageable);
+    
+    Page<PickListResponse> searchPickLists(String search, Pageable pageable);
 }

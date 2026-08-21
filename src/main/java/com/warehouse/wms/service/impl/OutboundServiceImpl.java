@@ -430,12 +430,51 @@ public StockReservation reserveStock(String soNumber) {
         List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickListNumber);
         return buildPickListResponse(pickList, items);
     }
+    @Override
+    public Page<PickListResponse> getAllPickListsWithFilters(
+            String pickListNumber,
+            String soNumber,
+            String warehouseId,
+            String status,
+            String priority,
+            String assignedTo,
+            String createdBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startCreatedDate,
+            LocalDateTime endCreatedDate,
+            LocalDateTime startCompletedDate,
+            LocalDateTime endCompletedDate,
+            Integer minTotalItems,
+            Integer maxTotalItems,
+            Integer minTotalQuantity,
+            Integer maxTotalQuantity,
+            String itemCode,
+            Pageable pageable) {
+
+        log.info("Fetching pick lists with filters");
+
+        Page<PickList> pickListPage = pickListRepository.findByFilters(
+                pickListNumber, soNumber, warehouseId, status, priority,
+                assignedTo, createdBy, startDate, endDate,
+                startCreatedDate, endCreatedDate,
+                startCompletedDate, endCompletedDate,
+                minTotalItems, maxTotalItems,
+                minTotalQuantity, maxTotalQuantity,
+                itemCode, pageable);
+
+        return pickListPage.map(pl -> buildPickListResponse(pl,
+                pickListItemRepository.findByPickListNumber(pl.getPickListNumber())));
+    }
 
     @Override
-    public Page<PickListResponse> getAllPickLists(Pageable pageable) {
-        return pickListRepository.findAll(pageable)
-                .map(pl -> buildPickListResponse(pl, pickListItemRepository.findByPickListNumber(pl.getPickListNumber())));
+    public Page<PickListResponse> searchPickLists(String search, Pageable pageable) {
+        log.info("Searching pick lists with keyword: {}", search);
+        return pickListRepository.searchPickLists(search, pageable)
+                .map(pl -> buildPickListResponse(pl,
+                        pickListItemRepository.findByPickListNumber(pl.getPickListNumber())));
     }
+
 
     @Override
     public PickListResponse updatePickListStatus(String pickListNumber, String status) {

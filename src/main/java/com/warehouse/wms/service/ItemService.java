@@ -1,5 +1,14 @@
 package com.warehouse.wms.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.warehouse.wms.dto.CreateItemDTO;
 import com.warehouse.wms.dto.ItemDTO;
 import com.warehouse.wms.dto.ItemFilterDTO;
@@ -7,15 +16,9 @@ import com.warehouse.wms.dto.UpdateItemDTO;
 import com.warehouse.wms.entity.Item;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.repository.ItemRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -56,8 +59,36 @@ public class ItemService {
     }
     
     // READ - Get all with pagination
-    public Page<ItemDTO> getAllItems(Pageable pageable) {
-        return itemRepository.findAll(pageable).map(this::mapToDTO);
+    public Page<ItemDTO> getAllItemsWithFilters(
+            String itemCode,
+            String itemName,
+            String category,
+            String brand,
+            String uom,
+            Boolean isActive,
+            Double minPrice,
+            Double maxPrice,
+            Integer minStock,
+            Integer maxStock,
+            Long supplierId,
+            Boolean isGstApplicable,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable) {
+
+        log.info("Fetching items with filters");
+
+        return itemRepository.findByFilters(
+                itemCode, itemName, category, brand, uom,
+                isActive, minPrice, maxPrice, minStock, maxStock,
+                supplierId, isGstApplicable, startDate, endDate, pageable)
+                .map(this::mapToDTO);
+    }
+
+    public Page<ItemDTO> searchItems(String search, Pageable pageable) {
+        log.info("Searching items with keyword: {}", search);
+        return itemRepository.searchItems(search, pageable)
+                .map(this::mapToDTO);
     }
     
     // READ - Search with filters

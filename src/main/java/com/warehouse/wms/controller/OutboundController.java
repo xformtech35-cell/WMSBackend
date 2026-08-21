@@ -158,11 +158,49 @@ public class OutboundController {
         return ResponseEntity.ok(outboundService.getPickListByNumber(pickListNumber));
     }
 
+    // ====== GET ALL WITH FILTERS AND SEARCH ======
     @GetMapping("/pick-lists")
-    public ResponseEntity<Page<PickListResponse>> getAllPickLists(Pageable pageable) {
-        log.info("GET /api/outbound/pick-lists - Getting all Pick Lists");
-        return ResponseEntity.ok(outboundService.getAllPickLists(pageable));
+    public ResponseEntity<Page<PickListResponse>> getAllPickLists(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String pickListNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String warehouseId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String assignedTo,
+            @RequestParam(required = false) String createdBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startCreatedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endCreatedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startCompletedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endCompletedDate,
+            @RequestParam(required = false) Integer minTotalItems,
+            @RequestParam(required = false) Integer maxTotalItems,
+            @RequestParam(required = false) Integer minTotalQuantity,
+            @RequestParam(required = false) Integer maxTotalQuantity,
+            @RequestParam(required = false) String itemCode,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/pick-lists - Getting all Pick Lists with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchPickLists(search, pageable));
+        }
+
+        Page<PickListResponse> response = outboundService.getAllPickListsWithFilters(
+                pickListNumber, soNumber, warehouseId, status, priority,
+                assignedTo, createdBy, startDate, endDate,
+                startCreatedDate, endCreatedDate,
+                startCompletedDate, endCompletedDate,
+                minTotalItems, maxTotalItems,
+                minTotalQuantity, maxTotalQuantity,
+                itemCode, pageable);
+
+        return ResponseEntity.ok(response);
     }
+
 
     @PatchMapping("/pick-list/{pickListNumber}/status")
     public ResponseEntity<PickListResponse> updatePickListStatus(

@@ -1,6 +1,9 @@
 package com.warehouse.wms.repository;
 
-import com.warehouse.wms.entity.Item;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,8 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.warehouse.wms.entity.Item;
 
 @Repository
 public interface ItemRepository extends JpaRepository<Item, Long> {
@@ -77,4 +79,51 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     
     // Find items by supplier
     List<Item> findBySupplierId(Long supplierId);
+    
+    
+    
+    
+    
+    @Query("SELECT i FROM Item i WHERE " +
+            "(:itemCode IS NULL OR i.itemCode LIKE %:itemCode%) AND " +
+            "(:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%'))) AND " +
+            "(:category IS NULL OR LOWER(i.category) LIKE LOWER(CONCAT('%', :category, '%'))) AND " +
+            "(:brand IS NULL OR LOWER(i.brand) LIKE LOWER(CONCAT('%', :brand, '%'))) AND " +
+            "(:uom IS NULL OR LOWER(i.uom) = LOWER(:uom)) AND " +
+            "(:isActive IS NULL OR i.isActive = :isActive) AND " +
+            "(:minPrice IS NULL OR i.unitPrice >= :minPrice) AND " +
+            "(:maxPrice IS NULL OR i.unitPrice <= :maxPrice) AND " +
+            "(:minStock IS NULL OR i.currentStock >= :minStock) AND " +
+            "(:maxStock IS NULL OR i.currentStock <= :maxStock) AND " +
+            "(:supplierId IS NULL OR i.supplierId = :supplierId) AND " +
+            "(:isGstApplicable IS NULL OR i.isGstApplicable = :isGstApplicable) AND " +
+            "(:startDate IS NULL OR i.createdAt >= :startDate) AND " +
+            "(:endDate IS NULL OR i.createdAt <= :endDate)")
+     Page<Item> findByFilters(
+             @Param("itemCode") String itemCode,
+             @Param("itemName") String itemName,
+             @Param("category") String category,
+             @Param("brand") String brand,
+             @Param("uom") String uom,
+             @Param("isActive") Boolean isActive,
+             @Param("minPrice") Double minPrice,
+             @Param("maxPrice") Double maxPrice,
+             @Param("minStock") Integer minStock,
+             @Param("maxStock") Integer maxStock,
+             @Param("supplierId") Long supplierId,
+             @Param("isGstApplicable") Boolean isGstApplicable,
+             @Param("startDate") LocalDateTime startDate,
+             @Param("endDate") LocalDateTime endDate,
+             Pageable pageable);
+
+     // ====== Search ======
+     @Query("SELECT i FROM Item i WHERE " +
+            "LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.itemName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.description) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.category) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.brand) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.uom) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(i.gstHsnCode) LIKE LOWER(CONCAT('%', :search, '%'))")
+     Page<Item> searchItems(@Param("search") String search, Pageable pageable);
 }
