@@ -16,6 +16,11 @@ public interface SalesOrderItemRepository extends JpaRepository<SalesOrderItem, 
     List<SalesOrderItem> findBySoNumber(String soNumber);
 
     List<SalesOrderItem> findByItemCode(String itemCode);
+    
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM SalesOrderItem soi WHERE soi.soNumber = :soNumber")
+    void deleteBySoNumber(@Param("soNumber") String soNumber);
 
     @Modifying
     @Transactional

@@ -246,6 +246,91 @@ public class OutboundServiceImpl implements OutboundService {
     }
     
     
+    
+    
+    @Override
+    public SalesOrderResponse updateSalesOrder(String soNumber, SalesOrderRequest request) {
+        log.info("Updating Sales Order: {}", soNumber);
+
+        // Check if SO exists
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        // Check if order can be edited
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") && 
+            !salesOrder.getStatus().equals("PROCESSING")) {
+            throw new BusinessException("Cannot edit order in status: " + salesOrder.getStatus());
+        }
+
+        // Update basic fields
+        if (request.getCustomerCode() != null) {
+            salesOrder.setCustomerCode(request.getCustomerCode());
+        }
+        if (request.getCustomerName() != null) {
+            salesOrder.setCustomerName(request.getCustomerName());
+        }
+        if (request.getWarehouseId() != null) {
+            salesOrder.setWarehouseId(request.getWarehouseId());
+        }
+        if (request.getDeliveryDate() != null) {
+            salesOrder.setDeliveryDate(request.getDeliveryDate());
+        }
+        if (request.getPriority() != null) {
+            salesOrder.setPriority(request.getPriority());
+        }
+        if (request.getDeliveryAddress() != null) {
+            salesOrder.setDeliveryAddress(request.getDeliveryAddress());
+        }
+        if (request.getShippingMethod() != null) {
+            salesOrder.setShippingMethod(request.getShippingMethod());
+        }
+        if (request.getRemarks() != null) {
+            salesOrder.setRemarks(request.getRemarks());
+        }
+        if (request.getSoDate() != null) {
+            salesOrder.setOrderDate(request.getSoDate());
+        }
+
+        salesOrder.setUpdatedBy(request.getCreatedBy() != null ? request.getCreatedBy() : "SYSTEM");
+        salesOrder.setUpdatedAt(LocalDateTime.now());
+
+        // Update items if provided
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            // Delete existing items
+            salesOrderItemRepository.deleteBySoNumber(soNumber);
+
+            // Create new items
+            List<SalesOrderItem> items = new ArrayList<>();
+            int totalQuantity = 0;
+
+            for (SalesOrderItemRequest itemReq : request.getItems()) {
+                SalesOrderItem item = SalesOrderItem.builder()
+                        .soNumber(soNumber)
+                        .itemCode(itemReq.getItemCode())
+                        .itemName(itemReq.getItemName())
+                        .uom(itemReq.getUom() != null ? itemReq.getUom() : "EA")
+                        .orderedQuantity(itemReq.getOrderedQuantity())
+                        .reservedQuantity(0)
+                        .pickedQuantity(0)
+                        .shippedQuantity(0)
+                        .batchNumber(itemReq.getBatchNumber())
+                        .sourceLocation(itemReq.getSourceLocation())
+                        .salesOrder(salesOrder)
+                        .createdBy(request.getCreatedBy())
+                        .build();
+                items.add(salesOrderItemRepository.save(item));
+                totalQuantity += itemReq.getOrderedQuantity();
+            }
+
+            salesOrder.setTotalQuantity(totalQuantity);
+        }
+
+        SalesOrder updated = salesOrderRepository.save(salesOrder);
+
+        log.info("Sales Order updated successfully: {}", soNumber);
+        return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
+    }
+    
 
     
     

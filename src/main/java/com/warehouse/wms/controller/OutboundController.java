@@ -115,6 +115,16 @@ public class OutboundController {
         log.info("PATCH /api/outbound/sales-order/{}/status - Updating status to {}", soNumber, status);
         return ResponseEntity.ok(outboundService.updateSalesOrderStatus(soNumber, status));
     }
+    
+    // UPDATE Sales Order - Full Update
+    @PutMapping("/sales-order/{soNumber}")
+    public ResponseEntity<SalesOrderResponse> updateSalesOrder(
+            @PathVariable String soNumber,
+            @Valid @RequestBody SalesOrderRequest request) {
+        log.info("PUT /api/outbound/sales-order/{} - Updating Sales Order", soNumber);
+        return ResponseEntity.ok(outboundService.updateSalesOrder(soNumber, request));
+    }
+    
 
     @DeleteMapping("/sales-order/{soNumber}")
     public ResponseEntity<Void> cancelSalesOrder(@PathVariable String soNumber) {

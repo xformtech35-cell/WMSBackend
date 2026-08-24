@@ -159,5 +159,7 @@ public interface OutboundService {
     
     Page<PickTaskResponse> searchPickTasks(String search, Pageable pageable);
     
+    SalesOrderResponse updateSalesOrder(String soNumber, SalesOrderRequest request);
+
     
 }

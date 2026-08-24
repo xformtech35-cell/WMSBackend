@@ -26,4 +26,7 @@ public class SalesOrderItemRequest {
     private Integer orderedQuantity;
 
     private String batchNumber;
+    
+    private String sourceLocation;
+
 }
