@@ -21,6 +21,9 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
     List<StockReservation> findByItemCodeAndStatus(String itemCode, String status);
 
     List<StockReservation> findByStatus(String status);
+    
+    List<StockReservation> findBySalesOrderItemId(Long salesOrderItemId);
+
 
     @Modifying
     @Transactional

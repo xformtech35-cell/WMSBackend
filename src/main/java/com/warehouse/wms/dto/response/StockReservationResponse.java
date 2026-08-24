@@ -24,9 +24,9 @@ public class StockReservationResponse {
 
     private String reservationNumber;
     private String soNumber;
-//    private String itemCode;
-//    private String itemName;
-//    private String uom;
+    private String itemCode;
+    private String itemName;
+    private String uom;
     private Integer requiredQuantity;
     private Integer availableQuantity;
     private Integer pysicalQuantity;

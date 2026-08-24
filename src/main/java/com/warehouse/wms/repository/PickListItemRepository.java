@@ -31,4 +31,10 @@ public interface PickListItemRepository extends JpaRepository<PickListItem, Long
 
     @Query("SELECT COALESCE(SUM(pli.requiredQuantity), 0) FROM PickListItem pli WHERE pli.pickListNumber = :pickListNumber")
     Integer getTotalRequiredQuantity(@Param("pickListNumber") String pickListNumber);
+    
+    
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM PickListItem pli WHERE pli.pickListNumber = :pickListNumber")
+    void deleteByPickListNumber(@Param("pickListNumber") String pickListNumber);
 }

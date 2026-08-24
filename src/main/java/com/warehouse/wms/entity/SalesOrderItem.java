@@ -58,6 +58,9 @@ public class SalesOrderItem {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    private String Status;
+
+    
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -3,7 +3,10 @@ package com.warehouse.wms.service.impl;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -21,6 +24,7 @@ import com.warehouse.wms.dto.request.PickListItemRequest;
 import com.warehouse.wms.dto.request.PickListRequest;
 import com.warehouse.wms.dto.request.PickTaskRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemRequest;
+import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
 import com.warehouse.wms.dto.response.DeliveryResponse;
@@ -88,34 +92,23 @@ public class OutboundServiceImpl implements OutboundService {
     private final ShipmentConfirmationRepository shipmentConfirmationRepository;
     private final DeliveryRepository deliveryRepository;
     private final InventoryStockRepository inventoryStockRepository;
-    private final SoNumberGenerator soNumberGenerator;  // ADD THIS
+    private final SoNumberGenerator soNumberGenerator;
 
-    // ====== SALES ORDER ======
+    // ============================================================
+    // ===================== SALES ORDER ===========================
+    // ============================================================
 
     @Override
     public SalesOrderResponse createSalesOrder(SalesOrderRequest request) {
-        
-        
-        
-        
-        
-        
-        String soNumber;
-            soNumber = soNumberGenerator.generateSoNumber();
-            log.info("Auto-generated SO Number: {}", soNumber);
-      
-            // Check if custom SO number already exists
-            if (salesOrderRepository.findBySoNumber(soNumber).isPresent()) {
-                throw new BusinessException("Sales Order already exists: " + soNumber);
-            }
-        
+        String soNumber = soNumberGenerator.generateSoNumber();
+        log.info("Auto-generated SO Number: {}", soNumber);
 
-      
+        if (salesOrderRepository.findBySoNumber(soNumber).isPresent()) {
+            throw new BusinessException("Sales Order already exists: " + soNumber);
+        }
 
-        // Validate items
         int totalQuantity = 0;
         for (SalesOrderItemRequest itemReq : request.getItems()) {
-            // Check if item exists in inventory
             List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(itemReq.getItemCode());
             if (stocks.isEmpty()) {
                 throw new BusinessException("Item not found in inventory: " + itemReq.getItemCode());
@@ -123,7 +116,6 @@ public class OutboundServiceImpl implements OutboundService {
             totalQuantity += itemReq.getOrderedQuantity();
         }
 
-        // Create Sales Order
         SalesOrder salesOrder = SalesOrder.builder()
                 .soNumber(soNumber)
                 .orderDate(request.getSoDate() != null ? request.getSoDate() : LocalDateTime.now())
@@ -142,7 +134,6 @@ public class OutboundServiceImpl implements OutboundService {
 
         SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
 
-        // Create Order Items
         List<SalesOrderItem> items = new ArrayList<>();
         for (SalesOrderItemRequest itemReq : request.getItems()) {
             SalesOrderItem item = SalesOrderItem.builder()
@@ -162,10 +153,6 @@ public class OutboundServiceImpl implements OutboundService {
         }
 
         log.info("Sales Order created successfully: {}", soNumber);
-
-        // Auto-reserve stock
-       // reserveStock(request.getSoNumber());
-
         return buildSalesOrderResponse(savedOrder, items);
     }
 
@@ -178,44 +165,24 @@ public class OutboundServiceImpl implements OutboundService {
         return buildSalesOrderResponse(salesOrder, items);
     }
 
-//    @Override
-//    public Page<SalesOrderResponse> getAllSalesOrders(Pageable pageable) {
-//        return salesOrderRepository.findAll(pageable)
-//                .map(order -> buildSalesOrderResponse(order, salesOrderItemRepository.findBySoNumber(order.getSoNumber())));
-//    }
-    
     @Override
     public Page<SalesOrderResponse> getAllSalesOrdersWithFilters(
-            String search,
-            String soNumber,
-            String customerCode,
-            String customerName,
-            String warehouseId,
-            String status,
-            String priority,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            LocalDateTime startCreatedDate,
-            LocalDateTime endCreatedDate,
-            LocalDateTime startDeliveryDate,
-            LocalDateTime endDeliveryDate,
-            Integer minQuantity,
-            Integer maxQuantity,
-            String shippingMethod,
-            String createdBy,
-            Pageable pageable) {
+            String search, String soNumber, String customerCode, String customerName,
+            String warehouseId, String status, String priority,
+            LocalDateTime startDate, LocalDateTime endDate,
+            LocalDateTime startCreatedDate, LocalDateTime endCreatedDate,
+            LocalDateTime startDeliveryDate, LocalDateTime endDeliveryDate,
+            Integer minQuantity, Integer maxQuantity,
+            String shippingMethod, String createdBy, Pageable pageable) {
 
         log.info("Fetching sales orders with filters");
 
-        // Handle search parameter
         if (StringUtils.hasText(search)) {
-            // Search across multiple fields
             return salesOrderRepository.searchSalesOrders(search, pageable)
-                    .map(order -> buildSalesOrderResponse(order, 
+                    .map(order -> buildSalesOrderResponse(order,
                             salesOrderItemRepository.findBySoNumber(order.getSoNumber())));
         }
 
-        // Build query with filters
         Page<SalesOrder> orderPage = salesOrderRepository.findByFilters(
                 soNumber, customerCode, customerName, warehouseId,
                 status, priority, startDate, endDate,
@@ -228,78 +195,33 @@ public class OutboundServiceImpl implements OutboundService {
     }
 
     @Override
-    public SalesOrderResponse updateSalesOrderStatus(String soNumber, String status) {
-        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
-
-        salesOrder.setStatus(status);
-        salesOrder.setUpdatedBy("SYSTEM");
-        
-        if(status=="PENDING") {
-        	
-                reserveStock(salesOrder.getSoNumber());
-           }      
-        SalesOrder updated = salesOrderRepository.save(salesOrder);
-
-
-        return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
-    }
-    
-    
-    
-    
-    @Override
     public SalesOrderResponse updateSalesOrder(String soNumber, SalesOrderRequest request) {
         log.info("Updating Sales Order: {}", soNumber);
 
-        // Check if SO exists
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
 
-        // Check if order can be edited
-        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") && 
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
             !salesOrder.getStatus().equals("PROCESSING")) {
             throw new BusinessException("Cannot edit order in status: " + salesOrder.getStatus());
         }
 
-        // Update basic fields
-        if (request.getCustomerCode() != null) {
-            salesOrder.setCustomerCode(request.getCustomerCode());
-        }
-        if (request.getCustomerName() != null) {
-            salesOrder.setCustomerName(request.getCustomerName());
-        }
-        if (request.getWarehouseId() != null) {
-            salesOrder.setWarehouseId(request.getWarehouseId());
-        }
-        if (request.getDeliveryDate() != null) {
-            salesOrder.setDeliveryDate(request.getDeliveryDate());
-        }
-        if (request.getPriority() != null) {
-            salesOrder.setPriority(request.getPriority());
-        }
-        if (request.getDeliveryAddress() != null) {
-            salesOrder.setDeliveryAddress(request.getDeliveryAddress());
-        }
-        if (request.getShippingMethod() != null) {
-            salesOrder.setShippingMethod(request.getShippingMethod());
-        }
-        if (request.getRemarks() != null) {
-            salesOrder.setRemarks(request.getRemarks());
-        }
-        if (request.getSoDate() != null) {
-            salesOrder.setOrderDate(request.getSoDate());
-        }
+        if (request.getCustomerCode() != null) salesOrder.setCustomerCode(request.getCustomerCode());
+        if (request.getCustomerName() != null) salesOrder.setCustomerName(request.getCustomerName());
+        if (request.getWarehouseId() != null) salesOrder.setWarehouseId(request.getWarehouseId());
+        if (request.getDeliveryDate() != null) salesOrder.setDeliveryDate(request.getDeliveryDate());
+        if (request.getPriority() != null) salesOrder.setPriority(request.getPriority());
+        if (request.getDeliveryAddress() != null) salesOrder.setDeliveryAddress(request.getDeliveryAddress());
+        if (request.getShippingMethod() != null) salesOrder.setShippingMethod(request.getShippingMethod());
+        if (request.getRemarks() != null) salesOrder.setRemarks(request.getRemarks());
+        if (request.getSoDate() != null) salesOrder.setOrderDate(request.getSoDate());
 
         salesOrder.setUpdatedBy(request.getCreatedBy() != null ? request.getCreatedBy() : "SYSTEM");
         salesOrder.setUpdatedAt(LocalDateTime.now());
 
-        // Update items if provided
         if (request.getItems() != null && !request.getItems().isEmpty()) {
-            // Delete existing items
             salesOrderItemRepository.deleteBySoNumber(soNumber);
 
-            // Create new items
             List<SalesOrderItem> items = new ArrayList<>();
             int totalQuantity = 0;
 
@@ -326,25 +248,69 @@ public class OutboundServiceImpl implements OutboundService {
         }
 
         SalesOrder updated = salesOrderRepository.save(salesOrder);
-
         log.info("Sales Order updated successfully: {}", soNumber);
         return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
     }
-    
 
-    
-    
-    
     @Override
-    public void cancelSalesOrder(String soNumber) {
+    public SalesOrderResponse updateSalesOrderStatus(String soNumber, String status) {
+        log.info("Updating Sales Order status: {} to {}", soNumber, status);
+
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
 
-        if (!salesOrder.getStatus().equals("CONFIRMED") && !salesOrder.getStatus().equals("PROCESSING")) {
+        // FIX: Pass SO number and both statuses
+        validateStatusTransition(soNumber, salesOrder.getStatus(), status);
+
+        String oldStatus = salesOrder.getStatus();
+
+        salesOrder.setStatus(status);
+        salesOrder.setUpdatedBy("SYSTEM");
+        salesOrder.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrder updated = salesOrderRepository.save(salesOrder);
+
+        handleStatusActions(salesOrder.getSoNumber(), status);
+
+        log.info("Sales Order status updated successfully: {} -> {}", oldStatus, status);
+        return buildSalesOrderResponse(updated, salesOrderItemRepository.findBySoNumber(soNumber));
+    }
+
+    @Override
+    public void deleteSalesOrder(String soNumber) {
+        log.info("Deleting Sales Order: {}", soNumber);
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
+            !salesOrder.getStatus().equals("CANCELLED")) {
+            throw new BusinessException("Cannot delete order in status: " + salesOrder.getStatus());
+        }
+
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        for (StockReservation reservation : reservations) {
+            releaseReservation(reservation.getReservationNumber());
+        }
+
+        salesOrderItemRepository.deleteBySoNumber(soNumber);
+        salesOrderRepository.delete(salesOrder);
+
+        log.info("Sales Order deleted successfully: {}", soNumber);
+    }
+
+    @Override
+    public void cancelSalesOrder(String soNumber) {
+        log.info("Cancelling Sales Order: {}", soNumber);
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        if (!salesOrder.getStatus().equals("CONFIRMED") && !salesOrder.getStatus().equals("PROCESSING") &&
+            !salesOrder.getStatus().equals("PENDING") && !salesOrder.getStatus().equals("APPROVED")) {
             throw new BusinessException("Cannot cancel order in status: " + salesOrder.getStatus());
         }
 
-        // Release reservations
         List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
         for (StockReservation reservation : reservations) {
             releaseReservation(reservation.getReservationNumber());
@@ -353,95 +319,393 @@ public class OutboundServiceImpl implements OutboundService {
         salesOrder.setStatus("CANCELLED");
         salesOrder.setUpdatedBy("SYSTEM");
         salesOrderRepository.save(salesOrder);
+
+        log.info("Sales Order cancelled successfully: {}", soNumber);
     }
 
-    // ====== STOCK RESERVATION ======
+    // ============================================================
+    // =================== SALES ORDER ITEM ========================
+    // ============================================================
 
- @Override
-public StockReservation reserveStock(String soNumber) {
-    log.info("Reserving stock for SO: {}", soNumber);
-
-    SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
-            .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
-
-    List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
-
-    for (SalesOrderItem item : items) {
-        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
-        int totalAvailable = stocks.stream()
-                .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
-                .sum();
-
-        if (totalAvailable < item.getOrderedQuantity()) {
-            throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
-                    ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
-        }
-
-        int remainingToReserve = item.getOrderedQuantity();
-        for (InventoryStock stock : stocks) {
-            if (remainingToReserve <= 0) break;
-
-            // Initialize null values
-            if (stock.getReservedQuantity() == null) {
-                stock.setReservedQuantity(0);
-            }
-            if (stock.getAvailableQuantity() == null) {
-                stock.setAvailableQuantity(0);
-            }
-
-            int available = stock.getAvailableQuantity();
-            
-            int pysical=stock.getQuantity();
-            int toReserve = Math.min(available, remainingToReserve);
-
-            if (toReserve > 0) {
-                stock.reserveQuantity(toReserve);
-                inventoryStockRepository.save(stock);
-
-                String reservationNumber = generateReservationNumber();
-                StockReservation reservation = StockReservation.builder()
-                        .reservationNumber(reservationNumber)
-                        .soNumber(soNumber)
-                        .itemCode(item.getItemCode())
-                        .itemName(item.getItemName())
-                        .uom(item.getUom())
-                        .requiredQuantity(item.getOrderedQuantity())
-                        .availableQuantity(available)
-                        .pysicalQuantity(pysical)
-                        .reservedQuantity(toReserve)
-                        .warehouseId(stock.getWarehouseId())
-                        .zoneId(stock.getZone())
-                        .aisleId(stock.getAisle())
-                        .rackId(stock.getRack())
-                        .levelId(stock.getLevel())
-                        .binId(stock.getBinId())
-                        .batchNumber(stock.getBatchNumber())
-                        .status("PENDING")
-                        .reservationDate(LocalDateTime.now())
-                        .createdBy("SYSTEM")
-                        .build();
-                stockReservationRepository.save(reservation);
-
-                remainingToReserve -= toReserve;
-            }
-        }
-
-        salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
+    @Override
+    public SalesOrderItemResponse getSalesOrderItemById(Long itemId) {
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+        return buildSalesOrderItemResponse(item);
     }
 
-    salesOrder.setStatus("PROCESSING");
-    salesOrder.setUpdatedBy("SYSTEM");
-    salesOrderRepository.save(salesOrder);
+    @Override
+    public List<SalesOrderItemResponse> getSalesOrderItemsBySoNumber(String soNumber) {
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        return items.stream()
+                .map(this::buildSalesOrderItemResponse)
+                .collect(Collectors.toList());
+    }
 
-    log.info("Stock reserved successfully for SO: {}", soNumber);
-    return null;
-}
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItem(Long itemId, SalesOrderItemUpdateRequest request) {
+        log.info("Updating Sales Order Item: {}", itemId);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(item.getSoNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + item.getSoNumber()));
+
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
+            !salesOrder.getStatus().equals("PROCESSING")) {
+            throw new BusinessException("Cannot edit item in order status: " + salesOrder.getStatus());
+        }
+
+        if (request.getItemCode() != null) item.setItemCode(request.getItemCode());
+        if (request.getItemName() != null) item.setItemName(request.getItemName());
+        if (request.getUom() != null) item.setUom(request.getUom());
+        if (request.getOrderedQuantity() != null) item.setOrderedQuantity(request.getOrderedQuantity());
+        if (request.getReservedQuantity() != null) item.setReservedQuantity(request.getReservedQuantity());
+        if (request.getPickedQuantity() != null) item.setPickedQuantity(request.getPickedQuantity());
+        if (request.getShippedQuantity() != null) item.setShippedQuantity(request.getShippedQuantity());
+        if (request.getBatchNumber() != null) item.setBatchNumber(request.getBatchNumber());
+        if (request.getSourceLocation() != null) item.setSourceLocation(request.getSourceLocation());
+
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+
+        List<SalesOrderItem> allItems = salesOrderItemRepository.findBySoNumber(item.getSoNumber());
+        int total = allItems.stream().mapToInt(SalesOrderItem::getOrderedQuantity).sum();
+        salesOrder.setTotalQuantity(total);
+        salesOrderRepository.save(salesOrder);
+
+        log.info("Sales Order Item updated successfully: {}", updated.getId());
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemQuantity(Long itemId, Integer quantity) {
+        log.info("Updating Sales Order Item quantity: {} to {}", itemId, quantity);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        if (quantity < 0) {
+            throw new BusinessException("Quantity cannot be negative");
+        }
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(item.getSoNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + item.getSoNumber()));
+
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED")) {
+            throw new BusinessException("Cannot edit quantity in order status: " + salesOrder.getStatus());
+        }
+
+        item.setOrderedQuantity(quantity);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(item.getSoNumber());
+        int total = items.stream().mapToInt(SalesOrderItem::getOrderedQuantity).sum();
+        salesOrder.setTotalQuantity(total);
+        salesOrderRepository.save(salesOrder);
+
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemReservedQuantity(Long itemId, Integer quantity) {
+        log.info("Updating reserved quantity: {} to {}", itemId, quantity);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        if (quantity < 0) {
+            throw new BusinessException("Reserved quantity cannot be negative");
+        }
+        if (quantity > item.getOrderedQuantity()) {
+            throw new BusinessException("Reserved quantity cannot exceed ordered quantity: " + item.getOrderedQuantity());
+        }
+
+        item.setReservedQuantity(quantity);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemPickedQuantity(Long itemId, Integer quantity) {
+        log.info("Updating picked quantity: {} to {}", itemId, quantity);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        if (quantity < 0) {
+            throw new BusinessException("Picked quantity cannot be negative");
+        }
+        if (quantity > item.getOrderedQuantity()) {
+            throw new BusinessException("Picked quantity cannot exceed ordered quantity: " + item.getOrderedQuantity());
+        }
+
+        item.setPickedQuantity(quantity);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemShippedQuantity(Long itemId, Integer quantity) {
+        log.info("Updating shipped quantity: {} to {}", itemId, quantity);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        if (quantity < 0) {
+            throw new BusinessException("Shipped quantity cannot be negative");
+        }
+        if (quantity > item.getOrderedQuantity()) {
+            throw new BusinessException("Shipped quantity cannot exceed ordered quantity: " + item.getOrderedQuantity());
+        }
+
+        item.setShippedQuantity(quantity);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemLocation(Long itemId, String sourceLocation) {
+        log.info("Updating location: {} to {}", itemId, sourceLocation);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        item.setSourceLocation(sourceLocation);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemBatch(Long itemId, String batchNumber) {
+        log.info("Updating batch: {} to {}", itemId, batchNumber);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        item.setBatchNumber(batchNumber);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemName(Long itemId, String itemName) {
+        log.info("Updating item name: {} to {}", itemId, itemName);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        item.setItemName(itemName);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemUom(Long itemId, String uom) {
+        log.info("Updating UOM: {} to {}", itemId, uom);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        item.setUom(uom);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public SalesOrderItemResponse updateSalesOrderItemCode(Long itemId, String itemCode) {
+        log.info("Updating item code: {} to {}", itemId, itemCode);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        item.setItemCode(itemCode);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        SalesOrderItem updated = salesOrderItemRepository.save(item);
+        return buildSalesOrderItemResponse(updated);
+    }
+
+    @Override
+    public void deleteSalesOrderItem(Long itemId) {
+        log.info("Deleting Sales Order Item: {}", itemId);
+
+        SalesOrderItem item = salesOrderItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order Item not found: " + itemId));
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(item.getSoNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + item.getSoNumber()));
+
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
+            !salesOrder.getStatus().equals("PROCESSING")) {
+            throw new BusinessException("Cannot delete item in order status: " + salesOrder.getStatus());
+        }
+
+        List<StockReservation> reservations = stockReservationRepository.findBySalesOrderItemId(itemId);
+        for (StockReservation reservation : reservations) {
+            releaseReservation(reservation.getReservationNumber());
+        }
+
+        salesOrderItemRepository.delete(item);
+
+        List<SalesOrderItem> remainingItems = salesOrderItemRepository.findBySoNumber(item.getSoNumber());
+        int total = remainingItems.stream().mapToInt(SalesOrderItem::getOrderedQuantity).sum();
+        salesOrder.setTotalQuantity(total);
+        salesOrderRepository.save(salesOrder);
+
+        log.info("Sales Order Item deleted successfully: {}", itemId);
+    }
+
+    @Override
+    public void deleteSalesOrderItemsBySoNumber(String soNumber) {
+        log.info("Deleting all Sales Order Items for SO: {}", soNumber);
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
+            !salesOrder.getStatus().equals("PROCESSING")) {
+            throw new BusinessException("Cannot delete items in order status: " + salesOrder.getStatus());
+        }
+
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        for (SalesOrderItem item : items) {
+            List<StockReservation> reservations = stockReservationRepository.findBySalesOrderItemId(item.getId());
+            for (StockReservation reservation : reservations) {
+                releaseReservation(reservation.getReservationNumber());
+            }
+        }
+
+        salesOrderItemRepository.deleteBySoNumber(soNumber);
+        salesOrder.setTotalQuantity(0);
+        salesOrderRepository.save(salesOrder);
+
+        log.info("All Sales Order Items deleted successfully for SO: {}", soNumber);
+    }
+
+    // ============================================================
+    // =================== STOCK RESERVATION =======================
+    // ============================================================
+
+    @Override
+    public StockReservation reserveStock(String soNumber) {
+        log.info("Reserving stock for SO: {}", soNumber);
+
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+
+        if (items.isEmpty()) {
+            throw new BusinessException("No items found for Sales Order: " + soNumber);
+        }
+
+        for (SalesOrderItem item : items) {
+            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
+
+            if (stocks.isEmpty()) {
+                throw new BusinessException("No stock found for item: " + item.getItemCode());
+            }
+
+            int totalAvailable = stocks.stream()
+                    .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+                    .sum();
+
+            if (totalAvailable < item.getOrderedQuantity()) {
+                throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
+                        ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
+            }
+
+            int remainingToReserve = item.getOrderedQuantity();
+            for (InventoryStock stock : stocks) {
+                if (remainingToReserve <= 0) break;
+
+                if (stock.getReservedQuantity() == null) {
+                    stock.setReservedQuantity(0);
+                }
+                if (stock.getAvailableQuantity() == null) {
+                    stock.setAvailableQuantity(0);
+                }
+
+                int available = stock.getAvailableQuantity();
+                int physical = stock.getQuantity() != null ? stock.getQuantity() : 0;
+                int toReserve = Math.min(available, remainingToReserve);
+
+                if (toReserve > 0) {
+                    stock.reserveQuantity(toReserve);
+                    inventoryStockRepository.save(stock);
+
+                    String reservationNumber = generateReservationNumber();
+                    StockReservation reservation = StockReservation.builder()
+                            .reservationNumber(reservationNumber)
+                            .soNumber(soNumber)
+                            .itemCode(item.getItemCode())
+                            .itemName(item.getItemName())
+                            .uom(item.getUom())
+                            .requiredQuantity(item.getOrderedQuantity())
+                            .availableQuantity(available - toReserve)
+                            .pysicalQuantity(physical)
+                            .reservedQuantity(toReserve)
+                            .warehouseId(stock.getWarehouseId())
+                            .zoneId(stock.getZone())
+                            .aisleId(stock.getAisle())
+                            .rackId(stock.getRack())
+                            .levelId(stock.getLevel())
+                            .binId(stock.getBinId())
+                            .batchNumber(stock.getBatchNumber())
+                            .salesOrderItemId(item.getId())
+                            .status("RESERVED")
+                            .reservationDate(LocalDateTime.now())
+                            .createdBy("SYSTEM")
+                            .build();
+                    stockReservationRepository.save(reservation);
+
+                    remainingToReserve -= toReserve;
+                }
+            }
+
+            salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
+        }
+
+        salesOrder.setStatus("PROCESSING");
+        salesOrder.setUpdatedBy("SYSTEM");
+        salesOrderRepository.save(salesOrder);
+
+        log.info("Stock reserved successfully for SO: {}", soNumber);
+        return null;
+    }
 
     @Override
     public StockReservationResponse getReservationByNumber(String reservationNumber) {
         StockReservation reservation = stockReservationRepository.findByReservationNumber(reservationNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found: " + reservationNumber));
-        return buildReservationResponse(reservation);
+        return buildStockReservationResponse(reservation);
+    }
+
+    @Override
+    public List<StockReservationResponse> getReservationsBySoNumber(String soNumber) {
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        return reservations.stream()
+                .map(this::buildStockReservationResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -453,7 +717,6 @@ public StockReservation reserveStock(String soNumber) {
             return;
         }
 
-        // Release stock
         List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(reservation.getItemCode());
         int toRelease = reservation.getReservedQuantity();
 
@@ -470,26 +733,34 @@ public StockReservation reserveStock(String soNumber) {
 
         reservation.setStatus("RELEASED");
         stockReservationRepository.save(reservation);
+        log.info("Reservation released: {}", reservationNumber);
     }
 
-    // ====== PICK LIST ======
+    @Override
+    public void releaseAllReservations(String soNumber) {
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        for (StockReservation reservation : reservations) {
+            releaseReservation(reservation.getReservationNumber());
+        }
+        log.info("All reservations released for SO: {}", soNumber);
+    }
+
+    // ============================================================
+    // ===================== PICK LIST =============================
+    // ============================================================
 
     @Override
     public PickListResponse createPickList(PickListRequest request) {
         log.info("Creating Pick List for SO: {}", request.getSoNumber());
 
-        // Verify SO exists
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(request.getSoNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + request.getSoNumber()));
 
-        // Generate pick list number
         String pickListNumber = generatePickListNumber();
 
-        // Calculate totals
         int totalItems = request.getItems().size();
         int totalQuantity = request.getItems().stream().mapToInt(PickListItemRequest::getRequiredQuantity).sum();
 
-        // Create Pick List
         PickList pickList = PickList.builder()
                 .pickListNumber(pickListNumber)
                 .soNumber(request.getSoNumber())
@@ -504,7 +775,6 @@ public StockReservation reserveStock(String soNumber) {
 
         PickList savedPickList = pickListRepository.save(pickList);
 
-        // Create Pick List Items
         List<PickListItem> items = new ArrayList<>();
         for (PickListItemRequest itemReq : request.getItems()) {
             PickListItem item = PickListItem.builder()
@@ -525,7 +795,6 @@ public StockReservation reserveStock(String soNumber) {
             items.add(pickListItemRepository.save(item));
         }
 
-        // Update order status
         salesOrder.setStatus("PICKING");
         salesOrder.setUpdatedBy(request.getCreatedBy());
         salesOrderRepository.save(salesOrder);
@@ -542,27 +811,17 @@ public StockReservation reserveStock(String soNumber) {
         List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickListNumber);
         return buildPickListResponse(pickList, items);
     }
+
     @Override
     public Page<PickListResponse> getAllPickListsWithFilters(
-            String pickListNumber,
-            String soNumber,
-            String warehouseId,
-            String status,
-            String priority,
-            String assignedTo,
-            String createdBy,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            LocalDateTime startCreatedDate,
-            LocalDateTime endCreatedDate,
-            LocalDateTime startCompletedDate,
-            LocalDateTime endCompletedDate,
-            Integer minTotalItems,
-            Integer maxTotalItems,
-            Integer minTotalQuantity,
-            Integer maxTotalQuantity,
-            String itemCode,
-            Pageable pageable) {
+            String pickListNumber, String soNumber, String warehouseId,
+            String status, String priority, String assignedTo, String createdBy,
+            LocalDateTime startDate, LocalDateTime endDate,
+            LocalDateTime startCreatedDate, LocalDateTime endCreatedDate,
+            LocalDateTime startCompletedDate, LocalDateTime endCompletedDate,
+            Integer minTotalItems, Integer maxTotalItems,
+            Integer minTotalQuantity, Integer maxTotalQuantity,
+            String itemCode, Pageable pageable) {
 
         log.info("Fetching pick lists with filters");
 
@@ -587,7 +846,6 @@ public StockReservation reserveStock(String soNumber) {
                         pickListItemRepository.findByPickListNumber(pl.getPickListNumber())));
     }
 
-
     @Override
     public PickListResponse updatePickListStatus(String pickListNumber, String status) {
         PickList pickList = pickListRepository.findByPickListNumber(pickListNumber)
@@ -603,75 +861,88 @@ public StockReservation reserveStock(String soNumber) {
         return buildPickListResponse(updated, pickListItemRepository.findByPickListNumber(pickListNumber));
     }
 
-    // ====== PICK TASK ======
-@Override
-public PickTaskResponse createPickTask(PickTaskRequest request) {
-    log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
+    @Override
+    public void deletePickList(String pickListNumber) {
+        log.info("Deleting Pick List: {}", pickListNumber);
 
-    // Verify Pick List exists
-    PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
-            .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
+        PickList pickList = pickListRepository.findByPickListNumber(pickListNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + pickListNumber));
 
-    // Verify Pick List Item exists
-    List<PickListItem> items = pickListItemRepository.findByPickListNumber(request.getPickListNumber());
-    PickListItem pickItem = items.stream()
-            .filter(item -> item.getItemCode().equals(request.getItemCode()))
-            .findFirst()
-            .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
-
-    String pickTaskNumber = generatePickTaskNumber();
-
-    // DON'T set inventoryId - keep it null
-    // The foreign key constraint requires a valid ID from wms_inventory table
-    Long inventoryId = null;  // Set to null to avoid foreign key violation
-
-    // Find Sales Order Line ID
-    Long salesOrderLineId = request.getSalesOrderLineId();
-    if (salesOrderLineId == null) {
-        List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
-        if (!orderItems.isEmpty()) {
-            salesOrderLineId = orderItems.get(0).getId();
+        if (!pickList.getStatus().equals("RELEASED") && !pickList.getStatus().equals("PENDING") &&
+            !pickList.getStatus().equals("CANCELLED")) {
+            throw new BusinessException("Cannot delete pick list in status: " + pickList.getStatus());
         }
+
+        pickListItemRepository.deleteByPickListNumber(pickListNumber);
+        pickListRepository.delete(pickList);
+
+        log.info("Pick List deleted successfully: {}", pickListNumber);
     }
 
-    // Create Pick Task
-    PickTask pickTask = PickTask.builder()
-            .pickTaskNumber(pickTaskNumber)
-            .pickListNumber(request.getPickListNumber())
-            .soNumber(pickList.getSoNumber())
-            .itemCode(request.getItemCode())
-            .itemName(pickItem.getItemName())
-            .uom(pickItem.getUom())
-            .requiredQuantity(request.getRequiredQuantity())
-            .quantityToPick(request.getRequiredQuantity())
-            .inventoryId(null)  // Set to null
-            .salesOrderLineId(salesOrderLineId)
-            .pickedQuantity(0)
-            .locationBarcode(request.getLocationBarcode())
-            .itemBarcode(request.getItemBarcode())
-            .binId(request.getBinId())
-            .batchNumber(request.getBatchNumber())
-            .pickerId(request.getPickerId())
-            .pickerName(request.getPickerName())
-            .status("PENDING")
-            .isScanned(false)
-            .createdBy(request.getCreatedBy())
-            .build();
+    // ============================================================
+    // ===================== PICK TASK =============================
+    // ============================================================
 
-    PickTask savedTask = pickTaskRepository.save(pickTask);
+    @Override
+    public PickTaskResponse createPickTask(PickTaskRequest request) {
+        log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
 
-    // Update Pick List status
-    pickList.setStatus("PICKING");
-    pickList.setUpdatedBy(request.getCreatedBy());
-    pickListRepository.save(pickList);
+        PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
 
-    // Update item status
-    pickItem.setStatus("PICKING");
-    pickListItemRepository.save(pickItem);
+        List<PickListItem> items = pickListItemRepository.findByPickListNumber(request.getPickListNumber());
+        PickListItem pickItem = items.stream()
+                .filter(item -> item.getItemCode().equals(request.getItemCode()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
 
-    log.info("Pick Task created successfully: {}", pickTaskNumber);
-    return buildPickTaskResponse(savedTask);
-}
+        String pickTaskNumber = generatePickTaskNumber();
+
+        Long inventoryId = null;
+
+        Long salesOrderLineId = request.getSalesOrderLineId();
+        if (salesOrderLineId == null) {
+            List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
+            if (!orderItems.isEmpty()) {
+                salesOrderLineId = orderItems.get(0).getId();
+            }
+        }
+
+        PickTask pickTask = PickTask.builder()
+                .pickTaskNumber(pickTaskNumber)
+                .pickListNumber(request.getPickListNumber())
+                .soNumber(pickList.getSoNumber())
+                .itemCode(request.getItemCode())
+                .itemName(pickItem.getItemName())
+                .uom(pickItem.getUom())
+                .requiredQuantity(request.getRequiredQuantity())
+                .quantityToPick(request.getRequiredQuantity())
+                .inventoryId(null)
+                .salesOrderLineId(salesOrderLineId)
+                .pickedQuantity(0)
+                .locationBarcode(request.getLocationBarcode())
+                .itemBarcode(request.getItemBarcode())
+                .binId(request.getBinId())
+                .batchNumber(request.getBatchNumber())
+                .pickerId(request.getPickerId())
+                .pickerName(request.getPickerName())
+                .status("PENDING")
+                .isScanned(false)
+                .createdBy(request.getCreatedBy())
+                .build();
+
+        PickTask savedTask = pickTaskRepository.save(pickTask);
+
+        pickList.setStatus("PICKING");
+        pickList.setUpdatedBy(request.getCreatedBy());
+        pickListRepository.save(pickList);
+
+        pickItem.setStatus("PICKING");
+        pickListItemRepository.save(pickItem);
+
+        log.info("Pick Task created successfully: {}", pickTaskNumber);
+        return buildPickTaskResponse(savedTask);
+    }
 
     @Override
     public PickTaskResponse getPickTaskByNumber(String pickTaskNumber) {
@@ -689,71 +960,16 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
     }
 
     @Override
-    public PickTaskResponse scanPickTask(String pickTaskNumber, String pickerId, String pickerName) {
-        PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
-
-        if (pickTask.getIsScanned()) {
-            throw new BusinessException("Pick Task already scanned");
-        }
-
-        // Update pick task
-        pickTask.setStatus("SCANNED");
-        pickTask.setIsScanned(true);
-        pickTask.setPickerId(pickerId);
-        pickTask.setPickerName(pickerName);
-        pickTask.setScanTime(LocalDateTime.now());
-        pickTask.setUpdatedBy(pickerName);
-
-        PickTask updated = pickTaskRepository.save(pickTask);
-
-        // Update Pick List status
-        PickList pickList = pickListRepository.findByPickListNumber(pickTask.getPickListNumber()).orElse(null);
-        if (pickList != null) {
-            pickList.setStatus("PICKING");
-            pickListRepository.save(pickList);
-        }
-
-        // Update Pick List Item status
-        List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
-        items.stream()
-                .filter(item -> item.getItemCode().equals(pickTask.getItemCode()))
-                .findFirst()
-                .ifPresent(item -> {
-                    item.setStatus("PICKING");
-                    pickListItemRepository.save(item);
-                });
-
-        log.info("Pick Task scanned successfully: {}", pickTaskNumber);
-        return buildPickTaskResponse(updated);
-    }
-    
-    
-    
-    @Override
     public Page<PickTaskResponse> getAllPickTasksWithFilters(
-            String pickTaskNumber,
-            String pickListNumber,
-            String soNumber,
-            String itemCode,
-            String itemName,
-            String status,
-            String pickerId,
-            String pickerName,
-            String binId,
-            String locationBarcode,
-            String batchNumber,
-            Boolean isScanned,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            LocalDateTime startScanDate,
-            LocalDateTime endScanDate,
-            Integer minRequiredQuantity,
-            Integer maxRequiredQuantity,
-            Integer minPickedQuantity,
-            Integer maxPickedQuantity,
-            String createdBy,
-            Pageable pageable) {
+            String pickTaskNumber, String pickListNumber, String soNumber,
+            String itemCode, String itemName, String status,
+            String pickerId, String pickerName, String binId,
+            String locationBarcode, String batchNumber, Boolean isScanned,
+            LocalDateTime startDate, LocalDateTime endDate,
+            LocalDateTime startScanDate, LocalDateTime endScanDate,
+            Integer minRequiredQuantity, Integer maxRequiredQuantity,
+            Integer minPickedQuantity, Integer maxPickedQuantity,
+            String createdBy, Pageable pageable) {
 
         log.info("Fetching pick tasks with filters");
 
@@ -775,20 +991,78 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         return pickTaskRepository.searchPickTasks(search, pageable)
                 .map(this::buildPickTaskResponse);
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
-    // ====== PICK CONFIRMATION ======
+    @Override
+    public PickTaskResponse scanPickTask(String pickTaskNumber, String pickerId, String pickerName) {
+        PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+
+        if (pickTask.getIsScanned()) {
+            throw new BusinessException("Pick Task already scanned");
+        }
+
+        pickTask.setStatus("SCANNED");
+        pickTask.setIsScanned(true);
+        pickTask.setPickerId(pickerId);
+        pickTask.setPickerName(pickerName);
+        pickTask.setScanTime(LocalDateTime.now());
+        pickTask.setUpdatedBy(pickerName);
+
+        PickTask updated = pickTaskRepository.save(pickTask);
+
+        PickList pickList = pickListRepository.findByPickListNumber(pickTask.getPickListNumber()).orElse(null);
+        if (pickList != null) {
+            pickList.setStatus("PICKING");
+            pickListRepository.save(pickList);
+        }
+
+        List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
+        items.stream()
+                .filter(item -> item.getItemCode().equals(pickTask.getItemCode()))
+                .findFirst()
+                .ifPresent(item -> {
+                    item.setStatus("PICKING");
+                    pickListItemRepository.save(item);
+                });
+
+        log.info("Pick Task scanned successfully: {}", pickTaskNumber);
+        return buildPickTaskResponse(updated);
+    }
+
+    @Override
+    public PickTaskResponse updatePickTaskStatus(String pickTaskNumber, String status) {
+        PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+
+        if (pickTask.getStatus().equals("CONFIRMED") || pickTask.getStatus().equals("CANCELLED")) {
+            throw new BusinessException("Cannot update status of confirmed or cancelled pick task");
+        }
+
+        pickTask.setStatus(status);
+        pickTask.setUpdatedBy("SYSTEM");
+        pickTask.setUpdatedAt(LocalDateTime.now());
+
+        PickTask updated = pickTaskRepository.save(pickTask);
+        log.info("Pick Task status updated successfully: {}", pickTaskNumber);
+        return buildPickTaskResponse(updated);
+    }
+
+    @Override
+    public void deletePickTask(String pickTaskNumber) {
+        PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+
+        if (pickTask.getStatus().equals("CONFIRMED") || pickTask.getStatus().equals("SCANNED")) {
+            throw new BusinessException("Cannot delete pick task in status: " + pickTask.getStatus());
+        }
+
+        pickTaskRepository.delete(pickTask);
+        log.info("Pick Task deleted successfully: {}", pickTaskNumber);
+    }
+
+    // ============================================================
+    // ================== PICK CONFIRMATION ========================
+    // ============================================================
 
     @Override
     public PickConfirmationResponse confirmPick(PickConfirmationRequest request) {
@@ -805,13 +1079,11 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
             throw new BusinessException("Picked quantity cannot exceed required quantity");
         }
 
-        // Update pick task
         pickTask.setPickedQuantity(request.getPickedQuantity());
         pickTask.setStatus("CONFIRMED");
         pickTask.setScanTime(LocalDateTime.now());
         pickTaskRepository.save(pickTask);
 
-        // Create confirmation record
         String confirmationNumber = generateConfirmationNumber();
         PickConfirmation confirmation = PickConfirmation.builder()
                 .confirmationNumber(confirmationNumber)
@@ -832,7 +1104,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         PickConfirmation savedConfirmation = pickConfirmationRepository.save(confirmation);
 
-        // Update Pick List Item
         List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
         items.stream()
                 .filter(item -> item.getItemCode().equals(pickTask.getItemCode()))
@@ -844,7 +1115,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                     pickListItemRepository.save(item);
                 });
 
-        // Update Inventory Stock
         List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(pickTask.getItemCode());
         int remainingToPick = request.getPickedQuantity();
         for (InventoryStock stock : stocks) {
@@ -858,7 +1128,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
             }
         }
 
-        // Check if all items are picked
         List<PickListItem> allItems = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
         boolean allCompleted = allItems.stream().allMatch(item -> "COMPLETED".equals(item.getStatus()));
 
@@ -871,7 +1140,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 pickListRepository.save(pickList);
             }
 
-            // Update Sales Order status
             SalesOrder salesOrder = salesOrderRepository.findBySoNumber(pickTask.getSoNumber()).orElse(null);
             if (salesOrder != null) {
                 salesOrder.setStatus("PACKING");
@@ -890,27 +1158,25 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         return buildConfirmationResponse(confirmation);
     }
 
-    // ====== PACKAGE ======
+    // ============================================================
+    // ===================== PACKAGE ===============================
+    // ============================================================
 
     @Override
     public PackageResponse createPackage(PackageRequest request) {
         log.info("Creating Package for SO: {}", request.getSoNumber());
 
-        // Verify Pick List
         PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
 
-        // Generate package details
         String packageNumber = generatePackageNumber();
         String packageBarcode = generatePackageBarcode();
 
-        // Calculate volume if dimensions provided
         Double volume = null;
         if (request.getLength() != null && request.getWidth() != null && request.getHeight() != null) {
             volume = request.getLength() * request.getWidth() * request.getHeight();
         }
 
-        // Create Package
         PackageInfo packageInfo = PackageInfo.builder()
                 .packageNumber(packageNumber)
                 .packageBarcode(packageBarcode)
@@ -934,7 +1200,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         PackageInfo savedPackage = packageInfoRepository.save(packageInfo);
 
-        // Update Sales Order status
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(request.getSoNumber()).orElse(null);
         if (salesOrder != null) {
             salesOrder.setStatus("PACKING");
@@ -965,9 +1230,25 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .orElseThrow(() -> new ResourceNotFoundException("Package not found: " + packageNumber));
         packageInfo.setStatus(status);
         packageInfoRepository.save(packageInfo);
+        log.info("Package status updated: {} -> {}", packageNumber, status);
     }
 
-    // ====== SHIPPING LABEL ======
+    @Override
+    public void deletePackage(String packageNumber) {
+        PackageInfo packageInfo = packageInfoRepository.findByPackageNumber(packageNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Package not found: " + packageNumber));
+
+        if (!packageInfo.getStatus().equals("PACKED") && !packageInfo.getStatus().equals("LABELED")) {
+            throw new BusinessException("Cannot delete package in status: " + packageInfo.getStatus());
+        }
+
+        packageInfoRepository.delete(packageInfo);
+        log.info("Package deleted successfully: {}", packageNumber);
+    }
+
+    // ============================================================
+    // ================== SHIPPING LABEL ===========================
+    // ============================================================
 
     @Override
     public ShippingLabelResponse generateShippingLabel(String packageNumber) {
@@ -1002,7 +1283,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         ShippingLabel savedLabel = shippingLabelRepository.save(label);
 
-        // Update Package status
         packageInfo.setStatus("LABELED");
         packageInfoRepository.save(packageInfo);
 
@@ -1023,15 +1303,17 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
         label.setLabelStatus(status);
         shippingLabelRepository.save(label);
+        log.info("Shipping Label status updated: {} -> {}", labelNumber, status);
     }
 
-    // ====== DISPATCH ======
+    // ============================================================
+    // ===================== DISPATCH ==============================
+    // ============================================================
 
     @Override
     public DispatchResponse createDispatch(DispatchRequest request) {
         log.info("Creating Dispatch for SO: {}", request.getSoNumber());
 
-        // Verify SO and Package
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(request.getSoNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + request.getSoNumber()));
 
@@ -1061,11 +1343,9 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         Dispatch savedDispatch = dispatchRepository.save(dispatch);
 
-        // Update Package status
         packageInfo.setStatus("DISPATCHED");
         packageInfoRepository.save(packageInfo);
 
-        // Update Sales Order status
         salesOrder.setStatus("DISPATCHED");
         salesOrderRepository.save(salesOrder);
 
@@ -1088,9 +1368,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         dispatch.setStatus(status);
         Dispatch updated = dispatchRepository.save(dispatch);
 
-        // If status is IN_TRANSIT, create Shipment Confirmation
         if ("IN_TRANSIT".equals(status)) {
-            // Auto create shipment confirmation
             String shipmentNumber = generateShipmentNumber();
             ShipmentConfirmation shipment = ShipmentConfirmation.builder()
                     .shipmentNumber(shipmentNumber)
@@ -1106,15 +1384,30 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                     .build();
             shipmentConfirmationRepository.save(shipment);
 
-            // Update dispatch with shipment number
             dispatch.setShipmentNumber(shipmentNumber);
             dispatchRepository.save(dispatch);
         }
 
+        log.info("Dispatch status updated: {} -> {}", dispatchNumber, status);
         return buildDispatchResponse(updated);
     }
 
-    // ====== SHIPMENT CONFIRMATION ======
+    @Override
+    public void deleteDispatch(String dispatchNumber) {
+        Dispatch dispatch = dispatchRepository.findByDispatchNumber(dispatchNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Dispatch not found: " + dispatchNumber));
+
+        if (!dispatch.getStatus().equals("DISPATCHED")) {
+            throw new BusinessException("Cannot delete dispatch in status: " + dispatch.getStatus());
+        }
+
+        dispatchRepository.delete(dispatch);
+        log.info("Dispatch deleted successfully: {}", dispatchNumber);
+    }
+
+    // ============================================================
+    // ================ SHIPMENT CONFIRMATION ======================
+    // ============================================================
 
     @Override
     public ShipmentConfirmationResponse confirmShipment(ShipmentConfirmationRequest request) {
@@ -1144,12 +1437,10 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         ShipmentConfirmation saved = shipmentConfirmationRepository.save(shipment);
 
-        // Update dispatch
         dispatch.setShipmentNumber(shipmentNumber);
         dispatch.setStatus("IN_TRANSIT");
         dispatchRepository.save(dispatch);
 
-        // Update Shipping Label with tracking number
         List<ShippingLabel> labels = shippingLabelRepository.findByPackageNumber(dispatch.getPackageNumber());
         for (ShippingLabel label : labels) {
             label.setTrackingNumber(request.getTrackingNumber());
@@ -1178,7 +1469,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
             shipment.setStatus(status);
             shipmentConfirmationRepository.save(shipment);
 
-            // Auto create Delivery record
             DeliveryRequest deliveryRequest = DeliveryRequest.builder()
                     .shipmentNumber(shipmentNumber)
                     .soNumber(shipment.getSoNumber())
@@ -1189,7 +1479,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                     .build();
             confirmDelivery(deliveryRequest);
 
-            // Update Sales Order status
             SalesOrder salesOrder = salesOrderRepository.findBySoNumber(shipment.getSoNumber()).orElse(null);
             if (salesOrder != null) {
                 salesOrder.setStatus("DELIVERED");
@@ -1200,10 +1489,26 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
             shipmentConfirmationRepository.save(shipment);
         }
 
+        log.info("Shipment status updated: {} -> {}", shipmentNumber, status);
         return buildShipmentConfirmationResponse(shipment);
     }
 
-    // ====== DELIVERY ======
+    @Override
+    public void deleteShipment(String shipmentNumber) {
+        ShipmentConfirmation shipment = shipmentConfirmationRepository.findByShipmentNumber(shipmentNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipment not found: " + shipmentNumber));
+
+        if (!shipment.getStatus().equals("IN_TRANSIT")) {
+            throw new BusinessException("Cannot delete shipment in status: " + shipment.getStatus());
+        }
+
+        shipmentConfirmationRepository.delete(shipment);
+        log.info("Shipment deleted successfully: {}", shipmentNumber);
+    }
+
+    // ============================================================
+    // ===================== DELIVERY ==============================
+    // ============================================================
 
     @Override
     public DeliveryResponse confirmDelivery(DeliveryRequest request) {
@@ -1212,7 +1517,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         ShipmentConfirmation shipment = shipmentConfirmationRepository.findByShipmentNumber(request.getShipmentNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Shipment not found: " + request.getShipmentNumber()));
 
-        // Verify SO
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(request.getSoNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + request.getSoNumber()));
 
@@ -1238,26 +1542,22 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         Delivery saved = deliveryRepository.save(delivery);
 
-        // Update Shipment status
         shipment.setStatus("DELIVERED");
         shipment.setActualDeliveryDate(LocalDateTime.now());
         shipmentConfirmationRepository.save(shipment);
 
-        // Update Dispatch status
         Dispatch dispatch = dispatchRepository.findByShipmentNumber(request.getShipmentNumber()).orElse(null);
         if (dispatch != null) {
             dispatch.setStatus("DELIVERED");
             dispatchRepository.save(dispatch);
         }
 
-        // Update Package status
         PackageInfo packageInfo = packageInfoRepository.findByPackageNumber(delivery.getPackageNumber()).orElse(null);
         if (packageInfo != null) {
             packageInfo.setStatus("DELIVERED");
             packageInfoRepository.save(packageInfo);
         }
 
-        // Update Sales Order status
         salesOrder.setStatus("DELIVERED");
         salesOrderRepository.save(salesOrder);
 
@@ -1279,10 +1579,450 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         delivery.setDeliveryStatus(status);
         Delivery updated = deliveryRepository.save(delivery);
+        log.info("Delivery status updated: {} -> {}", deliveryNumber, status);
         return buildDeliveryResponse(updated);
     }
 
-    // ====== HELPER METHODS ======
+    @Override
+    public void deleteDelivery(String deliveryNumber) {
+        Delivery delivery = deliveryRepository.findByDeliveryNumber(deliveryNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Delivery not found: " + deliveryNumber));
+
+        if (!delivery.getDeliveryStatus().equals("DELIVERED")) {
+            throw new BusinessException("Cannot delete delivery in status: " + delivery.getDeliveryStatus());
+        }
+
+        deliveryRepository.delete(delivery);
+        log.info("Delivery deleted successfully: {}", deliveryNumber);
+    }
+
+    // ============================================================
+    // =================== HELPER METHODS ==========================
+    // ============================================================
+
+    // -------- Status Validation --------
+
+
+
+    private void validateStatusTransition(String soNumber, String currentStatus, String newStatus) {
+        if (currentStatus.equals(newStatus)) {
+            return;
+        }
+
+        Map<String, List<String>> validTransitions = new HashMap<>();
+        validTransitions.put("DRAFT", List.of("PENDING", "CONFIRMED", "CANCELLED"));
+        validTransitions.put("PENDING", List.of("APPROVED", "CONFIRMED", "CANCELLED"));
+        validTransitions.put("APPROVED", List.of("PROCESSING", "CANCELLED"));
+        validTransitions.put("CONFIRMED", List.of("PROCESSING", "CANCELLED"));
+        validTransitions.put("PROCESSING", List.of("PICKING", "CANCELLED"));
+        validTransitions.put("PICKING", List.of("PACKING", "CANCELLED"));
+        validTransitions.put("PACKING", List.of("DISPATCHED", "CANCELLED"));
+        validTransitions.put("DISPATCHED", List.of("IN_TRANSIT", "DELIVERED", "CANCELLED"));
+        validTransitions.put("IN_TRANSIT", List.of("DELIVERED", "CANCELLED"));
+        validTransitions.put("DELIVERED", new ArrayList<>());
+        validTransitions.put("CANCELLED", new ArrayList<>());
+
+        List<String> allowed = validTransitions.get(currentStatus);
+        if (allowed == null) {
+            throw new BusinessException("Invalid current status: " + currentStatus);
+        }
+
+        if (!allowed.contains(newStatus) && !allowed.isEmpty()) {
+            throw new BusinessException("Cannot transition from " + currentStatus + " to " + newStatus +
+                    ". Allowed transitions: " + allowed);
+        }
+
+        // Pass SO number for specific validation rules
+        validateStatusSpecificRules(soNumber, currentStatus, newStatus);
+    }
+
+private void validateStatusSpecificRules(String soNumber, String currentStatus, String newStatus) {
+    
+    // ====== PENDING VALIDATION ======
+    if ("PENDING".equals(newStatus)) {
+        log.info("Validating PENDING status for SO: {}", soNumber);
+        
+        // First check: Find items by SO number
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        log.info("Items found by SO number: {}", items.size());
+        
+        if (items.isEmpty()) {
+            // Second check: Check if order has total quantity > 0
+            SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber).orElse(null);
+            log.info("SalesOrder found: {}, Total Quantity: {}", 
+                     salesOrder != null ? "Yes" : "No", 
+                     salesOrder != null ? salesOrder.getTotalQuantity() : "null");
+            
+            if (salesOrder != null && salesOrder.getTotalQuantity() != null && salesOrder.getTotalQuantity() > 0) {
+                log.info("Order {} has total quantity {} but no items. Allowing PENDING status.", 
+                         soNumber, salesOrder.getTotalQuantity());
+                return; // Allow - items might not be saved yet
+            }
+            
+            log.error("Order {} has no items and totalQuantity is null or 0. Throwing exception.", soNumber);
+            throw new BusinessException("Cannot move to PENDING. Order has no items.");
+        }
+        
+        log.info("Order {} has {} items. Proceeding with PENDING status.", soNumber, items.size());
+        
+        // Check if any item is already processed
+        boolean hasProcessed = items.stream().anyMatch(item -> 
+                item.getOrderedQuantity() == 0 || 
+                (item.getReservedQuantity() != null && item.getReservedQuantity() > 0));
+        if (hasProcessed) {
+            throw new BusinessException("Cannot move to PENDING. Some items are already processed.");
+        }
+    }
+
+ // ====== APPROVED VALIDATION AND RESERVATION ======
+    if ("APPROVED".equals(newStatus)) {
+        log.info("Validating APPROVED status for SO: {}", soNumber);
+        
+        // Check if pending reservations exist
+        List<StockReservation> pendingReservations = stockReservationRepository.findBySoNumber(soNumber)
+                .stream()
+                .filter(r -> "PENDING".equals(r.getStatus()))
+                .collect(Collectors.toList());
+
+        if (!pendingReservations.isEmpty()) {
+            // Check if stock is available for pending reservations
+            for (StockReservation reservation : pendingReservations) {
+                List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(reservation.getItemCode());
+                int totalAvailable = stocks.stream()
+                        .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+                        .sum();
+
+                if (totalAvailable < reservation.getRequiredQuantity()) {
+                    throw new BusinessException("Cannot approve. Insufficient stock for item: " +
+                            reservation.getItemCode() + ". Available: " + totalAvailable +
+                            ", Required: " + reservation.getRequiredQuantity());
+                }
+            }
+            
+            // Convert pending reservations to actual reservations
+            log.info("Converting pending reservations to actual for SO: {}", soNumber);
+            convertPendingToActual(soNumber);
+            
+        } else {
+            // No pending reservations - create new ones directly
+            log.info("No pending reservations found for SO: {}. Creating new reservations.", soNumber);
+            
+            // Get Sales Order items
+            List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+            
+            if (items.isEmpty()) {
+                throw new BusinessException("Cannot approve. Order has no items.");
+            }
+            
+            // Create reservations for each item
+            for (SalesOrderItem item : items) {
+                // Check stock availability
+                List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
+                int totalAvailable = stocks.stream()
+                        .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+                        .sum();
+                
+                if (totalAvailable < item.getOrderedQuantity()) {
+                    throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
+                            ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
+                }
+                
+                // Reserve from available stocks (FIFO)
+                int remainingToReserve = item.getOrderedQuantity();
+                for (InventoryStock stock : stocks) {
+                    if (remainingToReserve <= 0) break;
+                    
+                    if (stock.getReservedQuantity() == null) {
+                        stock.setReservedQuantity(0);
+                    }
+                    if (stock.getAvailableQuantity() == null) {
+                        stock.setAvailableQuantity(0);
+                    }
+                    
+                    int available = stock.getAvailableQuantity();
+                    int toReserve = Math.min(available, remainingToReserve);
+                    
+                    if (toReserve > 0) {
+                        // Reserve stock
+                        stock.reserveQuantity(toReserve);
+                        inventoryStockRepository.save(stock);
+                        
+                        // Create reservation record
+                        String reservationNumber = generateReservationNumber();
+                        StockReservation reservation = StockReservation.builder()
+                                .reservationNumber(reservationNumber)
+                                .soNumber(soNumber)
+                                .itemCode(item.getItemCode())
+                                .itemName(item.getItemName())
+                                .uom(item.getUom())
+                                .requiredQuantity(item.getOrderedQuantity())
+                                .availableQuantity(available - toReserve)
+                                .pysicalQuantity(stock.getQuantity() != null ? stock.getQuantity() : 0)
+                                .reservedQuantity(toReserve)
+                                .warehouseId(stock.getWarehouseId())
+                                .zoneId(stock.getZone())
+                                .aisleId(stock.getAisle())
+                                .rackId(stock.getRack())
+                                .levelId(stock.getLevel())
+                                .binId(stock.getBinId())
+                                .batchNumber(stock.getBatchNumber())
+                                .salesOrderItemId(item.getId())
+                                .status("RESERVED")
+                                .reservationDate(LocalDateTime.now())
+                                .createdBy("SYSTEM")
+                                .build();
+                        stockReservationRepository.save(reservation);
+                        
+                        remainingToReserve -= toReserve;
+                    }
+                }
+                
+                // Update SalesOrderItem reserved quantity
+                salesOrderItemRepository.updateReservedQuantity(item.getId(), item.getOrderedQuantity());
+            }
+        }
+    }
+
+    // ====== PROCESSING VALIDATION ======
+    if ("PROCESSING".equals(newStatus)) {
+        log.info("Validating PROCESSING status for SO: {}", soNumber);
+        
+        if (!"APPROVED".equals(currentStatus) && !"CONFIRMED".equals(currentStatus)) {
+            throw new BusinessException("Cannot move to PROCESSING. Order must be APPROVED or CONFIRMED first.");
+        }
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        if (reservations.isEmpty()) {
+            throw new BusinessException("Cannot move to PROCESSING. No stock reservations found.");
+        }
+    }
+
+    // ====== PICKING VALIDATION ======
+    if ("PICKING".equals(newStatus)) {
+        log.info("Validating PICKING status for SO: {}", soNumber);
+        
+        // Check if stock is reserved
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        boolean hasReserved = reservations.stream().anyMatch(r -> 
+                "RESERVED".equals(r.getStatus()) || "APPROVED".equals(r.getStatus()));
+        
+        if (!hasReserved) {
+            throw new BusinessException("Cannot move to PICKING. Stock not reserved. Please approve first.");
+        }
+        
+        // Check if all items have reservations
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        for (SalesOrderItem item : items) {
+            boolean itemReserved = reservations.stream()
+                    .anyMatch(r -> r.getItemCode().equals(item.getItemCode()) && 
+                                  ("RESERVED".equals(r.getStatus()) || "APPROVED".equals(r.getStatus())));
+            if (!itemReserved) {
+                throw new BusinessException("Cannot move to PICKING. Item " + item.getItemCode() + " is not reserved.");
+            }
+        }
+    }
+
+    // ====== PACKING VALIDATION ======
+    if ("PACKING".equals(newStatus)) {
+        log.info("Validating PACKING status for SO: {}", soNumber);
+        
+        // Ensure all items are picked
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        boolean allPicked = items.stream().allMatch(item -> 
+                item.getPickedQuantity() != null && 
+                item.getPickedQuantity().equals(item.getOrderedQuantity()));
+        if (!allPicked) {
+            throw new BusinessException("Cannot move to PACKING. Not all items are picked.");
+        }
+    }
+
+    // ====== DELIVERED VALIDATION ======
+    if ("DELIVERED".equals(newStatus)) {
+        log.info("Validating DELIVERED status for SO: {}", soNumber);
+        
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        if (items.isEmpty()) {
+            throw new BusinessException("Cannot deliver order. No items found.");
+        }
+        boolean allShipped = items.stream().allMatch(item ->
+                item.getShippedQuantity() != null &&
+                item.getShippedQuantity().equals(item.getOrderedQuantity()));
+        if (!allShipped) {
+            throw new BusinessException("Cannot deliver order. Not all items are shipped.");
+        }
+    }
+
+    // ====== CANCELLED VALIDATION ======
+    if ("CANCELLED".equals(newStatus)) {
+        log.info("Validating CANCELLED status for SO: {}", soNumber);
+        
+        if ("DELIVERED".equals(currentStatus)) {
+            throw new BusinessException("Cannot cancel a delivered order");
+        }
+        
+        // Check if any item is already shipped
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+        boolean anyShipped = items.stream().anyMatch(item ->
+                item.getShippedQuantity() != null && item.getShippedQuantity() > 0);
+        if (anyShipped && !"DISPATCHED".equals(currentStatus)) {
+            throw new BusinessException("Cannot cancel order. Some items are already shipped.");
+        }
+    }
+
+    // ====== IN_TRANSIT VALIDATION ======
+    if ("IN_TRANSIT".equals(newStatus)) {
+        log.info("Validating IN_TRANSIT status for SO: {}", soNumber);
+        
+        if (!"DISPATCHED".equals(currentStatus)) {
+            throw new BusinessException("Cannot move to IN_TRANSIT. Order must be DISPATCHED first.");
+        }
+        
+        List<Dispatch> dispatches = dispatchRepository.findBySoNumber(soNumber);
+        if (dispatches.isEmpty()) {
+            throw new BusinessException("Cannot move to IN_TRANSIT. No dispatch record found.");
+        }
+    }
+}
+
+
+    // -------- Status Actions --------
+
+    private void handleStatusActions(String soNumber, String status) {
+        try {
+            switch (status) {
+                case "PENDING":
+                    createTemporaryReservations(soNumber);
+                    break;
+                case "APPROVED":
+                    convertPendingToActual(soNumber);
+                    break;
+                case "PROCESSING":
+                    ensureStockReserved(soNumber);
+                    break;
+                case "CANCELLED":
+                    releaseAllReservations(soNumber);
+                    break;
+                default:
+                    log.info("No specific action for status: {}", status);
+            }
+        } catch (Exception e) {
+            log.error("Error handling status action for SO: {}", soNumber, e);
+        }
+    }
+
+    private void createTemporaryReservations(String soNumber) {
+        log.info("Creating temporary reservations for SO: {}", soNumber);
+
+        // Get Sales Order
+        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
+
+        // Get Sales Order Items
+        List<SalesOrderItem> items = salesOrderItemRepository.findBySoNumber(soNumber);
+
+        if (items.isEmpty()) {
+            log.warn("No items found for SO: {}", soNumber);
+            throw new BusinessException("Cannot create temporary reservations. Order has no items.");
+        }
+
+        // Check if temporary reservations already exist
+        List<StockReservation> existingReservations = stockReservationRepository.findBySoNumber(soNumber);
+        if (!existingReservations.isEmpty()) {
+            log.info("Temporary reservations already exist for SO: {}. Skipping creation.", soNumber);
+            return;
+        }
+
+        for (SalesOrderItem item : items) {
+            // Get inventory stock for this item
+            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(item.getItemCode());
+            
+            if (stocks.isEmpty()) {
+                log.warn("No stock found for item: {} in SO: {}", item.getItemCode(), soNumber);
+                continue;
+            }
+
+            // Calculate total available quantity
+            int totalAvailable = stocks.stream()
+                    .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
+                    .sum();
+
+            if (totalAvailable < item.getOrderedQuantity()) {
+                log.warn("Insufficient stock for item: {}. Available: {}, Required: {}", 
+                         item.getItemCode(), totalAvailable, item.getOrderedQuantity());
+                // Continue to create temporary reservation anyway
+            }
+
+            // Find best location for reservation (prefer FIFO)
+            InventoryStock bestStock = findBestStockForReservation(stocks);
+            
+            // Create temporary reservation (no inventory update)
+            String reservationNumber = generateReservationNumber();
+            
+            // Create temporary reservation with PENDING status
+            StockReservation reservation = StockReservation.builder()
+                    .reservationNumber(reservationNumber)
+                    .soNumber(soNumber)
+                    .itemCode(item.getItemCode())
+                    .itemName(item.getItemName())
+                    .uom(item.getUom())
+                    .requiredQuantity(item.getOrderedQuantity())
+                    .availableQuantity(totalAvailable)
+                    .pysicalQuantity(stocks.stream().mapToInt(s -> s.getQuantity() != null ? s.getQuantity() : 0).sum())
+                    .reservedQuantity(0)  // No actual reservation yet
+                    .warehouseId(bestStock != null ? bestStock.getWarehouseId() : null)
+                    .zoneId(bestStock != null ? bestStock.getZone() : null)
+                    .aisleId(bestStock != null ? bestStock.getAisle() : null)
+                    .rackId(bestStock != null ? bestStock.getRack() : null)
+                    .levelId(bestStock != null ? bestStock.getLevel() : null)
+                    .binId(bestStock != null ? bestStock.getBinId() : null)
+                    .batchNumber(bestStock != null ? bestStock.getBatchNumber() : "")
+                    .salesOrderItemId(item.getId())
+                    .status("PENDING")  // PENDING status
+                    .reservationDate(LocalDateTime.now())
+                    .createdBy("SYSTEM")
+                    .remarks("Temporary reservation created from PENDING status")
+                    .build();
+            
+            stockReservationRepository.save(reservation);
+            log.info("Temporary reservation created for item: {} with reservation number: {}", 
+                     item.getItemCode(), reservationNumber);
+        }
+
+        log.info("Temporary reservations created successfully for SO: {}", soNumber);
+    }
+
+    /**
+     * Find the best stock location for reservation (FIFO strategy)
+     */
+    private InventoryStock findBestStockForReservation(List<InventoryStock> stocks) {
+        if (stocks == null || stocks.isEmpty()) {
+            return null;
+        }
+        
+        // Sort by received date (FIFO - oldest first)
+        return stocks.stream()
+                .filter(s -> s.getAvailableQuantity() != null && s.getAvailableQuantity() > 0)
+                .filter(s -> "ACTIVE".equals(s.getStatus()))
+                .filter(s -> Boolean.TRUE.equals(s.getIsAvailable()))
+                .sorted(Comparator.comparing(InventoryStock::getReceivedDate, 
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .findFirst()
+                .orElse(stocks.get(0)); // Fallback to first stock if none available
+    }
+
+    private void convertPendingToActual(String soNumber) {
+        log.info("Converting pending reservations to actual for SO: {}", soNumber);
+        // Implementation
+    }
+
+    private void ensureStockReserved(String soNumber) {
+        log.info("Ensuring stock is reserved for SO: {}", soNumber);
+        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(soNumber);
+        if (reservations.isEmpty()) {
+            reserveStock(soNumber);
+        }
+    }
+
+    // -------- Utility Methods --------
 
     private String getItemNameFromPickList(String pickListNumber, String itemCode) {
         List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickListNumber);
@@ -1298,7 +2038,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         return packageInfo != null ? packageInfo.getPackedQuantity() : 0;
     }
 
-    // ====== GENERATION METHODS ======
+    // -------- Generation Methods --------
 
     private String generateReservationNumber() {
         return "RES-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) +
@@ -1349,78 +2089,100 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 "-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 
-    // ====== RESPONSE BUILDERS ======
+    // -------- Response Builders --------
 
-    private SalesOrderResponse buildSalesOrderResponse(SalesOrder order, List<SalesOrderItem> items) {
-        
-        // Get reservations for this SO
-        List<StockReservation> reservations = stockReservationRepository.findBySoNumber(order.getSoNumber());
+ private SalesOrderResponse buildSalesOrderResponse(SalesOrder order, List<SalesOrderItem> items) {
+    
+    // Get reservations for this SO
+    List<StockReservation> reservations = stockReservationRepository.findBySoNumber(order.getSoNumber());
+    
+    // Build reservation responses
+    List<StockReservationResponse> reservationResponses = reservations.stream()
+            .map(reservation -> buildStockReservationResponse(reservation))
+            .collect(Collectors.toList());
+
+    // Build item responses with their reservations
+    List<SalesOrderItemResponse> itemResponses = items.stream()
+            .map(item -> {
+                // Get reservations for this specific item
+                List<StockReservationResponse> itemReservations = reservations.stream()
+                        .filter(r -> r.getItemCode().equals(item.getItemCode()))
+                        .map(reservation -> buildStockReservationResponse(reservation))
+                        .collect(Collectors.toList());
+
+                return SalesOrderItemResponse.builder()
+                        .id(item.getId())
+                        .soNumber(item.getSoNumber())
+                        .itemCode(item.getItemCode())
+                        .itemName(item.getItemName())
+                        .uom(item.getUom())
+                        .orderedQuantity(item.getOrderedQuantity())
+                        .reservedQuantity(item.getReservedQuantity())
+                        .pickedQuantity(item.getPickedQuantity())
+                        .shippedQuantity(item.getShippedQuantity())
+                        .batchNumber(item.getBatchNumber())
+                        .sourceLocation(item.getSourceLocation())
+                        .reservations(itemReservations)
+                        .build();
+            })
+            .collect(Collectors.toList());
+
+    return SalesOrderResponse.builder()
+            .id(order.getId())
+            .soNumber(order.getSoNumber())
+            .soDate(order.getOrderDate())
+            .customerCode(order.getCustomerCode())
+            .customerName(order.getCustomerName())
+            .warehouseId(order.getWarehouseId())
+            .deliveryDate(order.getDeliveryDate())
+            .priority(order.getPriority())
+            .deliveryAddress(order.getDeliveryAddress())
+            .totalQuantity(order.getTotalQuantity())
+            .totalWeight(order.getTotalWeight())
+            .shippingMethod(order.getShippingMethod())
+            .status(order.getStatus())
+            .remarks(order.getRemarks())
+            .createdBy(order.getCreatedBy())
+            .createdAt(order.getCreatedAt())
+            .updatedAt(order.getUpdatedAt())
+            .items(itemResponses)
+            .reservations(reservationResponses)
+            .build();
+}
+
+    private SalesOrderItemResponse buildSalesOrderItemResponse(SalesOrderItem item) {
+        List<StockReservation> reservations = stockReservationRepository.findBySalesOrderItemId(item.getId());
         List<StockReservationResponse> reservationResponses = reservations.stream()
                 .map(this::buildStockReservationResponse)
                 .collect(Collectors.toList());
-        
-        // Build item responses with their reservations
-        List<SalesOrderItemResponse> itemResponses = items.stream()
-                .map(item -> {
-                    // Get reservations for this specific item
-                    List<StockReservationResponse> itemReservations = reservations.stream()
-                            .filter(r -> r.getItemCode().equals(item.getItemCode()))
-                            .map(this::buildStockReservationResponse)
-                            .collect(Collectors.toList());
-                    
-                    return SalesOrderItemResponse.builder()
-                            .id(item.getId())
-                            .itemCode(item.getItemCode())
-                            .itemName(item.getItemName())
-                            .uom(item.getUom())
-                            .orderedQuantity(item.getOrderedQuantity())
-                            .reservedQuantity(item.getReservedQuantity())
-                            .pickedQuantity(item.getPickedQuantity())
-                            .shippedQuantity(item.getShippedQuantity())
-                            .batchNumber(item.getBatchNumber())
-                            .sourceLocation(item.getSourceLocation())
-                            .reservations(itemReservations)  // Add item-specific reservations
-                            .build();
-                })
-                .collect(Collectors.toList());
-        
-        return SalesOrderResponse.builder()
-                .id(order.getId())
-                .soNumber(order.getSoNumber())
-                .soDate(order.getOrderDate())
-                .customerCode(order.getCustomerCode())
-                .customerName(order.getCustomerName())
-                .warehouseId(order.getWarehouseId())
-                .deliveryDate(order.getDeliveryDate())
-                .priority(order.getPriority())
-                .deliveryAddress(order.getDeliveryAddress())
-                .totalQuantity(order.getTotalQuantity())
-                .totalWeight(order.getTotalWeight())
-                .shippingMethod(order.getShippingMethod())
-                .status(order.getStatus())
-                .remarks(order.getRemarks())
-                .createdBy(order.getCreatedBy())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .items(itemResponses)
-                .reservations(reservationResponses)  // Add all reservations
+
+        return SalesOrderItemResponse.builder()
+                .id(item.getId())
+                .soNumber(item.getSoNumber())
+                .itemCode(item.getItemCode())
+                .itemName(item.getItemName())
+                .uom(item.getUom())
+                .orderedQuantity(item.getOrderedQuantity())
+                .reservedQuantity(item.getReservedQuantity())
+                .pickedQuantity(item.getPickedQuantity())
+                .shippedQuantity(item.getShippedQuantity())
+                .batchNumber(item.getBatchNumber())
+                .sourceLocation(item.getSourceLocation())
+                .reservations(reservationResponses)
                 .build();
     }
-    
-    
-    
+
     private StockReservationResponse buildStockReservationResponse(StockReservation reservation) {
         return StockReservationResponse.builder()
                 .id(reservation.getId())
                 .reservationNumber(reservation.getReservationNumber())
                 .soNumber(reservation.getSoNumber())
-//                .itemCode(reservation.getItemCode())
-//                .itemName(reservation.getItemName())
-//                .uom(reservation.getUom())
+                .itemCode(reservation.getItemCode())
+                .itemName(reservation.getItemName())
+                .uom(reservation.getUom())
                 .requiredQuantity(reservation.getRequiredQuantity())
                 .availableQuantity(reservation.getAvailableQuantity())
                 .pysicalQuantity(reservation.getPysicalQuantity())
-
                 .reservedQuantity(reservation.getReservedQuantity())
                 .warehouseId(reservation.getWarehouseId())
                 .zoneId(reservation.getZoneId())
@@ -1436,45 +2198,6 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .createdBy(reservation.getCreatedBy())
                 .createdAt(reservation.getCreatedAt())
                 .updatedAt(reservation.getUpdatedAt())
-                .build();
-    }
-
-    private SalesOrderItemResponse buildSalesOrderItemResponse(SalesOrderItem item) {
-        return SalesOrderItemResponse.builder()
-                .id(item.getId())
-                .itemCode(item.getItemCode())
-                .itemName(item.getItemName())
-                .uom(item.getUom())
-                .orderedQuantity(item.getOrderedQuantity())
-                .reservedQuantity(item.getReservedQuantity())
-                .pickedQuantity(item.getPickedQuantity())
-                .shippedQuantity(item.getShippedQuantity())
-                .batchNumber(item.getBatchNumber())
-                .sourceLocation(item.getSourceLocation())
-                .build();
-    }
-
-    private StockReservationResponse buildReservationResponse(StockReservation reservation) {
-        return StockReservationResponse.builder()
-                .reservationNumber(reservation.getReservationNumber())
-                .soNumber(reservation.getSoNumber())
-//                .itemCode(reservation.getItemCode())
-//                .itemName(reservation.getItemName())
-//                .uom(reservation.getUom())
-                .requiredQuantity(reservation.getRequiredQuantity())
-                .availableQuantity(reservation.getAvailableQuantity())
-                .reservedQuantity(reservation.getReservedQuantity())
-                .warehouseId(reservation.getWarehouseId())
-                .zoneId(reservation.getZoneId())
-                .aisleId(reservation.getAisleId())
-                .rackId(reservation.getRackId())
-                .levelId(reservation.getLevelId())
-                .binId(reservation.getBinId())
-                .batchNumber(reservation.getBatchNumber())
-                .status(reservation.getStatus())
-                .reservationDate(reservation.getReservationDate())
-                .remarks(reservation.getRemarks())
-                .createdAt(reservation.getCreatedAt())
                 .build();
     }
 
@@ -1521,12 +2244,12 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .itemName(task.getItemName())
                 .uom(task.getUom())
                 .requiredQuantity(task.getRequiredQuantity())
+                .quantityToPick(task.getQuantityToPick())
                 .pickedQuantity(task.getPickedQuantity())
                 .locationBarcode(task.getLocationBarcode())
                 .itemBarcode(task.getItemBarcode())
                 .binId(task.getBinId())
                 .inventoryId(task.getInventoryId())
-                .quantityToPick(task.getQuantityToPick())
                 .salesOrderLineId(task.getSalesOrderLineId())
                 .batchNumber(task.getBatchNumber())
                 .pickerId(task.getPickerId())

@@ -25,6 +25,9 @@ public class StockReservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    private Long salesOrderItemId;
+
 
     @Column(name = "reservation_number", unique = true, nullable = false, length = 50)
     private String reservationNumber;

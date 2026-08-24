@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +27,7 @@ import com.warehouse.wms.dto.request.PackageRequest;
 import com.warehouse.wms.dto.request.PickConfirmationRequest;
 import com.warehouse.wms.dto.request.PickListRequest;
 import com.warehouse.wms.dto.request.PickTaskRequest;
+import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
 import com.warehouse.wms.dto.response.DeliveryResponse;
@@ -34,6 +36,7 @@ import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
+import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
 import com.warehouse.wms.dto.response.ShippingLabelResponse;
@@ -52,28 +55,25 @@ public class OutboundController {
 
     private final OutboundService outboundService;
 
-    // ====== SALES ORDER ======
+    // ============================================================
+    // ===================== SALES ORDER ===========================
+    // ============================================================
 
+    // CREATE Sales Order
     @PostMapping("/sales-order")
     public ResponseEntity<SalesOrderResponse> createSalesOrder(@Valid @RequestBody SalesOrderRequest request) {
         log.info("POST /api/outbound/sales-order - Creating Sales Order");
-        return ResponseEntity.ok(outboundService.createSalesOrder(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.createSalesOrder(request));
     }
 
+    // GET Sales Order by Number
     @GetMapping("/sales-order/{soNumber}")
     public ResponseEntity<SalesOrderResponse> getSalesOrder(@PathVariable String soNumber) {
         log.info("GET /api/outbound/sales-order/{} - Getting Sales Order", soNumber);
         return ResponseEntity.ok(outboundService.getSalesOrderByNumber(soNumber));
     }
 
-//    @GetMapping("/sales-orders")
-//    public ResponseEntity<Page<SalesOrderResponse>> getAllSalesOrders(Pageable pageable) {
-//        log.info("GET /api/outbound/sales-orders - Getting all Sales Orders");
-//        return ResponseEntity.ok(outboundService.getAllSalesOrders(pageable));
-//    }
-
-    
-    
+    // GET All Sales Orders with Filters & Search
     @GetMapping("/sales-orders")
     public ResponseEntity<Page<SalesOrderResponse>> getAllSalesOrders(
             @RequestParam(required = false) String search,
@@ -106,16 +106,7 @@ public class OutboundController {
         
         return ResponseEntity.ok(response);
     }
-    
-    
-    @PutMapping("/sales-order/{soNumber}/status")
-    public ResponseEntity<SalesOrderResponse> updateSalesOrderStatus(
-            @PathVariable String soNumber,
-            @RequestParam String status) {
-        log.info("PATCH /api/outbound/sales-order/{}/status - Updating status to {}", soNumber, status);
-        return ResponseEntity.ok(outboundService.updateSalesOrderStatus(soNumber, status));
-    }
-    
+
     // UPDATE Sales Order - Full Update
     @PutMapping("/sales-order/{soNumber}")
     public ResponseEntity<SalesOrderResponse> updateSalesOrder(
@@ -124,30 +115,176 @@ public class OutboundController {
         log.info("PUT /api/outbound/sales-order/{} - Updating Sales Order", soNumber);
         return ResponseEntity.ok(outboundService.updateSalesOrder(soNumber, request));
     }
-    
 
+    // UPDATE Sales Order Status
+    @PutMapping("/sales-order/{soNumber}/status")
+    public ResponseEntity<SalesOrderResponse> updateSalesOrderStatus(
+            @PathVariable String soNumber,
+            @RequestParam String status) {
+        log.info("PUT /api/outbound/sales-order/{}/status - Updating status to {}", soNumber, status);
+        return ResponseEntity.ok(outboundService.updateSalesOrderStatus(soNumber, status));
+    }
+
+    // DELETE Sales Order (Hard Delete)
     @DeleteMapping("/sales-order/{soNumber}")
+    public ResponseEntity<Void> deleteSalesOrder(@PathVariable String soNumber) {
+        log.info("DELETE /api/outbound/sales-order/{} - Deleting Sales Order", soNumber);
+        outboundService.deleteSalesOrder(soNumber);
+        return ResponseEntity.noContent().build();
+    }
+
+    // CANCEL Sales Order (Soft Delete)
+    @DeleteMapping("/sales-order/{soNumber}/cancel")
     public ResponseEntity<Void> cancelSalesOrder(@PathVariable String soNumber) {
-        log.info("DELETE /api/outbound/sales-order/{} - Cancelling Sales Order", soNumber);
+        log.info("DELETE /api/outbound/sales-order/{}/cancel - Cancelling Sales Order", soNumber);
         outboundService.cancelSalesOrder(soNumber);
         return ResponseEntity.noContent().build();
     }
 
-    // ====== STOCK RESERVATION ======
+    // ============================================================
+    // =================== SALES ORDER ITEM ========================
+    // ============================================================
 
-//    @PostMapping("/reserve/{soNumber}")
-//    public ResponseEntity<Void> reserveStock(@PathVariable String soNumber) {
-//        log.info("POST /api/outbound/reserve/{} - Reserving Stock", soNumber);
-//        outboundService.reserveStock(soNumber);
-//        return ResponseEntity.ok().build();
-//    }
+    // GET Sales Order Item by ID with Reservations
+    @GetMapping("/sales-order-item/{itemId}")
+    public ResponseEntity<SalesOrderItemResponse> getSalesOrderItemById(@PathVariable Long itemId) {
+        log.info("GET /api/outbound/sales-order-item/{} - Getting Sales Order Item", itemId);
+        return ResponseEntity.ok(outboundService.getSalesOrderItemById(itemId));
+    }
 
+    // GET All Items by SO Number
+    @GetMapping("/sales-order-items/so/{soNumber}")
+    public ResponseEntity<List<SalesOrderItemResponse>> getSalesOrderItemsBySoNumber(
+            @PathVariable String soNumber) {
+        log.info("GET /api/outbound/sales-order-items/so/{} - Getting items by SO", soNumber);
+        return ResponseEntity.ok(outboundService.getSalesOrderItemsBySoNumber(soNumber));
+    }
+
+    // UPDATE Sales Order Item - Full Update
+    @PutMapping("/sales-order-item/{itemId}")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItem(
+            @PathVariable Long itemId,
+            @Valid @RequestBody SalesOrderItemUpdateRequest request) {
+        log.info("PUT /api/outbound/sales-order-item/{} - Updating Sales Order Item", itemId);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItem(itemId, request));
+    }
+
+    // UPDATE Item Quantity
+    @PatchMapping("/sales-order-item/{itemId}/quantity")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemQuantity(
+            @PathVariable Long itemId,
+            @RequestParam Integer quantity) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/quantity - Updating to {}", itemId, quantity);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemQuantity(itemId, quantity));
+    }
+
+    // UPDATE Item Reserved Quantity
+    @PatchMapping("/sales-order-item/{itemId}/reserved-quantity")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemReservedQuantity(
+            @PathVariable Long itemId,
+            @RequestParam Integer quantity) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/reserved-quantity - Updating to {}", itemId, quantity);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemReservedQuantity(itemId, quantity));
+    }
+
+    // UPDATE Item Picked Quantity
+    @PatchMapping("/sales-order-item/{itemId}/picked-quantity")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemPickedQuantity(
+            @PathVariable Long itemId,
+            @RequestParam Integer quantity) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/picked-quantity - Updating to {}", itemId, quantity);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemPickedQuantity(itemId, quantity));
+    }
+
+    // UPDATE Item Shipped Quantity
+    @PatchMapping("/sales-order-item/{itemId}/shipped-quantity")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemShippedQuantity(
+            @PathVariable Long itemId,
+            @RequestParam Integer quantity) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/shipped-quantity - Updating to {}", itemId, quantity);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemShippedQuantity(itemId, quantity));
+    }
+
+    // UPDATE Item Location
+    @PatchMapping("/sales-order-item/{itemId}/location")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemLocation(
+            @PathVariable Long itemId,
+            @RequestParam String sourceLocation) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/location - Updating to {}", itemId, sourceLocation);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemLocation(itemId, sourceLocation));
+    }
+
+    // UPDATE Item Batch
+    @PatchMapping("/sales-order-item/{itemId}/batch")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemBatch(
+            @PathVariable Long itemId,
+            @RequestParam String batchNumber) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/batch - Updating to {}", itemId, batchNumber);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemBatch(itemId, batchNumber));
+    }
+
+    // UPDATE Item Name
+    @PatchMapping("/sales-order-item/{itemId}/name")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemName(
+            @PathVariable Long itemId,
+            @RequestParam String itemName) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/name - Updating to {}", itemId, itemName);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemName(itemId, itemName));
+    }
+
+    // UPDATE Item UOM
+    @PatchMapping("/sales-order-item/{itemId}/uom")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemUom(
+            @PathVariable Long itemId,
+            @RequestParam String uom) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/uom - Updating to {}", itemId, uom);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemUom(itemId, uom));
+    }
+
+    // UPDATE Item Code
+    @PatchMapping("/sales-order-item/{itemId}/code")
+    public ResponseEntity<SalesOrderItemResponse> updateSalesOrderItemCode(
+            @PathVariable Long itemId,
+            @RequestParam String itemCode) {
+        log.info("PATCH /api/outbound/sales-order-item/{}/code - Updating to {}", itemId, itemCode);
+        return ResponseEntity.ok(outboundService.updateSalesOrderItemCode(itemId, itemCode));
+    }
+
+    // DELETE Sales Order Item
+    @DeleteMapping("/sales-order-item/{itemId}")
+    public ResponseEntity<Void> deleteSalesOrderItem(@PathVariable Long itemId) {
+        log.info("DELETE /api/outbound/sales-order-item/{} - Deleting Sales Order Item", itemId);
+        outboundService.deleteSalesOrderItem(itemId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // DELETE All Items for a Sales Order
+    @DeleteMapping("/sales-order-items/so/{soNumber}")
+    public ResponseEntity<Void> deleteSalesOrderItemsBySoNumber(@PathVariable String soNumber) {
+        log.info("DELETE /api/outbound/sales-order-items/so/{} - Deleting all items for SO", soNumber);
+        outboundService.deleteSalesOrderItemsBySoNumber(soNumber);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ============================================================
+    // =================== STOCK RESERVATION =======================
+    // ============================================================
+
+    // GET Reservation by Number
     @GetMapping("/reservation/{reservationNumber}")
     public ResponseEntity<StockReservationResponse> getReservation(@PathVariable String reservationNumber) {
         log.info("GET /api/outbound/reservation/{} - Getting Reservation", reservationNumber);
         return ResponseEntity.ok(outboundService.getReservationByNumber(reservationNumber));
     }
 
+    // GET Reservations by SO Number
+    @GetMapping("/reservations/so/{soNumber}")
+    public ResponseEntity<List<StockReservationResponse>> getReservationsBySoNumber(@PathVariable String soNumber) {
+        log.info("GET /api/outbound/reservations/so/{} - Getting Reservations by SO", soNumber);
+        return ResponseEntity.ok(outboundService.getReservationsBySoNumber(soNumber));
+    }
+
+    // RELEASE Reservation
     @DeleteMapping("/reservation/{reservationNumber}")
     public ResponseEntity<Void> releaseReservation(@PathVariable String reservationNumber) {
         log.info("DELETE /api/outbound/reservation/{} - Releasing Reservation", reservationNumber);
@@ -155,21 +292,33 @@ public class OutboundController {
         return ResponseEntity.noContent().build();
     }
 
-    // ====== PICK LIST ======
+    // RELEASE All Reservations for SO
+    @DeleteMapping("/reservations/so/{soNumber}")
+    public ResponseEntity<Void> releaseAllReservations(@PathVariable String soNumber) {
+        log.info("DELETE /api/outbound/reservations/so/{} - Releasing all Reservations", soNumber);
+        outboundService.releaseAllReservations(soNumber);
+        return ResponseEntity.noContent().build();
+    }
 
+    // ============================================================
+    // ===================== PICK LIST =============================
+    // ============================================================
+
+    // CREATE Pick List
     @PostMapping("/pick-list")
     public ResponseEntity<PickListResponse> createPickList(@Valid @RequestBody PickListRequest request) {
         log.info("POST /api/outbound/pick-list - Creating Pick List");
-        return ResponseEntity.ok(outboundService.createPickList(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.createPickList(request));
     }
 
+    // GET Pick List by Number
     @GetMapping("/pick-list/{pickListNumber}")
     public ResponseEntity<PickListResponse> getPickList(@PathVariable String pickListNumber) {
         log.info("GET /api/outbound/pick-list/{} - Getting Pick List", pickListNumber);
         return ResponseEntity.ok(outboundService.getPickListByNumber(pickListNumber));
     }
 
-    // ====== GET ALL WITH FILTERS AND SEARCH ======
+    // GET All Pick Lists with Filters & Search
     @GetMapping("/pick-lists")
     public ResponseEntity<Page<PickListResponse>> getAllPickLists(
             @RequestParam(required = false) String search,
@@ -195,7 +344,6 @@ public class OutboundController {
 
         log.info("GET /api/outbound/pick-lists - Getting all Pick Lists with filters");
 
-        // Handle search parameter
         if (search != null && !search.isEmpty()) {
             return ResponseEntity.ok(outboundService.searchPickLists(search, pageable));
         }
@@ -212,7 +360,7 @@ public class OutboundController {
         return ResponseEntity.ok(response);
     }
 
-
+    // UPDATE Pick List Status
     @PatchMapping("/pick-list/{pickListNumber}/status")
     public ResponseEntity<PickListResponse> updatePickListStatus(
             @PathVariable String pickListNumber,
@@ -221,36 +369,40 @@ public class OutboundController {
         return ResponseEntity.ok(outboundService.updatePickListStatus(pickListNumber, status));
     }
 
-    // ====== PICK TASK ======
+    // DELETE Pick List
+    @DeleteMapping("/pick-list/{pickListNumber}")
+    public ResponseEntity<Void> deletePickList(@PathVariable String pickListNumber) {
+        log.info("DELETE /api/outbound/pick-list/{} - Deleting Pick List", pickListNumber);
+        outboundService.deletePickList(pickListNumber);
+        return ResponseEntity.noContent().build();
+    }
 
+    // ============================================================
+    // ===================== PICK TASK =============================
+    // ============================================================
+
+    // CREATE Pick Task
     @PostMapping("/pick-task")
     public ResponseEntity<PickTaskResponse> createPickTask(@Valid @RequestBody PickTaskRequest request) {
         log.info("POST /api/outbound/pick-task - Creating Pick Task");
-        return ResponseEntity.ok(outboundService.createPickTask(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.createPickTask(request));
     }
 
+    // GET Pick Task by Number
     @GetMapping("/pick-task/{pickTaskNumber}")
     public ResponseEntity<PickTaskResponse> getPickTask(@PathVariable String pickTaskNumber) {
         log.info("GET /api/outbound/pick-task/{} - Getting Pick Task", pickTaskNumber);
         return ResponseEntity.ok(outboundService.getPickTaskByNumber(pickTaskNumber));
     }
 
+    // GET Pick Tasks by Pick List
     @GetMapping("/pick-tasks/pick-list/{pickListNumber}")
     public ResponseEntity<List<PickTaskResponse>> getPickTasksByPickList(@PathVariable String pickListNumber) {
         log.info("GET /api/outbound/pick-tasks/pick-list/{} - Getting Pick Tasks for Pick List", pickListNumber);
         return ResponseEntity.ok(outboundService.getPickTasksByPickList(pickListNumber));
     }
 
-    @PatchMapping("/pick-task/{pickTaskNumber}/scan")
-    public ResponseEntity<PickTaskResponse> scanPickTask(
-            @PathVariable String pickTaskNumber,
-            @RequestParam String pickerId,
-            @RequestParam String pickerName) {
-        log.info("PATCH /api/outbound/pick-task/{}/scan - Scanning Pick Task", pickTaskNumber);
-        return ResponseEntity.ok(outboundService.scanPickTask(pickTaskNumber, pickerId, pickerName));
-    }
-    
-    
+    // GET All Pick Tasks with Filters & Search
     @GetMapping("/pick-tasks")
     public ResponseEntity<Page<PickTaskResponse>> getAllPickTasks(
             @RequestParam(required = false) String search,
@@ -279,7 +431,6 @@ public class OutboundController {
 
         log.info("GET /api/outbound/pick-tasks - Getting all Pick Tasks with filters");
 
-        // Handle search parameter
         if (search != null && !search.isEmpty()) {
             return ResponseEntity.ok(outboundService.searchPickTasks(search, pageable));
         }
@@ -296,41 +447,77 @@ public class OutboundController {
         return ResponseEntity.ok(response);
     }
 
+    // SCAN Pick Task
+    @PatchMapping("/pick-task/{pickTaskNumber}/scan")
+    public ResponseEntity<PickTaskResponse> scanPickTask(
+            @PathVariable String pickTaskNumber,
+            @RequestParam String pickerId,
+            @RequestParam String pickerName) {
+        log.info("PATCH /api/outbound/pick-task/{}/scan - Scanning Pick Task", pickTaskNumber);
+        return ResponseEntity.ok(outboundService.scanPickTask(pickTaskNumber, pickerId, pickerName));
+    }
 
-    // ====== PICK CONFIRMATION ======
+    // UPDATE Pick Task Status
+    @PatchMapping("/pick-task/{pickTaskNumber}/status")
+    public ResponseEntity<PickTaskResponse> updatePickTaskStatus(
+            @PathVariable String pickTaskNumber,
+            @RequestParam String status) {
+        log.info("PATCH /api/outbound/pick-task/{}/status - Updating status to {}", pickTaskNumber, status);
+        return ResponseEntity.ok(outboundService.updatePickTaskStatus(pickTaskNumber, status));
+    }
 
+    // DELETE Pick Task
+    @DeleteMapping("/pick-task/{pickTaskNumber}")
+    public ResponseEntity<Void> deletePickTask(@PathVariable String pickTaskNumber) {
+        log.info("DELETE /api/outbound/pick-task/{} - Deleting Pick Task", pickTaskNumber);
+        outboundService.deletePickTask(pickTaskNumber);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ============================================================
+    // ================== PICK CONFIRMATION ========================
+    // ============================================================
+
+    // CONFIRM Pick
     @PostMapping("/pick-confirmation")
     public ResponseEntity<PickConfirmationResponse> confirmPick(@Valid @RequestBody PickConfirmationRequest request) {
         log.info("POST /api/outbound/pick-confirmation - Confirming Pick");
-        return ResponseEntity.ok(outboundService.confirmPick(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.confirmPick(request));
     }
 
+    // GET Pick Confirmation by Number
     @GetMapping("/pick-confirmation/{confirmationNumber}")
     public ResponseEntity<PickConfirmationResponse> getPickConfirmation(@PathVariable String confirmationNumber) {
         log.info("GET /api/outbound/pick-confirmation/{} - Getting Pick Confirmation", confirmationNumber);
         return ResponseEntity.ok(outboundService.getConfirmationByNumber(confirmationNumber));
     }
 
-    // ====== PACKAGE ======
+    // ============================================================
+    // ===================== PACKAGE ===============================
+    // ============================================================
 
+    // CREATE Package
     @PostMapping("/package")
     public ResponseEntity<PackageResponse> createPackage(@Valid @RequestBody PackageRequest request) {
         log.info("POST /api/outbound/package - Creating Package");
-        return ResponseEntity.ok(outboundService.createPackage(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.createPackage(request));
     }
 
+    // GET Package by Number
     @GetMapping("/package/{packageNumber}")
     public ResponseEntity<PackageResponse> getPackage(@PathVariable String packageNumber) {
         log.info("GET /api/outbound/package/{} - Getting Package", packageNumber);
         return ResponseEntity.ok(outboundService.getPackageByNumber(packageNumber));
     }
 
+    // GET Package by Barcode
     @GetMapping("/package/barcode/{packageBarcode}")
     public ResponseEntity<PackageResponse> getPackageByBarcode(@PathVariable String packageBarcode) {
         log.info("GET /api/outbound/package/barcode/{} - Getting Package by Barcode", packageBarcode);
         return ResponseEntity.ok(outboundService.getPackageByBarcode(packageBarcode));
     }
 
+    // UPDATE Package Status
     @PatchMapping("/package/{packageNumber}/status")
     public ResponseEntity<Void> updatePackageStatus(
             @PathVariable String packageNumber,
@@ -340,20 +527,33 @@ public class OutboundController {
         return ResponseEntity.ok().build();
     }
 
-    // ====== SHIPPING LABEL ======
+    // DELETE Package
+    @DeleteMapping("/package/{packageNumber}")
+    public ResponseEntity<Void> deletePackage(@PathVariable String packageNumber) {
+        log.info("DELETE /api/outbound/package/{} - Deleting Package", packageNumber);
+        outboundService.deletePackage(packageNumber);
+        return ResponseEntity.noContent().build();
+    }
 
+    // ============================================================
+    // ================== SHIPPING LABEL ===========================
+    // ============================================================
+
+    // GENERATE Shipping Label
     @PostMapping("/shipping-label/{packageNumber}")
     public ResponseEntity<ShippingLabelResponse> generateShippingLabel(@PathVariable String packageNumber) {
         log.info("POST /api/outbound/shipping-label/{} - Generating Shipping Label", packageNumber);
-        return ResponseEntity.ok(outboundService.generateShippingLabel(packageNumber));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.generateShippingLabel(packageNumber));
     }
 
+    // GET Shipping Label by Number
     @GetMapping("/shipping-label/{labelNumber}")
     public ResponseEntity<ShippingLabelResponse> getShippingLabel(@PathVariable String labelNumber) {
         log.info("GET /api/outbound/shipping-label/{} - Getting Shipping Label", labelNumber);
         return ResponseEntity.ok(outboundService.getShippingLabelByNumber(labelNumber));
     }
 
+    // UPDATE Shipping Label Status
     @PatchMapping("/shipping-label/{labelNumber}/status")
     public ResponseEntity<Void> updateShippingLabelStatus(
             @PathVariable String labelNumber,
@@ -363,20 +563,25 @@ public class OutboundController {
         return ResponseEntity.ok().build();
     }
 
-    // ====== DISPATCH ======
+    // ============================================================
+    // ===================== DISPATCH ==============================
+    // ============================================================
 
+    // CREATE Dispatch
     @PostMapping("/dispatch")
     public ResponseEntity<DispatchResponse> createDispatch(@Valid @RequestBody DispatchRequest request) {
         log.info("POST /api/outbound/dispatch - Creating Dispatch");
-        return ResponseEntity.ok(outboundService.createDispatch(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.createDispatch(request));
     }
 
+    // GET Dispatch by Number
     @GetMapping("/dispatch/{dispatchNumber}")
     public ResponseEntity<DispatchResponse> getDispatch(@PathVariable String dispatchNumber) {
         log.info("GET /api/outbound/dispatch/{} - Getting Dispatch", dispatchNumber);
         return ResponseEntity.ok(outboundService.getDispatchByNumber(dispatchNumber));
     }
 
+    // UPDATE Dispatch Status
     @PatchMapping("/dispatch/{dispatchNumber}/status")
     public ResponseEntity<DispatchResponse> updateDispatchStatus(
             @PathVariable String dispatchNumber,
@@ -385,20 +590,33 @@ public class OutboundController {
         return ResponseEntity.ok(outboundService.updateDispatchStatus(dispatchNumber, status));
     }
 
-    // ====== SHIPMENT CONFIRMATION ======
+    // DELETE Dispatch
+    @DeleteMapping("/dispatch/{dispatchNumber}")
+    public ResponseEntity<Void> deleteDispatch(@PathVariable String dispatchNumber) {
+        log.info("DELETE /api/outbound/dispatch/{} - Deleting Dispatch", dispatchNumber);
+        outboundService.deleteDispatch(dispatchNumber);
+        return ResponseEntity.noContent().build();
+    }
 
+    // ============================================================
+    // ================ SHIPMENT CONFIRMATION ======================
+    // ============================================================
+
+    // CONFIRM Shipment
     @PostMapping("/shipment-confirmation")
     public ResponseEntity<ShipmentConfirmationResponse> confirmShipment(@Valid @RequestBody ShipmentConfirmationRequest request) {
         log.info("POST /api/outbound/shipment-confirmation - Confirming Shipment");
-        return ResponseEntity.ok(outboundService.confirmShipment(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.confirmShipment(request));
     }
 
+    // GET Shipment by Number
     @GetMapping("/shipment-confirmation/{shipmentNumber}")
     public ResponseEntity<ShipmentConfirmationResponse> getShipment(@PathVariable String shipmentNumber) {
         log.info("GET /api/outbound/shipment-confirmation/{} - Getting Shipment", shipmentNumber);
         return ResponseEntity.ok(outboundService.getShipmentByNumber(shipmentNumber));
     }
 
+    // UPDATE Shipment Status
     @PatchMapping("/shipment-confirmation/{shipmentNumber}/status")
     public ResponseEntity<ShipmentConfirmationResponse> updateShipmentStatus(
             @PathVariable String shipmentNumber,
@@ -407,25 +625,46 @@ public class OutboundController {
         return ResponseEntity.ok(outboundService.updateShipmentStatus(shipmentNumber, status));
     }
 
-    // ====== DELIVERY ======
+    // DELETE Shipment
+    @DeleteMapping("/shipment-confirmation/{shipmentNumber}")
+    public ResponseEntity<Void> deleteShipment(@PathVariable String shipmentNumber) {
+        log.info("DELETE /api/outbound/shipment-confirmation/{} - Deleting Shipment", shipmentNumber);
+        outboundService.deleteShipment(shipmentNumber);
+        return ResponseEntity.noContent().build();
+    }
 
+    // ============================================================
+    // ===================== DELIVERY ==============================
+    // ============================================================
+
+    // CONFIRM Delivery
     @PostMapping("/delivery")
     public ResponseEntity<DeliveryResponse> confirmDelivery(@Valid @RequestBody DeliveryRequest request) {
         log.info("POST /api/outbound/delivery - Confirming Delivery");
-        return ResponseEntity.ok(outboundService.confirmDelivery(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(outboundService.confirmDelivery(request));
     }
 
+    // GET Delivery by Number
     @GetMapping("/delivery/{deliveryNumber}")
     public ResponseEntity<DeliveryResponse> getDelivery(@PathVariable String deliveryNumber) {
         log.info("GET /api/outbound/delivery/{} - Getting Delivery", deliveryNumber);
         return ResponseEntity.ok(outboundService.getDeliveryByNumber(deliveryNumber));
     }
 
+    // UPDATE Delivery Status
     @PatchMapping("/delivery/{deliveryNumber}/status")
     public ResponseEntity<DeliveryResponse> updateDeliveryStatus(
             @PathVariable String deliveryNumber,
             @RequestParam String status) {
         log.info("PATCH /api/outbound/delivery/{}/status - Updating status to {}", deliveryNumber, status);
         return ResponseEntity.ok(outboundService.updateDeliveryStatus(deliveryNumber, status));
+    }
+
+    // DELETE Delivery
+    @DeleteMapping("/delivery/{deliveryNumber}")
+    public ResponseEntity<Void> deleteDelivery(@PathVariable String deliveryNumber) {
+        log.info("DELETE /api/outbound/delivery/{} - Deleting Delivery", deliveryNumber);
+        outboundService.deleteDelivery(deliveryNumber);
+        return ResponseEntity.noContent().build();
     }
 }
