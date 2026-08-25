@@ -491,6 +491,50 @@ public class OutboundController {
         log.info("GET /api/outbound/pick-confirmation/{} - Getting Pick Confirmation", confirmationNumber);
         return ResponseEntity.ok(outboundService.getConfirmationByNumber(confirmationNumber));
     }
+    
+    
+    
+    
+ // ====== GET ALL WITH FILTERS AND SEARCH ======
+    @GetMapping("/pick-confirmations")
+    public ResponseEntity<Page<PickConfirmationResponse>> getAllPickConfirmations(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String confirmationNumber,
+            @RequestParam(required = false) String pickTaskNumber,
+            @RequestParam(required = false) String pickListNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String confirmedBy,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String barcode,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startConfirmedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endConfirmedDate,
+            @RequestParam(required = false) Integer minPickedQuantity,
+            @RequestParam(required = false) Integer maxPickedQuantity,
+            @RequestParam(required = false) Integer minShortQuantity,
+            @RequestParam(required = false) Integer maxShortQuantity,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/pick-confirmations - Getting all Pick Confirmations with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchPickConfirmations(search, pageable));
+        }
+
+        Page<PickConfirmationResponse> response = outboundService.getAllPickConfirmationsWithFilters(
+                confirmationNumber, pickTaskNumber, pickListNumber, soNumber,
+                itemCode, itemName, confirmedBy, status, barcode,
+                startDate, endDate, startConfirmedDate, endConfirmedDate,
+                minPickedQuantity, maxPickedQuantity,
+                minShortQuantity, maxShortQuantity, pageable);
+
+        return ResponseEntity.ok(response);
+    }
+
 
     // ============================================================
     // ===================== PACKAGE ===============================

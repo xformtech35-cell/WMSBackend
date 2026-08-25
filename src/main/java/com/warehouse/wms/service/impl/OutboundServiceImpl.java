@@ -1158,6 +1158,49 @@ public class OutboundServiceImpl implements OutboundService {
         return buildConfirmationResponse(confirmation);
     }
 
+    
+    @Override
+    public Page<PickConfirmationResponse> getAllPickConfirmationsWithFilters(
+            String confirmationNumber,
+            String pickTaskNumber,
+            String pickListNumber,
+            String soNumber,
+            String itemCode,
+            String itemName,
+            String confirmedBy,
+            String status,
+            String barcode,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startConfirmedDate,
+            LocalDateTime endConfirmedDate,
+            Integer minPickedQuantity,
+            Integer maxPickedQuantity,
+            Integer minShortQuantity,
+            Integer maxShortQuantity,
+            Pageable pageable) {
+
+        log.info("Fetching pick confirmations with filters");
+
+        Page<PickConfirmation> confirmationPage = pickConfirmationRepository.findByFilters(
+                confirmationNumber, pickTaskNumber, pickListNumber, soNumber,
+                itemCode, itemName, confirmedBy, status, barcode,
+                startDate, endDate, startConfirmedDate, endConfirmedDate,
+                minPickedQuantity, maxPickedQuantity,
+                minShortQuantity, maxShortQuantity, pageable);
+
+        return confirmationPage.map(this::buildPickConfirmationResponse);
+    }
+
+    // ====== SEARCH PICK CONFIRMATIONS ======
+
+    @Override
+    public Page<PickConfirmationResponse> searchPickConfirmations(String search, Pageable pageable) {
+        log.info("Searching pick confirmations with keyword: {}", search);
+        return pickConfirmationRepository.searchPickConfirmations(search, pageable)
+                .map(this::buildPickConfirmationResponse);
+    }
+    
     // ============================================================
     // ===================== PACKAGE ===============================
     // ============================================================
@@ -2387,6 +2430,27 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .deliveryProofUrl(delivery.getDeliveryProofUrl())
                 .remarks(delivery.getRemarks())
                 .createdAt(delivery.getCreatedAt())
+                .build();
+    }
+    
+    
+    private PickConfirmationResponse buildPickConfirmationResponse(PickConfirmation confirmation) {
+        return PickConfirmationResponse.builder()
+                .confirmationNumber(confirmation.getConfirmationNumber())
+                .pickTaskNumber(confirmation.getPickTaskNumber())
+                .pickListNumber(confirmation.getPickListNumber())
+                .soNumber(confirmation.getSoNumber())
+                .itemCode(confirmation.getItemCode())
+                .itemName(confirmation.getItemName())
+                .requiredQuantity(confirmation.getRequiredQuantity())
+                .pickedQuantity(confirmation.getPickedQuantity())
+                .shortQuantity(confirmation.getShortQuantity())
+                .barcode(confirmation.getBarcode())
+                .confirmedBy(confirmation.getConfirmedBy())
+                .confirmedDate(confirmation.getConfirmedDate())
+                .status(confirmation.getStatus())
+                .remarks(confirmation.getRemarks())
+                .createdAt(confirmation.getCreatedAt())
                 .build();
     }
 }

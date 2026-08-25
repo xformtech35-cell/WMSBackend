@@ -161,6 +161,32 @@ public interface OutboundService {
     PickConfirmationResponse confirmPick(PickConfirmationRequest request);
 
     PickConfirmationResponse getConfirmationByNumber(String confirmationNumber);
+    
+    
+    
+    Page<PickConfirmationResponse> getAllPickConfirmationsWithFilters(
+            String confirmationNumber,
+            String pickTaskNumber,
+            String pickListNumber,
+            String soNumber,
+            String itemCode,
+            String itemName,
+            String confirmedBy,
+            String status,
+            String barcode,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startConfirmedDate,
+            LocalDateTime endConfirmedDate,
+            Integer minPickedQuantity,
+            Integer maxPickedQuantity,
+            Integer minShortQuantity,
+            Integer maxShortQuantity,
+            Pageable pageable);
+    
+    
+    Page<PickConfirmationResponse> searchPickConfirmations(String search, Pageable pageable);
+
 
     // ============================================================
     // ===================== PACKAGE ===============================
