@@ -353,7 +353,7 @@ public class OutboundServiceImpl implements OutboundService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + item.getSoNumber()));
 
         if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
-            !salesOrder.getStatus().equals("PROCESSING")) {
+            !salesOrder.getStatus().equals("PROCESSING")&&!salesOrder.getStatus().equals("PENDING")&&!salesOrder.getStatus().equals("APPROVED")) {
             throw new BusinessException("Cannot edit item in order status: " + salesOrder.getStatus());
         }
 
