@@ -103,9 +103,9 @@ public class OutboundServiceImpl implements OutboundService {
         String soNumber = soNumberGenerator.generateSoNumber();
         log.info("Auto-generated SO Number: {}", soNumber);
 
-        if (salesOrderRepository.findBySoNumber(soNumber).isPresent()) {
-            throw new BusinessException("Sales Order already exists: " + soNumber);
-        }
+//        if (salesOrderRepository.findBySoNumber(soNumber).isPresent()) {
+//            throw new BusinessException("Sales Order already exists: " + soNumber);
+//        }
 
         int totalQuantity = 0;
         for (SalesOrderItemRequest itemReq : request.getItems()) {
