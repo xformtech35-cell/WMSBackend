@@ -107,14 +107,14 @@ public class OutboundServiceImpl implements OutboundService {
 //            throw new BusinessException("Sales Order already exists: " + soNumber);
 //        }
 
-        int totalQuantity = 0;
-        for (SalesOrderItemRequest itemReq : request.getItems()) {
-            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(itemReq.getItemCode());
-            if (stocks.isEmpty()) {
-                throw new BusinessException("Item not found in inventory: " + itemReq.getItemCode());
-            }
-            totalQuantity += itemReq.getOrderedQuantity();
-        }
+//        int totalQuantity = 0;
+//        for (SalesOrderItemRequest itemReq : request.getItems()) {
+//            List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(itemReq.getItemCode());
+//            if (stocks.isEmpty()) {
+//                throw new BusinessException("Item not found in inventory: " + itemReq.getItemCode());
+//            }
+//            totalQuantity += itemReq.getOrderedQuantity();
+//        }
 
         SalesOrder salesOrder = SalesOrder.builder()
                 .soNumber(soNumber)
@@ -125,7 +125,7 @@ public class OutboundServiceImpl implements OutboundService {
                 .deliveryDate(request.getDeliveryDate())
                 .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
                 .deliveryAddress(request.getDeliveryAddress())
-                .totalQuantity(totalQuantity)
+//                .totalQuantity(totalQuantity)
                 .shippingMethod(request.getShippingMethod())
                 .status("DRAFT")
                 .remarks(request.getRemarks())
