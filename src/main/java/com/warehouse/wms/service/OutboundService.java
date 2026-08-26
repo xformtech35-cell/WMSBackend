@@ -17,10 +17,12 @@ import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
 import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
+import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
+import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
@@ -236,6 +238,38 @@ public interface OutboundService {
     ShippingLabelResponse getShippingLabelByNumber(String labelNumber);
 
     void updateShippingLabelStatus(String labelNumber, String status);
+    
+    
+    Page<ShippingLabelResponse> getAllShippingLabelsWithFilters(
+            String labelNumber,
+            String packageNumber,
+            String packageBarcode,
+            String soNumber,
+            String customerCode,
+            String customerName,
+            String itemCode,
+            String itemName,
+            String trackingNumber,
+            String labelStatus,
+            String shippingMethod,
+            String printedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startPrintedDate,
+            LocalDateTime endPrintedDate,
+            Double minWeight,
+            Double maxWeight,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable);
+
+    Page<ShippingLabelResponse> searchShippingLabels(String search, Pageable pageable);
+    
+    
+
+    LabelImageResponse getShippingLabelImage(String labelNumber);
+
+    QrCodeResponses getShippingLabelQr(String labelNumber);
 
     // ============================================================
     // ===================== DISPATCH ==============================

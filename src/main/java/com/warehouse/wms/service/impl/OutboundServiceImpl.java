@@ -3,6 +3,7 @@ package com.warehouse.wms.service.impl;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -29,11 +30,13 @@ import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
 import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
+import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListItemResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
+import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
@@ -1248,6 +1251,8 @@ public class OutboundServiceImpl implements OutboundService {
             salesOrder.setStatus("PACKING");
             salesOrderRepository.save(salesOrder);
         }
+        
+        
 
         log.info("Package created successfully: {}", packageNumber);
         return buildPackageResponse(savedPackage);
@@ -1377,6 +1382,11 @@ public class OutboundServiceImpl implements OutboundService {
         packageInfoRepository.save(packageInfo);
 
         log.info("Shipping Label generated: {}", labelNumber);
+        
+        
+        getShippingLabelQr(savedLabel.getLabelNumber());
+        getShippingLabelImage(savedLabel.getLabelNumber());
+        
         return buildShippingLabelResponse(savedLabel);
     }
 
@@ -1395,6 +1405,110 @@ public class OutboundServiceImpl implements OutboundService {
         shippingLabelRepository.save(label);
         log.info("Shipping Label status updated: {} -> {}", labelNumber, status);
     }
+    
+    
+    @Override
+    public Page<ShippingLabelResponse> getAllShippingLabelsWithFilters(
+            String labelNumber,
+            String packageNumber,
+            String packageBarcode,
+            String soNumber,
+            String customerCode,
+            String customerName,
+            String itemCode,
+            String itemName,
+            String trackingNumber,
+            String labelStatus,
+            String shippingMethod,
+            String printedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startPrintedDate,
+            LocalDateTime endPrintedDate,
+            Double minWeight,
+            Double maxWeight,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable) {
+
+        log.info("Fetching shipping labels with filters");
+
+        Page<ShippingLabel> labelPage = shippingLabelRepository.findByFilters(
+                labelNumber, packageNumber, packageBarcode, soNumber,
+                customerCode, customerName, itemCode, itemName,
+                trackingNumber, labelStatus, shippingMethod, printedBy,
+                startDate, endDate, startPrintedDate, endPrintedDate,
+                minWeight, maxWeight, minQuantity, maxQuantity, pageable);
+
+        return labelPage.map(this::buildShippingLabelResponse);
+    }
+
+    // ====== SEARCH SHIPPING LABELS ======
+
+    @Override
+    public Page<ShippingLabelResponse> searchShippingLabels(String search, Pageable pageable) {
+        log.info("Searching shipping labels with keyword: {}", search);
+        return shippingLabelRepository.searchShippingLabels(search, pageable)
+                .map(this::buildShippingLabelResponse);
+    }
+    
+    
+    
+    @Override
+    public LabelImageResponse getShippingLabelImage(String labelNumber) {
+        log.info("Getting shipping label image: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        // Generate label image as Base64
+        String base64Image = generateLabelImage(label);
+        
+        
+        label.setLabelImage(base64Image);
+        
+        shippingLabelRepository.save(label);
+        
+        // Store image data
+        label.setLabelUrl(base64Image);
+        shippingLabelRepository.save(label);
+
+        return LabelImageResponse.builder()
+                .labelNumber(labelNumber)
+                .base64Image(base64Image)
+                .imageFormat("PNG")
+                .labelData(buildLabelData(label))
+                .build();
+    }
+
+    // ====== GET SHIPPING LABEL QR CODE ======
+
+    @Override
+    public QrCodeResponses getShippingLabelQr(String labelNumber) {
+        log.info("Getting shipping label QR code: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        // Generate QR code as Base64
+        String qrCodeBase64 = generateQrCode(label);
+        
+        label.setQrImage(qrCodeBase64);
+        shippingLabelRepository.save(label);
+        
+        // Build QR data
+        String qrData = buildQrData(label);
+
+        return QrCodeResponses.builder()
+                .labelNumber(labelNumber)
+                .packageNumber(label.getPackageNumber())
+                .soNumber(label.getSoNumber())
+                .trackingNumber(label.getTrackingNumber())
+                .qrCodeBase64(qrCodeBase64)
+                .qrCodeData(qrData)
+                .build();
+    }
+    
 
     // ============================================================
     // ===================== DISPATCH ==============================
@@ -2415,6 +2529,8 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .labelUrl(label.getLabelUrl())
                 .remarks(label.getRemarks())
                 .createdAt(label.getCreatedAt())
+                .qrImage(label.getQrImage())
+                .labelImage(label.getLabelImage())
                 .build();
     }
 
@@ -2499,5 +2615,67 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .remarks(confirmation.getRemarks())
                 .createdAt(confirmation.getCreatedAt())
                 .build();
+    }
+    
+    
+    
+    
+    private String generateLabelImage(ShippingLabel label) {
+        // Generate label image with all details
+        String labelData = String.format(
+            "SHIPPING LABEL\n" +
+            "Label: %s\n" +
+            "Package: %s\n" +
+            "SO: %s\n" +
+            "Customer: %s\n" +
+            "Address: %s\n" +
+            "Item: %s\n" +
+            "Qty: %d\n" +
+            "Weight: %.2f kg\n" +
+            "Tracking: %s\n" +
+            "Status: %s",
+            label.getLabelNumber(),
+            label.getPackageNumber(),
+            label.getSoNumber(),
+            label.getCustomerName(),
+            label.getCustomerAddress(),
+            label.getItemName(),
+            label.getQuantity(),
+            label.getWeight(),
+            label.getTrackingNumber() != null ? label.getTrackingNumber() : "N/A",
+            label.getLabelStatus()
+        );
+        
+        // Convert to Base64 (simplified - in production use actual image generation)
+        return Base64.getEncoder().encodeToString(labelData.getBytes());
+    }
+
+    private String generateQrCode(ShippingLabel label) {
+        // Generate QR code data as Base64
+        String qrData = buildQrData(label);
+        return Base64.getEncoder().encodeToString(qrData.getBytes());
+    }
+
+    private String buildQrData(ShippingLabel label) {
+        return String.format(
+            "{\"labelNumber\":\"%s\",\"packageNumber\":\"%s\",\"soNumber\":\"%s\",\"trackingNumber\":\"%s\"}",
+            label.getLabelNumber(),
+            label.getPackageNumber(),
+            label.getSoNumber(),
+            label.getTrackingNumber() != null ? label.getTrackingNumber() : ""
+        );
+    }
+
+    private String buildLabelData(ShippingLabel label) {
+        return String.format(
+            "Label: %s | Package: %s | SO: %s | Customer: %s | Item: %s | Qty: %d | Tracking: %s",
+            label.getLabelNumber(),
+            label.getPackageNumber(),
+            label.getSoNumber(),
+            label.getCustomerName(),
+            label.getItemName(),
+            label.getQuantity(),
+            label.getTrackingNumber() != null ? label.getTrackingNumber() : "N/A"
+        );
     }
 }

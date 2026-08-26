@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,10 +33,12 @@ import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
 import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
+import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
+import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
@@ -646,6 +649,66 @@ public class OutboundController {
         log.info("PATCH /api/outbound/shipping-label/{}/status - Updating status to {}", labelNumber, status);
         outboundService.updateShippingLabelStatus(labelNumber, status);
         return ResponseEntity.ok().build();
+    }
+    
+    
+    
+    
+    // ====== GET ALL SHIPPING LABELS WITH FILTERS ======
+    @GetMapping("/shipping-labels")
+    public ResponseEntity<Page<ShippingLabelResponse>> getAllShippingLabels(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String labelNumber,
+            @RequestParam(required = false) String packageNumber,
+            @RequestParam(required = false) String packageBarcode,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String customerCode,
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String trackingNumber,
+            @RequestParam(required = false) String labelStatus,
+            @RequestParam(required = false) String shippingMethod,
+            @RequestParam(required = false) String printedBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startPrintedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endPrintedDate,
+            @RequestParam(required = false) Double minWeight,
+            @RequestParam(required = false) Double maxWeight,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/shipping-labels - Getting all Shipping Labels with filters");
+
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchShippingLabels(search, pageable));
+        }
+
+        Page<ShippingLabelResponse> response = outboundService.getAllShippingLabelsWithFilters(
+                labelNumber, packageNumber, packageBarcode, soNumber,
+                customerCode, customerName, itemCode, itemName,
+                trackingNumber, labelStatus, shippingMethod, printedBy,
+                startDate, endDate, startPrintedDate, endPrintedDate,
+                minWeight, maxWeight, minQuantity, maxQuantity, pageable);
+
+        return ResponseEntity.ok(response);
+    }
+    
+    
+    
+    @GetMapping(value = "/shipping-label/{labelNumber}/image", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LabelImageResponse> getShippingLabelImage(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/image - Getting Label Image", labelNumber);
+        return ResponseEntity.ok(outboundService.getShippingLabelImage(labelNumber));
+    }
+
+    // ====== GENERATE QR CODE ======
+    @GetMapping(value = "/shipping-label/{labelNumber}/qr", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<QrCodeResponses> getShippingLabelQr(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/qr - Getting QR Code", labelNumber);
+        return ResponseEntity.ok(outboundService.getShippingLabelQr(labelNumber));
     }
 
     // ============================================================

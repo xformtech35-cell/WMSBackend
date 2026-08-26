@@ -90,4 +90,16 @@ public class ShippingLabel {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    
+    @Lob
+    @Column(name = "label_image", columnDefinition = "LONGTEXT")
+    private String labelImage;
+
+    @Lob
+    @Column(name = "qr_image", columnDefinition = "LONGTEXT")
+    private String qrImage;
+
+    
+    
 }

@@ -31,4 +31,9 @@ public class ShippingLabelResponse {
     private String labelUrl;
     private String remarks;
     private LocalDateTime createdAt;
+    
+    
+    private String labelImage;
+    
+    private String qrImage;
 }
