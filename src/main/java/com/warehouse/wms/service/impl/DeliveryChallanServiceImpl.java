@@ -1,6 +1,5 @@
 package com.warehouse.wms.service.impl;
 
-import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -15,19 +14,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
-import com.warehouse.wms.dto.request.DeliveryChallanItemRequest;
 import com.warehouse.wms.dto.request.DeliveryChallanRequest;
-import com.warehouse.wms.dto.response.DeliveryChallanItemResponse;
+import com.warehouse.wms.dto.request.PackageRequests;
 import com.warehouse.wms.dto.response.DeliveryChallanResponse;
 import com.warehouse.wms.dto.response.DeliveryChallanSummaryResponse;
+import com.warehouse.wms.dto.response.PackageResponses;
 import com.warehouse.wms.entity.DeliveryChallan;
-import com.warehouse.wms.entity.DeliveryChallanItem;
+import com.warehouse.wms.entity.DeliveryChallanPackage;
 import com.warehouse.wms.entity.PackageInfo;
 import com.warehouse.wms.entity.SalesOrder;
 import com.warehouse.wms.exception.BusinessException;
 import com.warehouse.wms.exception.ResourceNotFoundException;
-import com.warehouse.wms.repository.DeliveryChallanItemRepository;
+import com.warehouse.wms.repository.DeliveryChallanPackageRepository;
 import com.warehouse.wms.repository.DeliveryChallanRepository;
 import com.warehouse.wms.repository.PackageInfoRepository;
 import com.warehouse.wms.repository.SalesOrderRepository;
@@ -43,93 +41,211 @@ import lombok.extern.slf4j.Slf4j;
 public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
     private final DeliveryChallanRepository deliveryChallanRepository;
-    private final DeliveryChallanItemRepository deliveryChallanItemRepository;
+    private final DeliveryChallanPackageRepository deliveryChallanPackageRepository;
     private final PackageInfoRepository packageInfoRepository;
     private final SalesOrderRepository salesOrderRepository;
 
     // ====== CREATE DELIVERY CHALLAN ======
 
-    @Override
-    public DeliveryChallanResponse createDeliveryChallan(DeliveryChallanRequest request) {
-        log.info("Creating Delivery Challan for SO: {}", request.getSoNumber());
+@Override
+public DeliveryChallanResponse createDeliveryChallan(DeliveryChallanRequest request) {
+    log.info("Creating Delivery Challan");
 
-        // Verify Package exists
-        PackageInfo packageInfo = packageInfoRepository.findByPackageNumber(request.getPackageNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("Package not found: " + request.getPackageNumber()));
+    // Generate challan number
+    String challanNumber = generateChallanNumber();
 
-        // Verify Sales Order exists
-        SalesOrder salesOrder = salesOrderRepository.findBySoNumber(request.getSoNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + request.getSoNumber()));
+    // Calculate totals from packages
+    int totalPackages = request.getPackages().size();
+    int totalQuantity = request.getPackages().stream()
+            .mapToInt(p -> p.getDispatchedQuantity() != null ? p.getDispatchedQuantity() : 0)
+            .sum();
+    double totalWeight = request.getPackages().stream()
+            .mapToDouble(p -> p.getWeight() != null ? p.getWeight() : 0)
+            .sum();
+    double totalVolume = request.getPackages().stream()
+            .mapToDouble(p -> p.getVolume() != null ? p.getVolume() : 0)
+            .sum();
 
-     
+    // Get SO Number from first package (all packages should have same SO)
+    String soNumber = request.getPackages().stream()
+            .findFirst()
+            .map(PackageRequests::getSoNumber)
+            .orElseThrow(() -> new BusinessException("SO Number is required in packages"));
 
-        // Generate challan number
-        String challanNumber = generateChallanNumber();
+    // Create Delivery Challan
+    DeliveryChallan challan = DeliveryChallan.builder()
+            .challanNumber(challanNumber)
+            .soNumber(soNumber)
+            .shipmentNumber(request.getShipmentNumber())
+            .transporter(request.getTransporter())
+            .vehicleNumber(request.getVehicleNumber())
+            .driverName(request.getDriverName())
+            .driverPhone(request.getDriverPhone())
+            .totalPackages(totalPackages)
+            .totalQuantity(totalQuantity)
+            .totalWeight(totalWeight)
+            .totalVolume(totalVolume)
+            .status("CREATED")
+            .remarks(request.getRemarks())
+            .createdBy(request.getCreatedBy() != null ? request.getCreatedBy() : "SYSTEM")
+            .build();
 
-        // Calculate totals
-        int totalItems = request.getItems().size();
-        int totalQuantity = request.getItems().stream().mapToInt(i -> i.getDispatchedQuantity() != null ? i.getDispatchedQuantity() : 0).sum();
-        double totalWeight = request.getItems().stream().mapToDouble(i -> i.getWeight() != null ? i.getWeight() : 0).sum();
-        double totalVolume = request.getItems().stream().mapToDouble(i -> i.getVolume() != null ? i.getVolume() : 0).sum();
+    DeliveryChallan savedChallan = deliveryChallanRepository.save(challan);
 
-        // Create Delivery Challan
-        DeliveryChallan challan = DeliveryChallan.builder()
+    // Create Packages
+    List<DeliveryChallanPackage> packages = new ArrayList<>();
+    for (PackageRequests pkgReq : request.getPackages()) {
+        // Verify package exists
+        PackageInfo packageInfo = packageInfoRepository.findByPackageNumber(pkgReq.getPackageNumber())
+                .orElse(null);
+
+        DeliveryChallanPackage pkg = DeliveryChallanPackage.builder()
                 .challanNumber(challanNumber)
-                .soNumber(request.getSoNumber())
-                .packageNumber(request.getPackageNumber())
-                .shipmentNumber(request.getShipmentNumber())
-                .customerCode(request.getCustomerCode() != null ? request.getCustomerCode() : salesOrder.getCustomerCode())
-                .customerName(request.getCustomerName() != null ? request.getCustomerName() : salesOrder.getCustomerName())
-                .customerAddress(request.getCustomerAddress() != null ? request.getCustomerAddress() : salesOrder.getDeliveryAddress())
-                .customerGst(request.getCustomerGst())
-                .customerPhone(request.getCustomerPhone())
-                .invoiceNumber(request.getInvoiceNumber())
-                .orderDate(request.getOrderDate() != null ? request.getOrderDate() : salesOrder.getOrderDate())
-                .dispatchDate(request.getDispatchDate() != null ? request.getDispatchDate() : LocalDateTime.now())
-                .expectedDeliveryDate(request.getExpectedDeliveryDate())
-                .transporter(request.getTransporter())
-                .vehicleNumber(request.getVehicleNumber())
-                .driverName(request.getDriverName())
-                .driverPhone(request.getDriverPhone())
-                .totalItems(totalItems)
-                .totalQuantity(totalQuantity)
-                .totalWeight(totalWeight)
-                .totalVolume(totalVolume)
-                .status("CREATED")
-                .remarks(request.getRemarks())
-                .createdBy(request.getCreatedBy() != null ? request.getCreatedBy() : "SYSTEM")
+                .soNumber(pkgReq.getSoNumber() != null ? pkgReq.getSoNumber() : soNumber)
+                .packageNumber(pkgReq.getPackageNumber())
+                .packageBarcode(pkgReq.getPackageBarcode() != null ? pkgReq.getPackageBarcode() : 
+                        packageInfo != null ? packageInfo.getPackageBarcode() : null)
+                .customerCode(pkgReq.getCustomerCode())
+                .customerName(pkgReq.getCustomerName())
+                .customerAddress(pkgReq.getCustomerAddress())
+                .customerGst(pkgReq.getCustomerGst())
+                .customerPhone(pkgReq.getCustomerPhone())
+                .invoiceNumber(pkgReq.getInvoiceNumber())
+                .orderDate(pkgReq.getOrderDate())
+                .dispatchDate(pkgReq.getDispatchDate() != null ? pkgReq.getDispatchDate() : LocalDateTime.now())
+                .expectedDeliveryDate(pkgReq.getExpectedDeliveryDate())
+                .itemCode(pkgReq.getItemCode())
+                .itemName(pkgReq.getItemName())
+                .uom(pkgReq.getUom() != null ? pkgReq.getUom() : "EA")
+                .orderedQuantity(pkgReq.getOrderedQuantity() != null ? pkgReq.getOrderedQuantity() : 0)
+                .dispatchedQuantity(pkgReq.getDispatchedQuantity() != null ? pkgReq.getDispatchedQuantity() : 0)
+                .deliveredQuantity(pkgReq.getDeliveredQuantity() != null ? pkgReq.getDeliveredQuantity() : 0)
+                .shortQuantity(pkgReq.getShortQuantity() != null ? pkgReq.getShortQuantity() : 0)
+                .batchNumber(pkgReq.getBatchNumber())
+                .serialNumbers(pkgReq.getSerialNumbers())
+                .unitPrice(pkgReq.getUnitPrice() != null ? pkgReq.getUnitPrice() : 0.0)
+                .totalPrice(pkgReq.getTotalPrice() != null ? pkgReq.getTotalPrice() : 0.0)
+                .weight(pkgReq.getWeight() != null ? pkgReq.getWeight() : 0.0)
+                .volume(pkgReq.getVolume() != null ? pkgReq.getVolume() : 0.0)
+                .status("PENDING")
+                .remarks(pkgReq.getRemarks())
+                .deliveryChallan(savedChallan)
                 .build();
-
-        DeliveryChallan savedChallan = deliveryChallanRepository.save(challan);
-
-        // Create Challan Items
-        List<DeliveryChallanItem> items = new ArrayList<>();
-        for (DeliveryChallanItemRequest itemReq : request.getItems()) {
-            DeliveryChallanItem item = DeliveryChallanItem.builder()
-                    .challanNumber(challanNumber)
-                    .itemCode(itemReq.getItemCode())
-                    .itemName(itemReq.getItemName())
-                    .uom(itemReq.getUom() != null ? itemReq.getUom() : "EA")
-                    .orderedQuantity(itemReq.getOrderedQuantity() != null ? itemReq.getOrderedQuantity() : 0)
-                    .dispatchedQuantity(itemReq.getDispatchedQuantity() != null ? itemReq.getDispatchedQuantity() : 0)
-                    .deliveredQuantity(itemReq.getDeliveredQuantity() != null ? itemReq.getDeliveredQuantity() : 0)
-                    .shortQuantity(itemReq.getShortQuantity() != null ? itemReq.getShortQuantity() : 0)
-                    .batchNumber(itemReq.getBatchNumber())
-                    .serialNumbers(itemReq.getSerialNumbers())
-                    .unitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : 0.0)
-                    .totalPrice(itemReq.getTotalPrice() != null ? itemReq.getTotalPrice() : 0.0)
-                    .weight(itemReq.getWeight() != null ? itemReq.getWeight() : 0.0)
-                    .volume(itemReq.getVolume() != null ? itemReq.getVolume() : 0.0)
-                    .status("PENDING")
-                    .remarks(itemReq.getRemarks())
-                    .deliveryChallan(savedChallan)
-                    .build();
-            items.add(deliveryChallanItemRepository.save(item));
-        }
-
-        log.info("Delivery Challan created: {}", challanNumber);
-        return buildDeliveryChallanResponse(savedChallan, items);
+        packages.add(deliveryChallanPackageRepository.save(pkg));
     }
+
+    log.info("Delivery Challan created: {}", challanNumber);
+    return buildDeliveryChallanResponse(savedChallan, packages);
+}
+
+
+@Override
+public DeliveryChallanResponse updateDeliveryChallan(String challanNumber, DeliveryChallanRequest request) {
+    log.info("Updating Delivery Challan: {}", challanNumber);
+
+    // Check if challan exists
+    DeliveryChallan existingChallan = deliveryChallanRepository.findByChallanNumber(challanNumber)
+            .orElseThrow(() -> new ResourceNotFoundException("Delivery Challan not found: " + challanNumber));
+
+    // Check if challan can be updated (only CREATED or PRINTED status allowed)
+    if (!existingChallan.getStatus().equals("CREATED") && !existingChallan.getStatus().equals("PRINTED")) {
+        throw new BusinessException("Cannot update challan in status: " + existingChallan.getStatus());
+    }
+
+    // Validate packages exist
+    if (request.getPackages() == null || request.getPackages().isEmpty()) {
+        throw new BusinessException("At least one package is required");
+    }
+
+    // Get SO Number from first package
+    String soNumber = request.getPackages().stream()
+            .findFirst()
+            .map(PackageRequests::getSoNumber)
+            .orElse(existingChallan.getSoNumber());
+
+    // Calculate totals
+    int totalPackages = request.getPackages().size();
+    int totalQuantity = request.getPackages().stream()
+            .mapToInt(p -> p.getDispatchedQuantity() != null ? p.getDispatchedQuantity() : 0)
+            .sum();
+    double totalWeight = request.getPackages().stream()
+            .mapToDouble(p -> p.getWeight() != null ? p.getWeight() : 0)
+            .sum();
+    double totalVolume = request.getPackages().stream()
+            .mapToDouble(p -> p.getVolume() != null ? p.getVolume() : 0)
+            .sum();
+
+    // Update Delivery Challan
+    existingChallan.setSoNumber(soNumber);
+    existingChallan.setShipmentNumber(request.getShipmentNumber());
+    existingChallan.setTransporter(request.getTransporter());
+    existingChallan.setVehicleNumber(request.getVehicleNumber());
+    existingChallan.setDriverName(request.getDriverName());
+    existingChallan.setDriverPhone(request.getDriverPhone());
+    existingChallan.setTotalPackages(totalPackages);
+    existingChallan.setTotalQuantity(totalQuantity);
+    existingChallan.setTotalWeight(totalWeight);
+    existingChallan.setTotalVolume(totalVolume);
+    existingChallan.setRemarks(request.getRemarks());
+    existingChallan.setUpdatedBy(request.getCreatedBy() != null ? request.getCreatedBy() : "SYSTEM");
+    existingChallan.setUpdatedAt(LocalDateTime.now());
+
+    DeliveryChallan updatedChallan = deliveryChallanRepository.save(existingChallan);
+
+    // Delete existing packages
+    List<DeliveryChallanPackage> existingPackages = deliveryChallanPackageRepository.findByChallanNumber(challanNumber);
+    deliveryChallanPackageRepository.deleteAll(existingPackages);
+
+    // Create new packages
+    List<DeliveryChallanPackage> packages = new ArrayList<>();
+    for (PackageRequests pkgReq : request.getPackages()) {
+        // Verify package exists
+        PackageInfo packageInfo = packageInfoRepository.findByPackageNumber(pkgReq.getPackageNumber())
+                .orElse(null);
+
+        String packageSoNumber = pkgReq.getSoNumber() != null ? pkgReq.getSoNumber() : soNumber;
+
+        DeliveryChallanPackage pkg = DeliveryChallanPackage.builder()
+                .challanNumber(challanNumber)
+                .soNumber(packageSoNumber)
+                .packageNumber(pkgReq.getPackageNumber())
+                .packageBarcode(pkgReq.getPackageBarcode() != null ? pkgReq.getPackageBarcode() : 
+                        packageInfo != null ? packageInfo.getPackageBarcode() : null)
+                .customerCode(pkgReq.getCustomerCode())
+                .customerName(pkgReq.getCustomerName())
+                .customerAddress(pkgReq.getCustomerAddress())
+                .customerGst(pkgReq.getCustomerGst())
+                .customerPhone(pkgReq.getCustomerPhone())
+                .invoiceNumber(pkgReq.getInvoiceNumber())
+                .orderDate(pkgReq.getOrderDate())
+                .dispatchDate(pkgReq.getDispatchDate() != null ? pkgReq.getDispatchDate() : LocalDateTime.now())
+                .expectedDeliveryDate(pkgReq.getExpectedDeliveryDate())
+                .itemCode(pkgReq.getItemCode())
+                .itemName(pkgReq.getItemName())
+                .uom(pkgReq.getUom() != null ? pkgReq.getUom() : "EA")
+                .orderedQuantity(pkgReq.getOrderedQuantity() != null ? pkgReq.getOrderedQuantity() : 0)
+                .dispatchedQuantity(pkgReq.getDispatchedQuantity() != null ? pkgReq.getDispatchedQuantity() : 0)
+                .deliveredQuantity(pkgReq.getDeliveredQuantity() != null ? pkgReq.getDeliveredQuantity() : 0)
+                .shortQuantity(pkgReq.getShortQuantity() != null ? pkgReq.getShortQuantity() : 0)
+                .batchNumber(pkgReq.getBatchNumber())
+                .serialNumbers(pkgReq.getSerialNumbers())
+                .unitPrice(pkgReq.getUnitPrice() != null ? pkgReq.getUnitPrice() : 0.0)
+                .totalPrice(pkgReq.getTotalPrice() != null ? pkgReq.getTotalPrice() : 0.0)
+                .weight(pkgReq.getWeight() != null ? pkgReq.getWeight() : 0.0)
+                .volume(pkgReq.getVolume() != null ? pkgReq.getVolume() : 0.0)
+                .status("PENDING")
+                .remarks(pkgReq.getRemarks())
+                .deliveryChallan(updatedChallan)
+                .build();
+        packages.add(deliveryChallanPackageRepository.save(pkg));
+    }
+
+    log.info("Delivery Challan updated: {}", challanNumber);
+    return buildDeliveryChallanResponse(updatedChallan, packages);
+}
+
+
+
 
     // ====== GET DELIVERY CHALLAN BY NUMBER ======
 
@@ -138,8 +254,8 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         DeliveryChallan challan = deliveryChallanRepository.findByChallanNumber(challanNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Delivery Challan not found: " + challanNumber));
 
-        List<DeliveryChallanItem> items = deliveryChallanItemRepository.findByChallanNumber(challanNumber);
-        return buildDeliveryChallanResponse(challan, items);
+        List<DeliveryChallanPackage> packages = deliveryChallanPackageRepository.findByChallanNumber(challanNumber);
+        return buildDeliveryChallanResponse(challan, packages);
     }
 
     // ====== GET ALL DELIVERY CHALLANS ======
@@ -148,7 +264,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     public Page<DeliveryChallanResponse> getAllDeliveryChallans(Pageable pageable) {
         return deliveryChallanRepository.findAll(pageable)
                 .map(challan -> buildDeliveryChallanResponse(challan,
-                        deliveryChallanItemRepository.findByChallanNumber(challan.getChallanNumber())));
+                        deliveryChallanPackageRepository.findByChallanNumber(challan.getChallanNumber())));
     }
 
     // ====== GET ALL WITH FILTERS ======
@@ -156,51 +272,37 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     @Override
     public Page<DeliveryChallanResponse> getAllDeliveryChallansWithFilters(
             String challanNumber,
-            String soNumber,
-            String packageNumber,
             String shipmentNumber,
-            String customerCode,
-            String customerName,
-            String status,
             String transporter,
             String vehicleNumber,
+            String status,
             LocalDateTime startDate,
             LocalDateTime endDate,
-            LocalDateTime startDispatchDate,
-            LocalDateTime endDispatchDate,
             Pageable pageable) {
 
         log.info("Fetching delivery challans with filters");
 
         Page<DeliveryChallan> challanPage = deliveryChallanRepository.findByFilters(
-                challanNumber, soNumber, packageNumber, shipmentNumber,
-                customerCode, customerName, status, transporter, vehicleNumber,
-                startDate, endDate, startDispatchDate, endDispatchDate, pageable);
+                challanNumber, shipmentNumber, transporter,
+                vehicleNumber, status, startDate, endDate, pageable);
 
         return challanPage.map(challan -> buildDeliveryChallanResponse(challan,
-                deliveryChallanItemRepository.findByChallanNumber(challan.getChallanNumber())));
+                deliveryChallanPackageRepository.findByChallanNumber(challan.getChallanNumber())));
     }
 
-    // ====== SEARCH DELIVERY CHALLANS ======
+    // ====== SEARCH ======
 
     @Override
     public Page<DeliveryChallanResponse> searchDeliveryChallans(String search, Pageable pageable) {
         log.info("Searching delivery challans with keyword: {}", search);
         return deliveryChallanRepository.searchDeliveryChallans(search, pageable)
                 .map(challan -> buildDeliveryChallanResponse(challan,
-                        deliveryChallanItemRepository.findByChallanNumber(challan.getChallanNumber())));
+                        deliveryChallanPackageRepository.findByChallanNumber(challan.getChallanNumber())));
     }
 
     // ====== GET BY SO NUMBER ======
 
-    @Override
-    public List<DeliveryChallanResponse> getDeliveryChallansBySoNumber(String soNumber) {
-        List<DeliveryChallan> challans = deliveryChallanRepository.findBySoNumber(soNumber);
-        return challans.stream()
-                .map(challan -> buildDeliveryChallanResponse(challan,
-                        deliveryChallanItemRepository.findByChallanNumber(challan.getChallanNumber())))
-                .collect(Collectors.toList());
-    }
+
 
     // ====== GET BY STATUS ======
 
@@ -209,7 +311,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         List<DeliveryChallan> challans = deliveryChallanRepository.findByStatus(status);
         return challans.stream()
                 .map(challan -> buildDeliveryChallanResponse(challan,
-                        deliveryChallanItemRepository.findByChallanNumber(challan.getChallanNumber())))
+                        deliveryChallanPackageRepository.findByChallanNumber(challan.getChallanNumber())))
                 .collect(Collectors.toList());
     }
 
@@ -230,22 +332,22 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         DeliveryChallan updated = deliveryChallanRepository.save(challan);
 
-        // If status is DELIVERED, update items
+        // If status is DELIVERED, update packages
         if ("DELIVERED".equals(status)) {
-            List<DeliveryChallanItem> items = deliveryChallanItemRepository.findByChallanNumber(challanNumber);
-            for (DeliveryChallanItem item : items) {
-                item.setDeliveredQuantity(item.getDispatchedQuantity());
-                item.setStatus("DELIVERED");
-                deliveryChallanItemRepository.save(item);
+            List<DeliveryChallanPackage> packages = deliveryChallanPackageRepository.findByChallanNumber(challanNumber);
+            for (DeliveryChallanPackage pkg : packages) {
+                pkg.setDeliveredQuantity(pkg.getDispatchedQuantity());
+                pkg.setStatus("DELIVERED");
+                deliveryChallanPackageRepository.save(pkg);
             }
         }
 
         log.info("Delivery Challan status updated: {}", challanNumber);
         return buildDeliveryChallanResponse(updated,
-                deliveryChallanItemRepository.findByChallanNumber(challanNumber));
+                deliveryChallanPackageRepository.findByChallanNumber(challanNumber));
     }
 
-    // ====== PRINT DELIVERY CHALLAN ======
+    // ====== PRINT ======
 
     @Override
     public DeliveryChallanResponse printDeliveryChallan(String challanNumber) {
@@ -266,7 +368,15 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         log.info("Delivery Challan printed: {}", challanNumber);
         return buildDeliveryChallanResponse(updated,
-                deliveryChallanItemRepository.findByChallanNumber(challanNumber));
+                deliveryChallanPackageRepository.findByChallanNumber(challanNumber));
+    }
+
+    // ====== MARK AS DISPATCHED ======
+
+    @Override
+    public DeliveryChallanResponse markAsDispatched(String challanNumber) {
+        log.info("Marking Delivery Challan as dispatched: {}", challanNumber);
+        return updateDeliveryChallanStatus(challanNumber, "DISPATCHED");
     }
 
     // ====== MARK AS DELIVERED ======
@@ -277,7 +387,7 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         return updateDeliveryChallanStatus(challanNumber, "DELIVERED");
     }
 
-    // ====== CANCEL DELIVERY CHALLAN ======
+    // ====== CANCEL ======
 
     @Override
     public DeliveryChallanResponse cancelDeliveryChallan(String challanNumber) {
@@ -298,21 +408,42 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
 
         log.info("Delivery Challan cancelled: {}", challanNumber);
         return buildDeliveryChallanResponse(updated,
-                deliveryChallanItemRepository.findByChallanNumber(challanNumber));
+                deliveryChallanPackageRepository.findByChallanNumber(challanNumber));
     }
 
     // ====== GENERATE PDF ======
 
-    
-
-    // ====== GENERATE HTML ======
-
+  
 
     // ====== GET SUMMARY ======
 
-    
+    @Override
+    public DeliveryChallanSummaryResponse getDeliveryChallanSummary() {
+        log.info("Getting delivery challan summary");
 
-    // ====== DELETE DELIVERY CHALLAN ======
+        long totalChallans = deliveryChallanRepository.count();
+        long created = deliveryChallanRepository.countByStatus("CREATED");
+        long printed = deliveryChallanRepository.countByStatus("PRINTED");
+        long dispatched = deliveryChallanRepository.countByStatus("DISPATCHED");
+        long delivered = deliveryChallanRepository.countByStatus("DELIVERED");
+        long cancelled = deliveryChallanRepository.countByStatus("CANCELLED");
+
+        Integer totalQuantity = deliveryChallanRepository.getTotalQuantity();
+        Double totalWeight = deliveryChallanRepository.getTotalWeight();
+
+        return DeliveryChallanSummaryResponse.builder()
+                .totalChallans(totalChallans)
+                .created(created)
+                .printed(printed)
+                .dispatched(dispatched)
+                .delivered(delivered)
+                .cancelled(cancelled)
+                .totalQuantity(totalQuantity != null ? totalQuantity : 0)
+                .totalWeight(totalWeight != null ? totalWeight : 0.0)
+                .build();
+    }
+
+    // ====== DELETE ======
 
     @Override
     public void deleteDeliveryChallan(String challanNumber) {
@@ -325,8 +456,8 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
             throw new BusinessException("Cannot delete challan in status: " + challan.getStatus());
         }
 
-        List<DeliveryChallanItem> items = deliveryChallanItemRepository.findByChallanNumber(challanNumber);
-        deliveryChallanItemRepository.deleteAll(items);
+        List<DeliveryChallanPackage> packages = deliveryChallanPackageRepository.findByChallanNumber(challanNumber);
+        deliveryChallanPackageRepository.deleteAll(packages);
 
         deliveryChallanRepository.delete(challan);
 
@@ -341,10 +472,6 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
     }
 
     private void validateStatusTransition(String currentStatus, String newStatus) {
-        if (currentStatus.equals(newStatus)) {
-            return;
-        }
-
         Map<String, List<String>> validTransitions = new HashMap<>();
         validTransitions.put("CREATED", List.of("PRINTED", "CANCELLED"));
         validTransitions.put("PRINTED", List.of("DISPATCHED", "CANCELLED"));
@@ -358,48 +485,49 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
         }
     }
 
-    private DeliveryChallanResponse buildDeliveryChallanResponse(DeliveryChallan challan, List<DeliveryChallanItem> items) {
-        List<DeliveryChallanItemResponse> itemResponses = items.stream()
-                .map(item -> DeliveryChallanItemResponse.builder()
-                        .id(item.getId())
-                        .itemCode(item.getItemCode())
-                        .itemName(item.getItemName())
-                        .uom(item.getUom())
-                        .orderedQuantity(item.getOrderedQuantity())
-                        .dispatchedQuantity(item.getDispatchedQuantity())
-                        .deliveredQuantity(item.getDeliveredQuantity())
-                        .shortQuantity(item.getShortQuantity())
-                        .batchNumber(item.getBatchNumber())
-                        .serialNumbers(item.getSerialNumbers())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(item.getTotalPrice())
-                        .weight(item.getWeight())
-                        .volume(item.getVolume())
-                        .status(item.getStatus())
-                        .remarks(item.getRemarks())
+    private DeliveryChallanResponse buildDeliveryChallanResponse(DeliveryChallan challan, List<DeliveryChallanPackage> packages) {
+        List<PackageResponses> packageResponses = packages.stream()
+                .map(pkg -> PackageResponses.builder()
+                        .id(pkg.getId())
+                        .soNumber(pkg.getSoNumber())
+                        .packageNumber(pkg.getPackageNumber())
+                        .packageBarcode(pkg.getPackageBarcode())
+                        .customerCode(pkg.getCustomerCode())
+                        .customerName(pkg.getCustomerName())
+                        .customerAddress(pkg.getCustomerAddress())
+                        .customerGst(pkg.getCustomerGst())
+                        .customerPhone(pkg.getCustomerPhone())
+                        .invoiceNumber(pkg.getInvoiceNumber())
+                        .orderDate(pkg.getOrderDate())
+                        .dispatchDate(pkg.getDispatchDate())
+                        .expectedDeliveryDate(pkg.getExpectedDeliveryDate())
+                        .itemCode(pkg.getItemCode())
+                        .itemName(pkg.getItemName())
+                        .uom(pkg.getUom())
+                        .orderedQuantity(pkg.getOrderedQuantity())
+                        .dispatchedQuantity(pkg.getDispatchedQuantity())
+                        .deliveredQuantity(pkg.getDeliveredQuantity())
+                        .shortQuantity(pkg.getShortQuantity())
+                        .batchNumber(pkg.getBatchNumber())
+                        .serialNumbers(pkg.getSerialNumbers())
+                        .unitPrice(pkg.getUnitPrice())
+                        .totalPrice(pkg.getTotalPrice())
+                        .weight(pkg.getWeight())
+                        .volume(pkg.getVolume())
+                        .status(pkg.getStatus())
+                        .remarks(pkg.getRemarks())
                         .build())
                 .collect(Collectors.toList());
 
         return DeliveryChallanResponse.builder()
                 .id(challan.getId())
                 .challanNumber(challan.getChallanNumber())
-                .soNumber(challan.getSoNumber())
-                .packageNumber(challan.getPackageNumber())
                 .shipmentNumber(challan.getShipmentNumber())
-                .customerCode(challan.getCustomerCode())
-                .customerName(challan.getCustomerName())
-                .customerAddress(challan.getCustomerAddress())
-                .customerGst(challan.getCustomerGst())
-                .customerPhone(challan.getCustomerPhone())
-                .invoiceNumber(challan.getInvoiceNumber())
-                .orderDate(challan.getOrderDate())
-                .dispatchDate(challan.getDispatchDate())
-                .expectedDeliveryDate(challan.getExpectedDeliveryDate())
                 .transporter(challan.getTransporter())
                 .vehicleNumber(challan.getVehicleNumber())
                 .driverName(challan.getDriverName())
                 .driverPhone(challan.getDriverPhone())
-                .totalItems(challan.getTotalItems())
+                .totalPackages(challan.getTotalPackages())
                 .totalQuantity(challan.getTotalQuantity())
                 .totalWeight(challan.getTotalWeight())
                 .totalVolume(challan.getTotalVolume())
@@ -408,11 +536,11 @@ public class DeliveryChallanServiceImpl implements DeliveryChallanService {
                 .createdBy(challan.getCreatedBy())
                 .createdAt(challan.getCreatedAt())
                 .updatedAt(challan.getUpdatedAt())
-                .items(itemResponses)
+                .packages(packageResponses)
                 .build();
     }
 
     // ====== PDF HELPER METHODS ======
 
-    
+   
 }

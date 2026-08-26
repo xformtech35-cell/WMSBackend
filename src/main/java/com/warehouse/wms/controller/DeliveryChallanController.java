@@ -29,7 +29,10 @@ public class DeliveryChallanController {
 
     private final DeliveryChallanService deliveryChallanService;
 
-    // ====== CREATE ======
+    // ============================================================
+    // ===================== CREATE ================================
+    // ============================================================
+
     @PostMapping
     public ResponseEntity<DeliveryChallanResponse> createDeliveryChallan(
             @Valid @RequestBody DeliveryChallanRequest request) {
@@ -38,29 +41,40 @@ public class DeliveryChallanController {
                 .body(deliveryChallanService.createDeliveryChallan(request));
     }
 
-    // ====== GET BY NUMBER ======
+    
+    
+    @PutMapping("/{challanNumber}")
+    public ResponseEntity<DeliveryChallanResponse> updateDeliveryChallan(
+            @PathVariable String challanNumber,
+            @Valid @RequestBody DeliveryChallanRequest request) {
+        log.info("PUT /api/outbound/delivery-challan/{} - Updating Delivery Challan", challanNumber);
+        return ResponseEntity.ok(deliveryChallanService.updateDeliveryChallan(challanNumber, request));
+    }
+    // ============================================================
+    // ===================== GET BY NUMBER =========================
+    // ============================================================
+
     @GetMapping("/{challanNumber}")
-    public ResponseEntity<DeliveryChallanResponse> getDeliveryChallan(@PathVariable String challanNumber) {
+    public ResponseEntity<DeliveryChallanResponse> getDeliveryChallan(
+            @PathVariable String challanNumber) {
         log.info("GET /api/outbound/delivery-challan/{} - Getting Delivery Challan", challanNumber);
         return ResponseEntity.ok(deliveryChallanService.getDeliveryChallanByNumber(challanNumber));
     }
 
-    @GetMapping("/deliverychallans")
+    // ============================================================
+    // ===================== GET ALL WITH FILTERS ==================
+    // ============================================================
+
+    @GetMapping
     public ResponseEntity<Page<DeliveryChallanResponse>> getAllDeliveryChallans(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String challanNumber,
-            @RequestParam(required = false) String soNumber,
-            @RequestParam(required = false) String packageNumber,
             @RequestParam(required = false) String shipmentNumber,
-            @RequestParam(required = false) String customerCode,
-            @RequestParam(required = false) String customerName,
-            @RequestParam(required = false) String status,
             @RequestParam(required = false) String transporter,
             @RequestParam(required = false) String vehicleNumber,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDispatchDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDispatchDate,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         log.info("GET /api/outbound/delivery-challan - Getting all Delivery Challans with filters");
@@ -70,35 +84,23 @@ public class DeliveryChallanController {
             return ResponseEntity.ok(deliveryChallanService.searchDeliveryChallans(search, pageable));
         }
 
-        // FIX: Pass all 14 parameters including vehicleNumber
         Page<DeliveryChallanResponse> response = deliveryChallanService.getAllDeliveryChallansWithFilters(
-                challanNumber,           // String
-                soNumber,                // String
-                packageNumber,           // String
-                shipmentNumber,          // String
-                customerCode,            // String
-                customerName,            // String
-                status,                  // String
-                transporter,             // String
-                vehicleNumber,           // String - THIS WAS MISSING
-                startDate,               // LocalDateTime
-                endDate,                 // LocalDateTime
-                startDispatchDate,       // LocalDateTime
-                endDispatchDate,         // LocalDateTime
-                pageable);               // Pageable
+                challanNumber, shipmentNumber, transporter,
+                vehicleNumber, status, startDate, endDate, pageable);
 
         return ResponseEntity.ok(response);
     }
 
-    // ====== GET BY SO NUMBER ======
-    @GetMapping("/so/{soNumber}")
-    public ResponseEntity<List<DeliveryChallanResponse>> getDeliveryChallansBySoNumber(
-            @PathVariable String soNumber) {
-        log.info("GET /api/outbound/delivery-challan/so/{} - Getting by SO", soNumber);
-        return ResponseEntity.ok(deliveryChallanService.getDeliveryChallansBySoNumber(soNumber));
-    }
+    // ============================================================
+    // ===================== GET BY SO NUMBER ======================
+    // ============================================================
 
-    // ====== GET BY STATUS ======
+  
+
+    // ============================================================
+    // ===================== GET BY STATUS ========================
+    // ============================================================
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<DeliveryChallanResponse>> getDeliveryChallansByStatus(
             @PathVariable String status) {
@@ -106,7 +108,21 @@ public class DeliveryChallanController {
         return ResponseEntity.ok(deliveryChallanService.getDeliveryChallansByStatus(status));
     }
 
-    // ====== UPDATE STATUS ======
+    // ============================================================
+    // ===================== GET BY TRANSPORTER ===================
+    // ============================================================
+
+    @GetMapping("/transporter/{transporter}")
+    public ResponseEntity<List<DeliveryChallanResponse>> getDeliveryChallansByTransporter(
+            @PathVariable String transporter) {
+        log.info("GET /api/outbound/delivery-challan/transporter/{} - Getting by Transporter", transporter);
+        return ResponseEntity.ok(deliveryChallanService.getDeliveryChallansByStatus(transporter));
+    }
+
+    // ============================================================
+    // ===================== UPDATE STATUS ========================
+    // ============================================================
+
     @PatchMapping("/{challanNumber}/status")
     public ResponseEntity<DeliveryChallanResponse> updateStatus(
             @PathVariable String challanNumber,
@@ -115,31 +131,103 @@ public class DeliveryChallanController {
         return ResponseEntity.ok(deliveryChallanService.updateDeliveryChallanStatus(challanNumber, status));
     }
 
-    // ====== PRINT ======
+    // ============================================================
+    // ===================== PRINT ================================
+    // ============================================================
+
     @PatchMapping("/{challanNumber}/print")
-    public ResponseEntity<DeliveryChallanResponse> printDeliveryChallan(@PathVariable String challanNumber) {
+    public ResponseEntity<DeliveryChallanResponse> printDeliveryChallan(
+            @PathVariable String challanNumber) {
         log.info("PATCH /api/outbound/delivery-challan/{}/print - Printing", challanNumber);
         return ResponseEntity.ok(deliveryChallanService.printDeliveryChallan(challanNumber));
     }
 
-    // ====== MARK AS DELIVERED ======
+    // ============================================================
+    // ===================== MARK AS DISPATCHED ===================
+    // ============================================================
+
+    @PatchMapping("/{challanNumber}/dispatch")
+    public ResponseEntity<DeliveryChallanResponse> markAsDispatched(
+            @PathVariable String challanNumber) {
+        log.info("PATCH /api/outbound/delivery-challan/{}/dispatch - Marking as Dispatched", challanNumber);
+        return ResponseEntity.ok(deliveryChallanService.markAsDispatched(challanNumber));
+    }
+
+    // ============================================================
+    // ===================== MARK AS DELIVERED ====================
+    // ============================================================
+
     @PatchMapping("/{challanNumber}/deliver")
-    public ResponseEntity<DeliveryChallanResponse> markAsDelivered(@PathVariable String challanNumber) {
+    public ResponseEntity<DeliveryChallanResponse> markAsDelivered(
+            @PathVariable String challanNumber) {
         log.info("PATCH /api/outbound/delivery-challan/{}/deliver - Marking as Delivered", challanNumber);
         return ResponseEntity.ok(deliveryChallanService.markAsDelivered(challanNumber));
     }
 
-    // ====== CANCEL ======
+    // ============================================================
+    // ===================== CANCEL ===============================
+    // ============================================================
+
     @PatchMapping("/{challanNumber}/cancel")
-    public ResponseEntity<DeliveryChallanResponse> cancelDeliveryChallan(@PathVariable String challanNumber) {
+    public ResponseEntity<DeliveryChallanResponse> cancelDeliveryChallan(
+            @PathVariable String challanNumber) {
         log.info("PATCH /api/outbound/delivery-challan/{}/cancel - Cancelling", challanNumber);
         return ResponseEntity.ok(deliveryChallanService.cancelDeliveryChallan(challanNumber));
     }
 
-  
-    // ====== DELETE ======
+    // ============================================================
+    // ===================== GENERATE PDF =========================
+    // ============================================================
+
+//    @GetMapping(value = "/{challanNumber}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+//    public ResponseEntity<byte[]> generatePdf(
+//            @PathVariable String challanNumber) {
+//        log.info("GET /api/outbound/delivery-challan/{}/pdf - Generating PDF", challanNumber);
+//        
+//        byte[] pdfBytes = deliveryChallanService.generateDeliveryChallanPdf(challanNumber);
+//        
+//        HttpHeaders headers = new HttpHeaders();
+//        headers.setContentType(MediaType.APPLICATION_PDF);
+//        headers.setContentDispositionFormData("attachment", "delivery-challan-" + challanNumber + ".pdf");
+//        headers.setContentLength(pdfBytes.length);
+//        
+//        return ResponseEntity.ok()
+//                .headers(headers)
+//                .body(pdfBytes);
+//    }
+//
+//    // ============================================================
+//    // ===================== GENERATE HTML ========================
+//    // ============================================================
+//
+//    @GetMapping(value = "/{challanNumber}/html", produces = MediaType.TEXT_HTML_VALUE)
+//    public ResponseEntity<String> generateHtml(
+//            @PathVariable String challanNumber) {
+//        log.info("GET /api/outbound/delivery-challan/{}/html - Generating HTML", challanNumber);
+//        return ResponseEntity.ok(deliveryChallanService.generateDeliveryChallanHtml(challanNumber));
+//    }
+
+    // ============================================================
+    // ===================== GET SUMMARY ==========================
+    // ============================================================
+
+    @GetMapping("/summary")
+    public ResponseEntity<DeliveryChallanSummaryResponse> getSummary() {
+        log.info("GET /api/outbound/delivery-challan/summary - Getting Summary");
+        return ResponseEntity.ok(deliveryChallanService.getDeliveryChallanSummary());
+    }
+
+   
+
+   
+
+    // ============================================================
+    // ===================== DELETE ===============================
+    // ============================================================
+
     @DeleteMapping("/{challanNumber}")
-    public ResponseEntity<Void> deleteDeliveryChallan(@PathVariable String challanNumber) {
+    public ResponseEntity<Void> deleteDeliveryChallan(
+            @PathVariable String challanNumber) {
         log.info("DELETE /api/outbound/delivery-challan/{} - Deleting", challanNumber);
         deliveryChallanService.deleteDeliveryChallan(challanNumber);
         return ResponseEntity.noContent().build();

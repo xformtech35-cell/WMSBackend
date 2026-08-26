@@ -11,105 +11,42 @@ import java.util.List;
 
 public interface DeliveryChallanService {
 
-    // ====== CRUD Operations ======
-    
-    /**
-     * Create a new Delivery Challan
-     */
+    // ====== CRUD ======
     DeliveryChallanResponse createDeliveryChallan(DeliveryChallanRequest request);
     
-    /**
-     * Get Delivery Challan by Challan Number
-     */
-    DeliveryChallanResponse getDeliveryChallanByNumber(String challanNumber);
-    
-    /**
-     * Get all Delivery Challans with pagination
-     */
-    Page<DeliveryChallanResponse> getAllDeliveryChallans(Pageable pageable);
-    
-    /**
-     * Get Delivery Challan by Package Number
-     */
-    
-    /**
-     * Get Delivery Challan by SO Number
-     */
-    List<DeliveryChallanResponse> getDeliveryChallansBySoNumber(String soNumber);
+    DeliveryChallanResponse updateDeliveryChallan(String challanNumber, DeliveryChallanRequest request);
 
-    // ====== Filter & Search ======
-    
-    /**
-     * Get all Delivery Challans with filters
-     */
+    DeliveryChallanResponse getDeliveryChallanByNumber(String challanNumber);
+    Page<DeliveryChallanResponse> getAllDeliveryChallans(Pageable pageable);
+
+    // ====== Filters ======
     Page<DeliveryChallanResponse> getAllDeliveryChallansWithFilters(
             String challanNumber,
-            String soNumber,
-            String packageNumber,
             String shipmentNumber,
-            String customerCode,
-            String customerName,
-            String status,
             String transporter,
             String vehicleNumber,
+            String status,
             LocalDateTime startDate,
             LocalDateTime endDate,
-            LocalDateTime startDispatchDate,
-            LocalDateTime endDispatchDate,
             Pageable pageable);
-    
-    /**
-     * Search Delivery Challans by keyword
-     */
-    Page<DeliveryChallanResponse> searchDeliveryChallans(String search, Pageable pageable);
-    
-    /**
-     * Get Delivery Challans by Status
-     */
-    List<DeliveryChallanResponse> getDeliveryChallansByStatus(String status);
-    
 
+    Page<DeliveryChallanResponse> searchDeliveryChallans(String search, Pageable pageable);
+    List<DeliveryChallanResponse> getDeliveryChallansByStatus(String status);
 
     // ====== Status Management ======
-    
-    /**
-     * Update Delivery Challan Status
-     */
     DeliveryChallanResponse updateDeliveryChallanStatus(String challanNumber, String status);
-    
-    /**
-     * Print Delivery Challan (Update status to PRINTED)
-     */
     DeliveryChallanResponse printDeliveryChallan(String challanNumber);
-    
-    /**
-     * Mark Delivery Challan as Dispatched
-     */
-    
-    /**
-     * Mark Delivery Challan as Delivered
-     */
+    DeliveryChallanResponse markAsDispatched(String challanNumber);
     DeliveryChallanResponse markAsDelivered(String challanNumber);
-    
-    /**
-     * Cancel Delivery Challan
-     */
     DeliveryChallanResponse cancelDeliveryChallan(String challanNumber);
 
-    // ====== Document Generation ======
-    
-   
+    // ====== PDF/HTML ======
+//    byte[] generateDeliveryChallanPdf(String challanNumber);
+//    String generateDeliveryChallanHtml(String challanNumber);
 
-    // ====== Summary & Statistics ======
-    
-    /**
-     * Get Delivery Challan Summary
-     */
+    // ====== Summary ======
+    DeliveryChallanSummaryResponse getDeliveryChallanSummary();
 
     // ====== Delete ======
-    
-    /**
-     * Delete Delivery Challan
-     */
     void deleteDeliveryChallan(String challanNumber);
 }

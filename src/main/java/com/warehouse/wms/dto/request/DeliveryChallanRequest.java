@@ -17,31 +17,22 @@ import java.util.List;
 @AllArgsConstructor
 public class DeliveryChallanRequest {
 
-    @NotBlank(message = "SO Number is required")
-    private String soNumber;
 
-    @NotBlank(message = "package Number is required")
-    private String packageNumber;
 
     private String shipmentNumber;
-    private String customerCode;
-    private String customerName;
-    private String customerAddress;
-    private String customerGst;
-    private String customerPhone;
-    private String invoiceNumber;
-    private LocalDateTime orderDate;
-    private LocalDateTime dispatchDate;
-    private LocalDateTime expectedDeliveryDate;
     private String transporter;
     private String vehicleNumber;
     private String driverName;
     private String driverPhone;
     private String createdBy;
     private String remarks;
+    private int totalPackages;
+    private int totalQuantity;
+    
+    
 
-    @NotEmpty(message = "At least one item is required")
+    @NotEmpty(message = "At least one package is required")
     @Valid
-    private List<DeliveryChallanItemRequest> items;
+    private List<PackageRequests> packages;
 }
 

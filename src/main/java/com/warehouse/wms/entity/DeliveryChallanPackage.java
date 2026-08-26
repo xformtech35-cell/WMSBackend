@@ -11,15 +11,16 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wms_delivery_challan_item", indexes = {
-    @Index(name = "idx_dci_challan_number", columnList = "challan_number"),
-    @Index(name = "idx_dci_item_code", columnList = "item_code")
+@Table(name = "wms_delivery_challan_package", indexes = {
+    @Index(name = "idx_dcp_challan_number", columnList = "challan_number"),
+    @Index(name = "idx_dcp_package_number", columnList = "package_number"),
+    @Index(name = "idx_dcp_customer_code", columnList = "customer_code")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DeliveryChallanItem {
+public class DeliveryChallanPackage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +29,44 @@ public class DeliveryChallanItem {
     @Column(name = "challan_number", nullable = false, length = 50)
     private String challanNumber;
 
+    @Column(name = "so_number", nullable = false, length = 50)
+    private String soNumber;
+
+    @Column(name = "package_number", nullable = false, length = 50)
+    private String packageNumber;
+
+    @Column(name = "package_barcode", length = 100)
+    private String packageBarcode;
+
+    // Customer fields per package
+    @Column(name = "customer_code", length = 50)
+    private String customerCode;
+
+    @Column(name = "customer_name", length = 200)
+    private String customerName;
+
+    @Column(name = "customer_address", columnDefinition = "TEXT")
+    private String customerAddress;
+
+    @Column(name = "customer_gst", length = 50)
+    private String customerGst;
+
+    @Column(name = "customer_phone", length = 20)
+    private String customerPhone;
+
+    @Column(name = "invoice_number", length = 50)
+    private String invoiceNumber;
+
+    @Column(name = "order_date")
+    private LocalDateTime orderDate;
+
+    @Column(name = "dispatch_date")
+    private LocalDateTime dispatchDate;
+
+    @Column(name = "expected_delivery_date")
+    private LocalDateTime expectedDeliveryDate;
+
+    // Item fields
     @Column(name = "item_code", nullable = false, length = 50)
     private String itemCode;
 
@@ -37,10 +76,10 @@ public class DeliveryChallanItem {
     @Column(name = "uom", length = 10)
     private String uom;
 
-    @Column(name = "ordered_quantity", nullable = false)
+    @Column(name = "ordered_quantity")
     private Integer orderedQuantity = 0;
 
-    @Column(name = "dispatched_quantity", nullable = false)
+    @Column(name = "dispatched_quantity")
     private Integer dispatchedQuantity = 0;
 
     @Column(name = "delivered_quantity")
@@ -68,7 +107,7 @@ public class DeliveryChallanItem {
     private Double volume = 0.0;
 
     @Column(name = "status", length = 30)
-    private String status = "PENDING"; // PENDING, DISPATCHED, DELIVERED, RETURNED
+    private String status = "PENDING";
 
     @Column(columnDefinition = "TEXT")
     private String remarks;

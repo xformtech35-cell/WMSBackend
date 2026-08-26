@@ -1,32 +1,21 @@
 package com.warehouse.wms.entity;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "wms_delivery_challan", indexes = {
-    @Index(name = "idx_dc_number", columnList = "challan_number"),
+    @Index(name = "idx_dc_challan_number", columnList = "challan_number"),
     @Index(name = "idx_dc_so_number", columnList = "so_number"),
-    @Index(name = "idx_dc_dispatch_number", columnList = "dispatch_number"),
     @Index(name = "idx_dc_status", columnList = "status")
 })
 @Data
@@ -42,41 +31,11 @@ public class DeliveryChallan {
     @Column(name = "challan_number", unique = true, nullable = false, length = 50)
     private String challanNumber;
 
-    @Column(name = "so_number", nullable = false, length = 50)
-    private String soNumber;
+    private String  soNumber;
 
-    @Column(name = "package_number", nullable = false, length = 50)
-    private String packageNumber;
 
     @Column(name = "shipment_number", length = 50)
     private String shipmentNumber;
-
-    @Column(name = "customer_code", length = 50)
-    private String customerCode;
-
-    @Column(name = "customer_name", length = 200)
-    private String customerName;
-
-    @Column(name = "customer_address", columnDefinition = "TEXT")
-    private String customerAddress;
-
-    @Column(name = "customer_gst", length = 50)
-    private String customerGst;
-
-    @Column(name = "customer_phone", length = 20)
-    private String customerPhone;
-
-    @Column(name = "invoice_number", length = 50)
-    private String invoiceNumber;
-
-    @Column(name = "order_date")
-    private LocalDateTime orderDate;
-
-    @Column(name = "dispatch_date")
-    private LocalDateTime dispatchDate;
-
-    @Column(name = "expected_delivery_date")
-    private LocalDateTime expectedDeliveryDate;
 
     @Column(name = "transporter", length = 100)
     private String transporter;
@@ -90,8 +49,8 @@ public class DeliveryChallan {
     @Column(name = "driver_phone", length = 20)
     private String driverPhone;
 
-    @Column(name = "total_items")
-    private Integer totalItems = 0;
+    @Column(name = "total_packages")
+    private Integer totalPackages = 0;
 
     @Column(name = "total_quantity")
     private Integer totalQuantity = 0;
@@ -103,7 +62,7 @@ public class DeliveryChallan {
     private Double totalVolume = 0.0;
 
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "CREATED"; // CREATED, PRINTED, DISPATCHED, DELIVERED, CANCELLED
+    private String status = "CREATED";
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
@@ -123,5 +82,5 @@ public class DeliveryChallan {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "deliveryChallan", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DeliveryChallanItem> items = new ArrayList<>();
+    private List<DeliveryChallanPackage> packages = new ArrayList<>();
 }
