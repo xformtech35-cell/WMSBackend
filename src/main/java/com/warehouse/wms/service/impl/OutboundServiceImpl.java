@@ -1288,6 +1288,53 @@ public class OutboundServiceImpl implements OutboundService {
         packageInfoRepository.delete(packageInfo);
         log.info("Package deleted successfully: {}", packageNumber);
     }
+    
+    
+    
+    @Override
+    public Page<PackageResponse> getAllPackagesWithFilters(
+            String packageNumber,
+            String packageBarcode,
+            String soNumber,
+            String pickListNumber,
+            String itemCode,
+            String itemName,
+            String packageType,
+            String status,
+            String packedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startPackedDate,
+            LocalDateTime endPackedDate,
+            Double minWeight,
+            Double maxWeight,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable) {
+
+        log.info("Fetching packages with filters");
+
+        Page<PackageInfo> packagePage = packageInfoRepository.findByFilters(
+                packageNumber, packageBarcode, soNumber, pickListNumber,
+                itemCode, itemName, packageType, status, packedBy,
+                startDate, endDate, startPackedDate, endPackedDate,
+                minWeight, maxWeight, minQuantity, maxQuantity, pageable);
+
+        return packagePage.map(this::buildPackageResponse);
+    }
+
+    // ====== SEARCH PACKAGES ======
+
+    @Override
+    public Page<PackageResponse> searchPackages(String search, Pageable pageable) {
+        log.info("Searching packages with keyword: {}", search);
+        return packageInfoRepository.searchPackages(search, pageable)
+                .map(this::buildPackageResponse);
+    }
+
+    
+    
+    
 
     // ============================================================
     // ================== SHIPPING LABEL ===========================

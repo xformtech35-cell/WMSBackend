@@ -553,6 +553,47 @@ public class OutboundController {
         log.info("GET /api/outbound/package/{} - Getting Package", packageNumber);
         return ResponseEntity.ok(outboundService.getPackageByNumber(packageNumber));
     }
+    
+    
+    
+    @GetMapping("/packages")
+    public ResponseEntity<Page<PackageResponse>> getAllPackages(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String packageNumber,
+            @RequestParam(required = false) String packageBarcode,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String pickListNumber,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String packageType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String packedBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startPackedDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endPackedDate,
+            @RequestParam(required = false) Double minWeight,
+            @RequestParam(required = false) Double maxWeight,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/packages - Getting all Packages with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchPackages(search, pageable));
+        }
+
+        Page<PackageResponse> response = outboundService.getAllPackagesWithFilters(
+                packageNumber, packageBarcode, soNumber, pickListNumber,
+                itemCode, itemName, packageType, status, packedBy,
+                startDate, endDate, startPackedDate, endPackedDate,
+                minWeight, maxWeight, minQuantity, maxQuantity, pageable);
+
+        return ResponseEntity.ok(response);
+    }
+    
 
     // GET Package by Barcode
     @GetMapping("/package/barcode/{packageBarcode}")

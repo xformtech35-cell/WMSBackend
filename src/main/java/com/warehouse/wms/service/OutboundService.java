@@ -201,6 +201,31 @@ public interface OutboundService {
     void updatePackageStatus(String packageNumber, String status);
 
     void deletePackage(String packageNumber);
+    
+    
+
+    Page<PackageResponse> getAllPackagesWithFilters(
+            String packageNumber,
+            String packageBarcode,
+            String soNumber,
+            String pickListNumber,
+            String itemCode,
+            String itemName,
+            String packageType,
+            String status,
+            String packedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startPackedDate,
+            LocalDateTime endPackedDate,
+            Double minWeight,
+            Double maxWeight,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable);
+
+    Page<PackageResponse> searchPackages(String search, Pageable pageable);
+
 
     // ============================================================
     // ================== SHIPPING LABEL ===========================
