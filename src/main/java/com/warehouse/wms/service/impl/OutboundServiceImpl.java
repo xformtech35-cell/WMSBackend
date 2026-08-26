@@ -1,5 +1,11 @@
 package com.warehouse.wms.service.impl;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -11,12 +17,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.imageio.ImageIO;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.google.zxing.WriterException;
+import com.warehouse.wms.dto.request.BarcodeScanRequest;
 import com.warehouse.wms.dto.request.DeliveryRequest;
 import com.warehouse.wms.dto.request.DispatchRequest;
 import com.warehouse.wms.dto.request.PackageRequest;
@@ -28,6 +38,7 @@ import com.warehouse.wms.dto.request.SalesOrderItemRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
+import com.warehouse.wms.dto.response.BarcodeScanResponse;
 import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
 import com.warehouse.wms.dto.response.LabelImageResponse;
@@ -40,6 +51,7 @@ import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
+import com.warehouse.wms.dto.response.ShippingLabelBarcodeResponse;
 import com.warehouse.wms.dto.response.ShippingLabelResponse;
 import com.warehouse.wms.dto.response.StockReservationResponse;
 import com.warehouse.wms.entity.Delivery;
@@ -71,6 +83,7 @@ import com.warehouse.wms.repository.ShipmentConfirmationRepository;
 import com.warehouse.wms.repository.ShippingLabelRepository;
 import com.warehouse.wms.repository.StockReservationRepository;
 import com.warehouse.wms.service.OutboundService;
+import com.warehouse.wms.util.BarcodeUtils;
 import com.warehouse.wms.util.SoNumberGenerator;
 
 import lombok.RequiredArgsConstructor;
@@ -96,6 +109,7 @@ public class OutboundServiceImpl implements OutboundService {
     private final DeliveryRepository deliveryRepository;
     private final InventoryStockRepository inventoryStockRepository;
     private final SoNumberGenerator soNumberGenerator;
+    private final BarcodeUtils barcodeUtils;
 
     // ============================================================
     // ===================== SALES ORDER ===========================
@@ -1386,6 +1400,7 @@ public class OutboundServiceImpl implements OutboundService {
         
         getShippingLabelQr(savedLabel.getLabelNumber());
         getShippingLabelImage(savedLabel.getLabelNumber());
+        getShippingLabelBarcode(savedLabel.getLabelNumber());
         
         return buildShippingLabelResponse(savedLabel);
     }
@@ -1439,6 +1454,9 @@ public class OutboundServiceImpl implements OutboundService {
                 trackingNumber, labelStatus, shippingMethod, printedBy,
                 startDate, endDate, startPrintedDate, endPrintedDate,
                 minWeight, maxWeight, minQuantity, maxQuantity, pageable);
+        
+        
+
 
         return labelPage.map(this::buildShippingLabelResponse);
     }
@@ -1462,7 +1480,7 @@ public class OutboundServiceImpl implements OutboundService {
                 .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
 
         // Generate label image as Base64
-        String base64Image = generateLabelImage(label);
+        String base64Image = generateLabelImages(label);
         
         
         label.setLabelImage(base64Image);
@@ -1508,6 +1526,353 @@ public class OutboundServiceImpl implements OutboundService {
                 .qrCodeData(qrData)
                 .build();
     }
+    
+    
+    
+
+    @Override
+    public byte[] getShippingLabelImageAsPng(String labelNumber) {
+        log.info("Getting shipping label image as PNG: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        return generateLabelImage(label);
+    }
+
+    // ====== GET SHIPPING LABEL QR CODE AS PNG ======
+
+    @Override
+    public byte[] getShippingLabelQRAsPng(String labelNumber) {
+        log.info("Getting shipping label QR as PNG: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        return generateQRCode(label);
+    }
+
+    // ====== GENERATE LABEL IMAGE ======
+
+    private byte[] generateLabelImage(ShippingLabel label) {
+        try {
+            // Create image with dimensions
+            int width = 600;
+            int height = 400;
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = image.createGraphics();
+
+            // Set background color
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, width, height);
+
+            // Draw border
+            g2d.setColor(Color.BLACK);
+            g2d.drawRect(5, 5, width - 10, height - 10);
+
+            // Set font
+            Font titleFont = new Font("Arial", Font.BOLD, 20);
+            Font normalFont = new Font("Arial", Font.PLAIN, 14);
+            Font boldFont = new Font("Arial", Font.BOLD, 14);
+
+            // Draw title
+            g2d.setFont(titleFont);
+            g2d.setColor(Color.BLUE);
+            g2d.drawString("SHIPPING LABEL", 200, 40);
+
+            // Draw separator line
+            g2d.setColor(Color.GRAY);
+            g2d.drawLine(50, 50, width - 50, 50);
+
+            // Draw content
+            int y = 80;
+            int x = 50;
+            int spacing = 25;
+
+            g2d.setFont(normalFont);
+            g2d.setColor(Color.BLACK);
+
+            // Label Number
+            g2d.setFont(boldFont);
+            g2d.drawString("Label Number:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getLabelNumber(), x + 180, y);
+
+            // Package Number
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Package Number:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getPackageNumber(), x + 180, y);
+
+            // SO Number
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("SO Number:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getSoNumber(), x + 180, y);
+
+            // Customer Name
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Customer:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getCustomerName(), x + 180, y);
+
+            // Customer Address (wrap if too long)
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Address:", x, y);
+            g2d.setFont(normalFont);
+            String address = label.getCustomerAddress();
+            if (address.length() > 30) {
+                g2d.drawString(address.substring(0, 30), x + 180, y);
+                y += spacing;
+                g2d.drawString(address.substring(30), x + 180, y);
+            } else {
+                g2d.drawString(address, x + 180, y);
+            }
+
+            // Item Name
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Item:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getItemName(), x + 180, y);
+
+            // Quantity
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Quantity:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(String.valueOf(label.getQuantity()), x + 180, y);
+
+            // Weight
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Weight:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getWeight() + " kg", x + 180, y);
+
+            // Tracking Number
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Tracking:", x, y);
+            g2d.setFont(normalFont);
+            g2d.drawString(label.getTrackingNumber() != null ? label.getTrackingNumber() : "N/A", x + 180, y);
+
+            // Status
+            y += spacing;
+            g2d.setFont(boldFont);
+            g2d.drawString("Status:", x, y);
+            g2d.setFont(normalFont);
+            g2d.setColor(getStatusColor(label.getLabelStatus()));
+            g2d.drawString(label.getLabelStatus(), x + 180, y);
+
+            // Draw barcode placeholder at bottom
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(150, height - 60, 300, 30);
+
+            // Draw barcode text
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+            String barcodeText = label.getPackageBarcode() != null ? label.getPackageBarcode() : "BARCODE";
+            int textWidth = g2d.getFontMetrics().stringWidth(barcodeText);
+            g2d.drawString(barcodeText, 150 + (300 - textWidth) / 2, height - 40);
+
+            // Dispose graphics
+            g2d.dispose();
+
+            // Convert to byte array
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "PNG", baos);
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            log.error("Error generating label image", e);
+            throw new RuntimeException("Failed to generate label image", e);
+        }
+    }
+
+    // ====== GENERATE QR CODE ======
+
+    private byte[] generateQRCode(ShippingLabel label) {
+        try {
+            // Simple QR code generation (using barcode placeholder)
+            int size = 200;
+            BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = image.createGraphics();
+
+            // White background
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, size, size);
+
+            // Draw QR pattern (simplified)
+            g2d.setColor(Color.BLACK);
+            int blockSize = 10;
+            for (int i = 0; i < size; i += blockSize) {
+                for (int j = 0; j < size; j += blockSize) {
+                    if ((i / blockSize + j / blockSize) % 2 == 0) {
+                        g2d.fillRect(i, j, blockSize, blockSize);
+                    }
+                }
+            }
+
+            // Draw QR corners
+            drawQRCorner(g2d, 0, 0, blockSize);
+            drawQRCorner(g2d, size - 30, 0, blockSize);
+            drawQRCorner(g2d, 0, size - 30, blockSize);
+
+            // Draw center text
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Arial", Font.BOLD, 12));
+            String qrText = label.getLabelNumber();
+            int textWidth = g2d.getFontMetrics().stringWidth(qrText);
+            g2d.drawString(qrText, (size - textWidth) / 2, size / 2);
+
+            g2d.dispose();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "PNG", baos);
+            return baos.toByteArray();
+
+        } catch (IOException e) {
+            log.error("Error generating QR code", e);
+            throw new RuntimeException("Failed to generate QR code", e);
+        }
+    }
+
+    // ====== HELPER METHODS ======
+
+    private void drawQRCorner(Graphics2D g2d, int x, int y, int blockSize) {
+        g2d.setColor(Color.BLACK);
+        // Draw corner pattern
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if ((i == 0 || i == 2 || j == 0 || j == 2) && !(i == 0 && j == 2) && !(i == 2 && j == 0)) {
+                    g2d.fillRect(x + i * blockSize * 3, y + j * blockSize * 3, blockSize * 3, blockSize * 3);
+                }
+            }
+        }
+    }
+    
+    
+    @Override
+    public ShippingLabelBarcodeResponse getShippingLabelBarcode(String labelNumber) {
+        log.info("Getting shipping label barcode: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        try {
+            // Generate barcode
+            String barcodeData = label.getPackageBarcode() != null ? 
+                    label.getPackageBarcode() : label.getLabelNumber();
+            byte[] barcodeBytes = barcodeUtils.generateCode128Barcode(barcodeData, 300, 80);
+            String barcodeBase64 = Base64.getEncoder().encodeToString(barcodeBytes);
+            
+            label.setBarcode(barcodeBase64);
+            shippingLabelRepository.save(label);
+            
+
+            return ShippingLabelBarcodeResponse.builder()
+                    .labelNumber(label.getLabelNumber())
+                    .packageNumber(label.getPackageNumber())
+                    .packageBarcode(label.getPackageBarcode())
+                    .soNumber(label.getSoNumber())
+                    .customerName(label.getCustomerName())
+                    .itemName(label.getItemName())
+                    .quantity(label.getQuantity())
+                    .trackingNumber(label.getTrackingNumber())
+                    .barcodeBase64(barcodeBase64)
+                    .barcodeType("CODE128")
+                    .barcodeData(barcodeData)
+                    .generatedAt(LocalDateTime.now())
+                    .build();
+
+        } catch (WriterException | IOException e) {
+            log.error("Error generating barcode", e);
+            throw new RuntimeException("Failed to generate barcode", e);
+        }
+    }
+
+    // ====== GET SHIPPING LABEL BARCODE AS PNG ======
+
+    @Override
+    public byte[] getShippingLabelBarcodeAsPng(String labelNumber) {
+        log.info("Getting shipping label barcode as PNG: {}", labelNumber);
+
+        ShippingLabel label = shippingLabelRepository.findByLabelNumber(labelNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Shipping Label not found: " + labelNumber));
+
+        try {
+            String barcodeData = label.getPackageBarcode() != null ? 
+                    label.getPackageBarcode() : label.getLabelNumber();
+            return barcodeUtils.generateBarcodeWithText(barcodeData, 300, 80);
+        } catch (WriterException | IOException e) {
+            log.error("Error generating barcode PNG", e);
+            throw new RuntimeException("Failed to generate barcode PNG", e);
+        }
+    }
+
+    // ====== SCAN BARCODE ======
+
+    @Override
+    public BarcodeScanResponse scanBarcode(BarcodeScanRequest request) {
+        log.info("Scanning barcode: {}", request.getBarcode());
+
+        String barcode = request.getBarcode();
+        boolean isValid = barcodeUtils.validateBarcode(barcode);
+
+        if (!isValid) {
+            return BarcodeScanResponse.builder()
+                    .barcode(barcode)
+                    .barcodeType(request.getBarcodeType())
+                    .isValid(false)
+                    .message("Invalid barcode format")
+                    .scannedBy(request.getScannedBy())
+                    .scannedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        // Find shipping label by barcode
+        ShippingLabel label = shippingLabelRepository.findByBarcode(barcode).orElse(null);
+
+        if (label == null) {
+            return BarcodeScanResponse.builder()
+                    .barcode(barcode)
+                    .barcodeType(request.getBarcodeType())
+                    .isValid(false)
+                    .message("No shipping label found for this barcode")
+                    .scannedBy(request.getScannedBy())
+                    .scannedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        // Update label status
+        label.setLabelStatus("SCANNED");
+        label.setPrintedBy(request.getScannedBy());
+        label.setPrintedDate(LocalDateTime.now());
+        shippingLabelRepository.save(label);
+
+        return BarcodeScanResponse.builder()
+                .barcode(barcode)
+                .barcodeType(request.getBarcodeType())
+                .labelNumber(label.getLabelNumber())
+                .packageNumber(label.getPackageNumber())
+                .soNumber(label.getSoNumber())
+                .customerName(label.getCustomerName())
+                .itemName(label.getItemName())
+                .status(label.getLabelStatus())
+                .scannedBy(request.getScannedBy())
+                .scannedAt(LocalDateTime.now())
+                .isValid(true)
+                .message("Barcode scanned successfully")
+                .build();
+    }
+    
+    
+    
     
 
     // ============================================================
@@ -2531,6 +2896,7 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .createdAt(label.getCreatedAt())
                 .qrImage(label.getQrImage())
                 .labelImage(label.getLabelImage())
+                .barcode(label.getBarcode())
                 .build();
     }
 
@@ -2620,7 +2986,7 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
     
     
     
-    private String generateLabelImage(ShippingLabel label) {
+    private String generateLabelImages(ShippingLabel label) {
         // Generate label image with all details
         String labelData = String.format(
             "SHIPPING LABEL\n" +
@@ -2677,5 +3043,16 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
             label.getQuantity(),
             label.getTrackingNumber() != null ? label.getTrackingNumber() : "N/A"
         );
+    }
+    
+    private Color getStatusColor(String status) {
+        if (status == null) return Color.BLACK;
+        switch (status) {
+            case "PRINTED": return Color.BLUE;
+            case "SCANNED": return Color.ORANGE;
+            case "SHIPPED": return Color.GREEN;
+            case "CANCELLED": return Color.RED;
+            default: return Color.BLACK;
+        }
     }
 }

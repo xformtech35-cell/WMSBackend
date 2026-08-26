@@ -21,6 +21,9 @@ public interface ShippingLabelRepository extends JpaRepository<ShippingLabel, Lo
     Optional<ShippingLabel> findByLabelNumber(String labelNumber);
 
     Optional<ShippingLabel> findByTrackingNumber(String trackingNumber);
+    
+    Optional<ShippingLabel> findByBarcode(String packageBarcode);
+
 
     List<ShippingLabel> findByPackageNumber(String packageNumber);
 

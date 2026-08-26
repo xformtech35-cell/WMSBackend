@@ -100,6 +100,8 @@ public class ShippingLabel {
     @Column(name = "qr_image", columnDefinition = "LONGTEXT")
     private String qrImage;
 
-    
+    @Lob
+    @Column(name = "barcode", columnDefinition = "LONGTEXT")
+    private String barcode;
     
 }

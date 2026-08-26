@@ -11,28 +11,18 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ShippingLabelResponse {
+public class ShippingLabelBarcodeResponse {
     private String labelNumber;
     private String packageNumber;
     private String packageBarcode;
     private String soNumber;
-    private String customerCode;
     private String customerName;
-    private String customerAddress;
-    private String itemCode;
     private String itemName;
     private Integer quantity;
-    private Double weight;
-    private String shippingMethod;
     private String trackingNumber;
     private String labelStatus;
-    private String printedBy;
-    private LocalDateTime printedDate;
-    private String labelUrl;
-    private String remarks;
-    private String qrImage;
-    private String labelImage;
-    private String barcode;
-
-    private LocalDateTime createdAt;
+    private String barcodeBase64;
+    private String barcodeType;
+    private String barcodeData;
+    private LocalDateTime generatedAt;
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.warehouse.wms.dto.request.BarcodeScanRequest;
 import com.warehouse.wms.dto.request.DeliveryRequest;
 import com.warehouse.wms.dto.request.DispatchRequest;
 import com.warehouse.wms.dto.request.PackageRequest;
@@ -15,6 +16,7 @@ import com.warehouse.wms.dto.request.PickTaskRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
 import com.warehouse.wms.dto.request.ShipmentConfirmationRequest;
+import com.warehouse.wms.dto.response.BarcodeScanResponse;
 import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
 import com.warehouse.wms.dto.response.LabelImageResponse;
@@ -26,6 +28,7 @@ import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
+import com.warehouse.wms.dto.response.ShippingLabelBarcodeResponse;
 import com.warehouse.wms.dto.response.ShippingLabelResponse;
 import com.warehouse.wms.dto.response.StockReservationResponse;
 import com.warehouse.wms.entity.StockReservation;
@@ -270,6 +273,17 @@ public interface OutboundService {
     LabelImageResponse getShippingLabelImage(String labelNumber);
 
     QrCodeResponses getShippingLabelQr(String labelNumber);
+    
+    
+    byte[] getShippingLabelImageAsPng(String labelNumber);
+    byte[] getShippingLabelQRAsPng(String labelNumber);
+    
+
+    ShippingLabelBarcodeResponse getShippingLabelBarcode(String labelNumber);
+    byte[] getShippingLabelBarcodeAsPng(String labelNumber);
+    
+    BarcodeScanResponse scanBarcode(BarcodeScanRequest request);
+
 
     // ============================================================
     // ===================== DISPATCH ==============================

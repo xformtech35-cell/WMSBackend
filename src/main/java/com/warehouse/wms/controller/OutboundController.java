@@ -42,6 +42,7 @@ import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
 import com.warehouse.wms.dto.response.SalesOrderResponse;
 import com.warehouse.wms.dto.response.ShipmentConfirmationResponse;
+import com.warehouse.wms.dto.response.ShippingLabelBarcodeResponse;
 import com.warehouse.wms.dto.response.ShippingLabelResponse;
 import com.warehouse.wms.dto.response.StockReservationResponse;
 import com.warehouse.wms.service.OutboundService;
@@ -711,6 +712,46 @@ public class OutboundController {
         return ResponseEntity.ok(outboundService.getShippingLabelQr(labelNumber));
     }
 
+    // ====== GET SHIPPING LABEL IMAGE AS PNG (Direct Download) ======
+    @GetMapping(value = "/shipping-label/{labelNumber}/image/png", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getShippingLabelImageAsPng(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/image/png - Getting Label Image as PNG", labelNumber);
+        byte[] imageBytes = outboundService.getShippingLabelImageAsPng(labelNumber);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "inline; filename=\"shipping-label-" + labelNumber + ".png\"")
+                .body(imageBytes);
+    }
+
+    // ====== GET SHIPPING LABEL QR CODE AS PNG (Direct Download) ======
+    @GetMapping(value = "/shipping-label/{labelNumber}/qr/png", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getShippingLabelQRAsPng(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/qr/png - Getting Label QR as PNG", labelNumber);
+        byte[] qrBytes = outboundService.getShippingLabelQRAsPng(labelNumber);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "inline; filename=\"qr-code-" + labelNumber + ".png\"")
+                .body(qrBytes);
+    }
+    
+    
+    
+    
+    
+    @GetMapping("/shipping-label/{labelNumber}/barcode")
+    public ResponseEntity<ShippingLabelBarcodeResponse> getShippingLabelBarcode(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/barcode - Getting Label Barcode", labelNumber);
+        return ResponseEntity.ok(outboundService.getShippingLabelBarcode(labelNumber));
+    }
+
+    // ====== GET SHIPPING LABEL BARCODE AS PNG ======
+    @GetMapping(value = "/shipping-label/{labelNumber}/barcode/png", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getShippingLabelBarcodeAsPng(@PathVariable String labelNumber) {
+        log.info("GET /api/outbound/shipping-label/{}/barcode/png - Getting Label Barcode as PNG", labelNumber);
+        byte[] barcodeBytes = outboundService.getShippingLabelBarcodeAsPng(labelNumber);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "inline; filename=\"barcode-" + labelNumber + ".png\"")
+                .body(barcodeBytes);
+    }
+    
     // ============================================================
     // ===================== DISPATCH ==============================
     // ============================================================
