@@ -1960,6 +1960,53 @@ public class OutboundServiceImpl implements OutboundService {
         log.info("Dispatch status updated: {} -> {}", dispatchNumber, status);
         return buildDispatchResponse(updated);
     }
+    
+    
+    
+    @Override
+    public Page<DispatchResponse> getAllDispatchesWithFilters(
+            String dispatchNumber,
+            String shipmentNumber,
+            String soNumber,
+            String packageNumber,
+            String customerCode,
+            String customerName,
+            String transporter,
+            String vehicleNumber,
+            String driverName,
+            String invoiceNumber,
+            String deliveryChallan,
+            String status,
+            String dispatchedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDispatchDate,
+            LocalDateTime endDispatchDate,
+            Pageable pageable) {
+
+        log.info("Fetching dispatches with filters");
+
+        Page<Dispatch> dispatchPage = dispatchRepository.findByFilters(
+                dispatchNumber, shipmentNumber, soNumber, packageNumber,
+                customerCode, customerName, transporter, vehicleNumber,
+                driverName, invoiceNumber, deliveryChallan,
+                status, dispatchedBy,
+                startDate, endDate, startDispatchDate, endDispatchDate, pageable);
+
+        return dispatchPage.map(this::buildDispatchResponse);
+    }
+
+    // ====== SEARCH DISPATCHES ======
+
+    @Override
+    public Page<DispatchResponse> searchDispatches(String search, Pageable pageable) {
+        log.info("Searching dispatches with keyword: {}", search);
+        return dispatchRepository.searchDispatches(search, pageable)
+                .map(this::buildDispatchResponse);
+    }
+    
+    
+    
 
     @Override
     public void deleteDispatch(String dispatchNumber) {

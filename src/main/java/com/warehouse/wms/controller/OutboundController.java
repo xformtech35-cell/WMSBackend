@@ -769,6 +769,46 @@ public class OutboundController {
         log.info("GET /api/outbound/dispatch/{} - Getting Dispatch", dispatchNumber);
         return ResponseEntity.ok(outboundService.getDispatchByNumber(dispatchNumber));
     }
+    
+    
+    @GetMapping("/dispatches")
+    public ResponseEntity<Page<DispatchResponse>> getAllDispatches(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String dispatchNumber,
+            @RequestParam(required = false) String shipmentNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String packageNumber,
+            @RequestParam(required = false) String customerCode,
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String transporter,
+            @RequestParam(required = false) String vehicleNumber,
+            @RequestParam(required = false) String driverName,
+            @RequestParam(required = false) String invoiceNumber,
+            @RequestParam(required = false) String deliveryChallan,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dispatchedBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDispatchDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDispatchDate,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/dispatches - Getting all Dispatches with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchDispatches(search, pageable));
+        }
+
+        Page<DispatchResponse> response = outboundService.getAllDispatchesWithFilters(
+                dispatchNumber, shipmentNumber, soNumber, packageNumber,
+                customerCode, customerName, transporter, vehicleNumber,
+                driverName, invoiceNumber, deliveryChallan,
+                status, dispatchedBy,
+                startDate, endDate, startDispatchDate, endDispatchDate, pageable);
+
+        return ResponseEntity.ok(response);
+    }
 
     // UPDATE Dispatch Status
     @PatchMapping("/dispatch/{dispatchNumber}/status")

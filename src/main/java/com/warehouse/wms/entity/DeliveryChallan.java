@@ -1,0 +1,127 @@
+package com.warehouse.wms.entity;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "wms_delivery_challan", indexes = {
+    @Index(name = "idx_dc_number", columnList = "challan_number"),
+    @Index(name = "idx_dc_so_number", columnList = "so_number"),
+    @Index(name = "idx_dc_dispatch_number", columnList = "dispatch_number"),
+    @Index(name = "idx_dc_status", columnList = "status")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DeliveryChallan {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "challan_number", unique = true, nullable = false, length = 50)
+    private String challanNumber;
+
+    @Column(name = "so_number", nullable = false, length = 50)
+    private String soNumber;
+
+    @Column(name = "package_number", nullable = false, length = 50)
+    private String packageNumber;
+
+    @Column(name = "shipment_number", length = 50)
+    private String shipmentNumber;
+
+    @Column(name = "customer_code", length = 50)
+    private String customerCode;
+
+    @Column(name = "customer_name", length = 200)
+    private String customerName;
+
+    @Column(name = "customer_address", columnDefinition = "TEXT")
+    private String customerAddress;
+
+    @Column(name = "customer_gst", length = 50)
+    private String customerGst;
+
+    @Column(name = "customer_phone", length = 20)
+    private String customerPhone;
+
+    @Column(name = "invoice_number", length = 50)
+    private String invoiceNumber;
+
+    @Column(name = "order_date")
+    private LocalDateTime orderDate;
+
+    @Column(name = "dispatch_date")
+    private LocalDateTime dispatchDate;
+
+    @Column(name = "expected_delivery_date")
+    private LocalDateTime expectedDeliveryDate;
+
+    @Column(name = "transporter", length = 100)
+    private String transporter;
+
+    @Column(name = "vehicle_number", length = 20)
+    private String vehicleNumber;
+
+    @Column(name = "driver_name", length = 100)
+    private String driverName;
+
+    @Column(name = "driver_phone", length = 20)
+    private String driverPhone;
+
+    @Column(name = "total_items")
+    private Integer totalItems = 0;
+
+    @Column(name = "total_quantity")
+    private Integer totalQuantity = 0;
+
+    @Column(name = "total_weight")
+    private Double totalWeight = 0.0;
+
+    @Column(name = "total_volume")
+    private Double totalVolume = 0.0;
+
+    @Column(name = "status", nullable = false, length = 30)
+    private String status = "CREATED"; // CREATED, PRINTED, DISPATCHED, DELIVERED, CANCELLED
+
+    @Column(columnDefinition = "TEXT")
+    private String remarks;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "deliveryChallan", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<DeliveryChallanItem> items = new ArrayList<>();
+}

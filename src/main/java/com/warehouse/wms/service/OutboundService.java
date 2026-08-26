@@ -295,6 +295,30 @@ public interface OutboundService {
 
     DispatchResponse updateDispatchStatus(String dispatchNumber, String status);
 
+    
+    Page<DispatchResponse> getAllDispatchesWithFilters(
+            String dispatchNumber,
+            String shipmentNumber,
+            String soNumber,
+            String packageNumber,
+            String customerCode,
+            String customerName,
+            String transporter,
+            String vehicleNumber,
+            String driverName,
+            String invoiceNumber,
+            String deliveryChallan,
+            String status,
+            String dispatchedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDispatchDate,
+            LocalDateTime endDispatchDate,
+            Pageable pageable);
+
+    Page<DispatchResponse> searchDispatches(String search, Pageable pageable);
+    
+    
     void deleteDispatch(String dispatchNumber);
 
     // ============================================================
