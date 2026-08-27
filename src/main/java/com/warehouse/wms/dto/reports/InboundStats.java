@@ -22,7 +22,7 @@ public class InboundStats {
     private Long totalItemsReceived;
     private Double totalWeightReceived;
     private Double totalVolumeReceived;
-    private Integer avgProcessingTimeHours;
+    private Integer avgProcessingTimeHours;  // Change from Integer to Double
     private Long totalPutawayTasks;
     private Long pendingPutaway;
     private Long completedPutaway;

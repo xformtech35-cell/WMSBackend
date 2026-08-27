@@ -1,5 +1,6 @@
 package com.warehouse.wms.service.impl;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,12 +40,15 @@ import com.warehouse.wms.dto.reports.WeeklyPerformanceResponse;
 import com.warehouse.wms.dto.reports.ZoneCapacityResponse;
 import com.warehouse.wms.dto.reports.ZoneUtilizationResponse;
 import com.warehouse.wms.dto.response.WarehouseDashboardResponse;
-import com.warehouse.wms.entity.GoodsReceipt;
+import com.warehouse.wms.entity.Inbound;
+import com.warehouse.wms.entity.InboundStatus;
 import com.warehouse.wms.entity.SalesOrder;
 import com.warehouse.wms.repository.CustomerRepository;
 import com.warehouse.wms.repository.DeliveryRepository;
 import com.warehouse.wms.repository.DispatchRepository;
 import com.warehouse.wms.repository.GoodsReceiptRepository;
+import com.warehouse.wms.repository.InboundLineRepository;
+import com.warehouse.wms.repository.InboundRepository;
 import com.warehouse.wms.repository.InventoryStockRepository;
 import com.warehouse.wms.repository.PackageInfoRepository;
 import com.warehouse.wms.repository.PickListRepository;
@@ -76,6 +80,8 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
     private final CustomerRepository customerRepository;
     private final SupplierRepository supplierRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
+    private final InboundRepository inboundRepository;
+    private final InboundLineRepository inboundLineRepository;
 
 
     @Override
@@ -140,7 +146,7 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
 
     private SummaryOverview getSummaryOverview() {
         long totalOrders = salesOrderRepository.count();
-        long totalInbound = goodsReceiptRepository.count();
+        long totalInbound = inboundRepository.count(); // ✅ Fixed
         long totalOutbound = salesOrderRepository.countByStatusIn(Arrays.asList("DISPATCHED", "DELIVERED"));
         long totalInventory = inventoryStockRepository.count();
         long totalCustomers = customerRepository.count();
@@ -161,52 +167,129 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
 
     // ====== INBOUND STATISTICS ======
 
-    private InboundStats getInboundStats(LocalDateTime startDate, LocalDateTime endDate) {
-        long totalGRN = goodsReceiptRepository.count();
-        long pendingGRN = goodsReceiptRepository.countByStatus("PENDING");
-        long completedGRN = goodsReceiptRepository.countByStatus("COMPLETED");
-        long cancelledGRN = goodsReceiptRepository.countByStatus("CANCELLED");
-        
-        LocalDateTime today = LocalDateTime.now();
-        long todayGRN = goodsReceiptRepository.countByCreatedDateBetween(
-                today.withHour(0).withMinute(0).withSecond(0), today);
-        long thisWeekGRN = goodsReceiptRepository.countByCreatedDateBetween(
-                today.minusDays(7), today);
-        long thisMonthGRN = goodsReceiptRepository.countByCreatedDateBetween(
-                today.minusDays(30), today);
-        
-     // Get top supplier - FIXED with safe casting
-        List<Object[]> supplierData = goodsReceiptRepository.findTopSupplier();
-        String topSupplier = "";
-        long topSupplierCount = 0;
-        if (!supplierData.isEmpty()) {
-            topSupplier = (String) supplierData.get(0)[0];
-            topSupplierCount = safeGetLong(supplierData.get(0)[1]);
-        }
-        
-        return InboundStats.builder()
-                .totalGRN(totalGRN)
-                .pendingGRN(pendingGRN)
-                .completedGRN(completedGRN)
-                .cancelledGRN(cancelledGRN)
-                .todayGRN(todayGRN)
-                .thisWeekGRN(thisWeekGRN)
-                .thisMonthGRN(thisMonthGRN)
-                .totalItemsReceived(getTotalItemsReceived())
-                .totalWeightReceived(getTotalWeightReceived())
-                .totalVolumeReceived(getTotalVolumeReceived())
-                .avgProcessingTimeHours(calculateAvgInboundProcessingTime())
-                .totalPutawayTasks(getTotalPutawayTasks())
-                .pendingPutaway(getPendingPutaway())
-                .completedPutaway(getCompletedPutaway())
-                .totalSuppliers(supplierRepository.count())
-                .topSupplier(topSupplier)
-                .topSupplierCount(topSupplierCount)
-                .grnStatusCounts(getGRNStatusCounts())
-                .supplierPerformance(getSupplierPerformance(startDate, endDate))
-                .dailyInbound(getDailyInbound(startDate, endDate))
-                .build();
+  private InboundStats getInboundStats(LocalDateTime startDate, LocalDateTime endDate) {
+    // Convert LocalDateTime to LocalDate for repository calls
+    LocalDate startLocalDate = startDate.toLocalDate();
+    LocalDate endLocalDate = endDate.toLocalDate();
+    
+    // Use date range for all counts with LocalDate
+    long totalInboundInRange = inboundRepository.countByInboundDateBetween(startLocalDate, endLocalDate);
+    
+    // Status counts with date range
+    long pendingGRN = inboundRepository.countByStatusAndInboundDateBetween(
+        InboundStatus.PENDING, startLocalDate, endLocalDate);
+    long completedGRN = inboundRepository.countByStatusAndInboundDateBetween(
+        InboundStatus.COMPLETED, startLocalDate, endLocalDate);
+    long cancelledGRN = inboundRepository.countByStatusAndInboundDateBetween(
+        InboundStatus.CANCELLED, startLocalDate, endLocalDate);
+    
+    // Today, this week, this month
+    LocalDate today = LocalDate.now();
+    long todayGRN = inboundRepository.countByInboundDateBetween(today, today);
+    long thisWeekGRN = inboundRepository.countByInboundDateBetween(today.minusDays(7), today);
+    long thisMonthGRN = inboundRepository.countByInboundDateBetween(today.minusDays(30), today);
+    
+    // Get top supplier with date range
+    List<Object[]> supplierData = inboundRepository.findTopSupplier(startLocalDate, endLocalDate);
+    String topSupplier = "";
+    long topSupplierCount = 0;
+    if (!supplierData.isEmpty()) {
+        topSupplier = (String) supplierData.get(0)[0];
+        topSupplierCount = safeGetLong(supplierData.get(0)[1]);
     }
+    
+    return InboundStats.builder()
+            .totalGRN(totalInboundInRange)
+            .pendingGRN(pendingGRN)
+            .completedGRN(completedGRN)
+            .cancelledGRN(cancelledGRN)
+            .todayGRN(todayGRN)
+            .thisWeekGRN(thisWeekGRN)
+            .thisMonthGRN(thisMonthGRN)
+            .totalItemsReceived(getTotalItemsReceived(startDate, endDate))
+            .totalWeightReceived(getTotalWeightReceived(startDate, endDate))
+            .totalVolumeReceived(getTotalVolumeReceived(startDate, endDate))
+            .avgProcessingTimeHours(calculateAvgInboundProcessingTime(startDate, endDate))
+            .totalPutawayTasks(getTotalPutawayTasks(startDate, endDate))
+            .pendingPutaway(getPendingPutaway(startDate, endDate))
+            .completedPutaway(getCompletedPutaway(startDate, endDate))
+            .totalSuppliers(supplierRepository.count())
+            .topSupplier(topSupplier)
+            .topSupplierCount(topSupplierCount)
+            .grnStatusCounts(getGRNStatusCounts(startDate, endDate))
+            .supplierPerformance(getSupplierPerformance(startDate, endDate))
+            .dailyInbound(getDailyInbound(startDate, endDate))
+            .build();
+}
+    
+    
+  private Long getTotalItemsReceived(LocalDateTime startDate, LocalDateTime endDate) {
+	    try {
+	        LocalDate startLocalDate = startDate.toLocalDate();
+	        LocalDate endLocalDate = endDate.toLocalDate();
+	        return inboundLineRepository.sumReceivedQuantityByDateRange(startLocalDate, endLocalDate);
+	    } catch (Exception e) {
+	        log.error("Error calculating total items received: {}", e.getMessage(), e);
+	        return 0L;
+	    }
+	}
+
+	private Double getTotalWeightReceived(LocalDateTime startDate, LocalDateTime endDate) {
+	    try {
+	        LocalDate startLocalDate = startDate.toLocalDate();
+	        LocalDate endLocalDate = endDate.toLocalDate();
+	        return inboundLineRepository.sumWeightByDateRange(startLocalDate, endLocalDate);
+	    } catch (Exception e) {
+	        log.error("Error calculating total weight received: {}", e.getMessage(), e);
+	        return 0.0;
+	    }
+	}
+
+	private Double getTotalVolumeReceived(LocalDateTime startDate, LocalDateTime endDate) {
+	    try {
+	        LocalDate startLocalDate = startDate.toLocalDate();
+	        LocalDate endLocalDate = endDate.toLocalDate();
+	        return inboundLineRepository.sumVolumeByDateRange(startLocalDate, endLocalDate);
+	    } catch (Exception e) {
+	        log.error("Error calculating total volume received: {}", e.getMessage(), e);
+	        return 0.0;
+	    }
+	}
+
+	private Integer calculateAvgInboundProcessingTime(LocalDateTime startDate, LocalDateTime endDate) {
+	    try {
+	        LocalDate startLocalDate = startDate.toLocalDate();
+	        LocalDate endLocalDate = endDate.toLocalDate();
+	        Double avgMinutes = inboundRepository.calculateAvgProcessingTime(startLocalDate, endLocalDate);
+	        if (avgMinutes == null || avgMinutes == 0) {
+	            return 0;
+	        }
+	        // Convert minutes to hours (round up)
+	        return (int) Math.ceil(avgMinutes / 60.0);
+	    } catch (Exception e) {
+	        log.error("Error calculating average inbound processing time: {}", e.getMessage(), e);
+	        return 0;
+	    }
+	}
+    private Long getTotalPutawayTasks(LocalDateTime startDate, LocalDateTime endDate) {
+        // Implement using relevant repository
+        return 0L; // Placeholder - implement as needed
+    }
+
+    private Long getPendingPutaway(LocalDateTime startDate, LocalDateTime endDate) {
+        // Implement using relevant repository
+        return 0L; // Placeholder - implement as needed
+    }
+
+    private Long getCompletedPutaway(LocalDateTime startDate, LocalDateTime endDate) {
+        // Implement using relevant repository
+        return 0L; // Placeholder - implement as needed
+    }
+
+    private List<GRNStatusCountResponse> getGRNStatusCounts(LocalDateTime startDate, LocalDateTime endDate) {
+        return new ArrayList<>(); // Implement as needed
+    }
+
 
     // ====== OUTBOUND STATISTICS ======
 
@@ -374,15 +457,15 @@ private OutboundStats getOutboundStats(LocalDateTime startDate, LocalDateTime en
         List<RecentActivityResponse> activities = new ArrayList<>();
         
         // Inbound activities
-        List<GoodsReceipt> recentGRN = goodsReceiptRepository.findTop10ByOrderByCreatedAtDesc();
-        for (GoodsReceipt grn : recentGRN) {
+        List<Inbound> recentInbound = inboundRepository.findTop10ByOrderByInboundDateDesc();
+        for (Inbound inbound : recentInbound) {
             activities.add(RecentActivityResponse.builder()
-                    .activityType("GRN_CREATED")
-                    .description("Goods Receipt Created")
-                    .soNumber(grn.getGrnNo())
-                    .status(grn.getStatus())
-                    .user(grn.getCreatedBy())
-                    .timestamp(grn.getCreatedAt())
+                    .activityType("INBOUND_CREATED")
+                    .description("Inbound Created")
+                    .soNumber(inbound.getInboundNumber())  // or getGrnNumber()
+                    .status(inbound.getStatus() != null ? inbound.getStatus().name() : "UNKNOWN")
+                    .user(inbound.getCreatedBy() != null ? inbound.getCreatedBy().toString() : "SYSTEM")
+                    .timestamp(inbound.getCreatedAt())
                     .icon("📥")
                     .color("green")
                     .build());

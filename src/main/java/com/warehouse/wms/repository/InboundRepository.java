@@ -1,6 +1,7 @@
 package com.warehouse.wms.repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -292,15 +293,48 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
  
  
  
+ // Count by date range
+ @Query("SELECT COUNT(i) FROM Inbound i WHERE i.inboundDate BETWEEN :startDate AND :endDate")
+ long countByInboundDateBetween(@Param("startDate") LocalDate startDate, 
+                                @Param("endDate") LocalDate endDate);
  
+ // Status count with date range
+ @Query("SELECT COUNT(i) FROM Inbound i WHERE i.status = :status AND i.inboundDate BETWEEN :startDate AND :endDate")
+ long countByStatusAndInboundDateBetween(@Param("status") InboundStatus status,
+                                         @Param("startDate") LocalDate startDate,
+                                         @Param("endDate") LocalDate endDate);
  
+ // Status count (all time)
+ @Query("SELECT COUNT(i) FROM Inbound i WHERE i.status = :status")
+ long countByStatus(@Param("status") InboundStatus status);
  
+ // Top supplier with date range
+ @Query("SELECT i.supplierName, COUNT(i.id) FROM Inbound i " +
+        "WHERE i.inboundDate BETWEEN :startDate AND :endDate " +
+        "AND i.supplierName IS NOT NULL " +
+        "GROUP BY i.supplierName ORDER BY COUNT(i.id) DESC")
+ List<Object[]> findTopSupplier(@Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate);
  
+ // Top supplier (all time)
+ @Query("SELECT i.supplierName, COUNT(i.id) FROM Inbound i " +
+        "WHERE i.supplierName IS NOT NULL " +
+        "GROUP BY i.supplierName ORDER BY COUNT(i.id) DESC")
+ List<Object[]> findTopSupplier();
  
+ // Recent inbound
+ @Query("SELECT i FROM Inbound i ORDER BY i.inboundDate DESC")
+ List<Inbound> findTop10ByOrderByInboundDateDesc();
  
+ @Query("SELECT i FROM Inbound i ORDER BY i.createdAt DESC")
+ List<Inbound> findTop10ByOrderByCreatedAtDesc();
  
- 
- 
- 
- 
+ // Calculate average processing time with LocalDate
+ @Query("SELECT COALESCE(AVG(TIMESTAMPDIFF(MINUTE, i.gateEntryDateTime, i.approvalDate)), 0) " +
+        "FROM Inbound i " +
+        "WHERE i.inboundDate BETWEEN :startDate AND :endDate " +
+        "AND i.gateEntryDateTime IS NOT NULL " +
+        "AND i.approvalDate IS NOT NULL")
+ Double calculateAvgProcessingTime(@Param("startDate") LocalDate startDate,
+                                   @Param("endDate") LocalDate endDate);
 }
