@@ -330,6 +330,29 @@ public interface OutboundService {
     ShipmentConfirmationResponse getShipmentByNumber(String shipmentNumber);
 
     ShipmentConfirmationResponse updateShipmentStatus(String shipmentNumber, String status);
+    
+    Page<ShipmentConfirmationResponse> getAllShipmentConfirmationsWithFilters(
+            String shipmentNumber,
+            String dispatchNumber,
+            String soNumber,
+            String packageNumber,
+            String trackingNumber,
+            String transporter,
+            String shippingMethod,
+            String vehicleNumber,
+            String status,
+            String confirmedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDispatchDate,
+            LocalDateTime endDispatchDate,
+            LocalDateTime startExpectedDelivery,
+            LocalDateTime endExpectedDelivery,
+            LocalDateTime startActualDelivery,
+            LocalDateTime endActualDelivery,
+            Pageable pageable);
+    
+    Page<ShipmentConfirmationResponse> searchShipmentConfirmations(String search, Pageable pageable);
 
     void deleteShipment(String shipmentNumber);
 

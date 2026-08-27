@@ -2067,6 +2067,53 @@ public class OutboundServiceImpl implements OutboundService {
         log.info("Shipment confirmed: {}", shipmentNumber);
         return buildShipmentConfirmationResponse(saved);
     }
+    
+    @Override
+    public Page<ShipmentConfirmationResponse> getAllShipmentConfirmationsWithFilters(
+            String shipmentNumber,
+            String dispatchNumber,
+            String soNumber,
+            String packageNumber,
+            String trackingNumber,
+            String transporter,
+            String shippingMethod,
+            String vehicleNumber,
+            String status,
+            String confirmedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDispatchDate,
+            LocalDateTime endDispatchDate,
+            LocalDateTime startExpectedDelivery,
+            LocalDateTime endExpectedDelivery,
+            LocalDateTime startActualDelivery,
+            LocalDateTime endActualDelivery,
+            Pageable pageable) {
+
+        log.info("Fetching shipment confirmations with filters");
+
+        Page<ShipmentConfirmation> shipmentPage = shipmentConfirmationRepository.findByFilters(
+                shipmentNumber, dispatchNumber, soNumber, packageNumber,
+                trackingNumber, transporter, shippingMethod, vehicleNumber,
+                status, confirmedBy,
+                startDate, endDate,
+                startDispatchDate, endDispatchDate,
+                startExpectedDelivery, endExpectedDelivery,
+                startActualDelivery, endActualDelivery,
+                pageable);
+
+        return shipmentPage.map(this::buildShipmentConfirmationResponse);
+    }
+
+    // ====== SEARCH SHIPMENT CONFIRMATIONS ======
+
+    @Override
+    public Page<ShipmentConfirmationResponse> searchShipmentConfirmations(String search, Pageable pageable) {
+        log.info("Searching shipment confirmations with keyword: {}", search);
+        return shipmentConfirmationRepository.searchShipments(search, pageable)
+                .map(this::buildShipmentConfirmationResponse);
+    }
+    
 
     @Override
     public ShipmentConfirmationResponse getShipmentByNumber(String shipmentNumber) {

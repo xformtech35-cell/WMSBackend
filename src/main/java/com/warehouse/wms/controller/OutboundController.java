@@ -844,6 +844,53 @@ public class OutboundController {
         log.info("GET /api/outbound/shipment-confirmation/{} - Getting Shipment", shipmentNumber);
         return ResponseEntity.ok(outboundService.getShipmentByNumber(shipmentNumber));
     }
+    
+    
+    
+    // ====== GET ALL SHIPMENTS WITH FILTERS AND SEARCH ======
+    @GetMapping("/shipment-confirmations")
+    public ResponseEntity<Page<ShipmentConfirmationResponse>> getAllShipments(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String shipmentNumber,
+            @RequestParam(required = false) String dispatchNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String packageNumber,
+            @RequestParam(required = false) String trackingNumber,
+            @RequestParam(required = false) String transporter,
+            @RequestParam(required = false) String shippingMethod,
+            @RequestParam(required = false) String vehicleNumber,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String confirmedBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDispatchDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDispatchDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startExpectedDelivery,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endExpectedDelivery,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startActualDelivery,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endActualDelivery,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/shipment-confirmations - Getting all Shipments with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchShipmentConfirmations(search, pageable));
+        }
+
+        Page<ShipmentConfirmationResponse> response = outboundService.getAllShipmentConfirmationsWithFilters(
+                shipmentNumber, dispatchNumber, soNumber, packageNumber,
+                trackingNumber, transporter, shippingMethod, vehicleNumber,
+                status, confirmedBy,
+                startDate, endDate,
+                startDispatchDate, endDispatchDate,
+                startExpectedDelivery, endExpectedDelivery,
+                startActualDelivery, endActualDelivery,
+                pageable);
+
+        return ResponseEntity.ok(response);
+    }
+
 
     // UPDATE Shipment Status
     @PatchMapping("/shipment-confirmation/{shipmentNumber}/status")
