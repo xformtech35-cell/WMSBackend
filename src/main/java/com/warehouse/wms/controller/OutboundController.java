@@ -926,6 +926,45 @@ public class OutboundController {
         log.info("GET /api/outbound/delivery/{} - Getting Delivery", deliveryNumber);
         return ResponseEntity.ok(outboundService.getDeliveryByNumber(deliveryNumber));
     }
+    
+    
+    
+    @GetMapping("/deliveries")
+    public ResponseEntity<Page<DeliveryResponse>> getAllDeliveries(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String deliveryNumber,
+            @RequestParam(required = false) String shipmentNumber,
+            @RequestParam(required = false) String soNumber,
+            @RequestParam(required = false) String packageNumber,
+            @RequestParam(required = false) String customerCode,
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String trackingNumber,
+            @RequestParam(required = false) String deliveryStatus,
+            @RequestParam(required = false) String receivedBy,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDeliveryDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDeliveryDate,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/outbound/deliveries - Getting all Deliveries with filters");
+
+        // Handle search parameter
+        if (search != null && !search.isEmpty()) {
+            return ResponseEntity.ok(outboundService.searchDeliveries(search, pageable));
+        }
+
+        Page<DeliveryResponse> response = outboundService.getAllDeliveriesWithFilters(
+                deliveryNumber, shipmentNumber, soNumber, packageNumber,
+                customerCode, customerName, trackingNumber, deliveryStatus,
+                receivedBy, startDate, endDate,
+                startDeliveryDate, endDeliveryDate,
+                minQuantity, maxQuantity, pageable);
+
+        return ResponseEntity.ok(response);
+    }
 
     // UPDATE Delivery Status
     @PatchMapping("/delivery/{deliveryNumber}/status")

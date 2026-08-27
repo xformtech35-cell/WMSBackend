@@ -363,6 +363,30 @@ public interface OutboundService {
     DeliveryResponse confirmDelivery(DeliveryRequest request);
 
     DeliveryResponse getDeliveryByNumber(String deliveryNumber);
+    
+    Page<DeliveryResponse> getAllDeliveriesWithFilters(
+            String deliveryNumber,
+            String shipmentNumber,
+            String soNumber,
+            String packageNumber,
+            String customerCode,
+            String customerName,
+            String trackingNumber,
+            String deliveryStatus,
+            String receivedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDeliveryDate,
+            LocalDateTime endDeliveryDate,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable);
+
+    Page<DeliveryResponse> searchDeliveries(String search, Pageable pageable);
+
+    
+    
+    
 
     DeliveryResponse updateDeliveryStatus(String deliveryNumber, String status);
 

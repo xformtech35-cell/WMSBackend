@@ -2234,6 +2234,50 @@ public class OutboundServiceImpl implements OutboundService {
                 .orElseThrow(() -> new ResourceNotFoundException("Delivery not found: " + deliveryNumber));
         return buildDeliveryResponse(delivery);
     }
+    
+    
+    @Override
+    public Page<DeliveryResponse> getAllDeliveriesWithFilters(
+            String deliveryNumber,
+            String shipmentNumber,
+            String soNumber,
+            String packageNumber,
+            String customerCode,
+            String customerName,
+            String trackingNumber,
+            String deliveryStatus,
+            String receivedBy,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            LocalDateTime startDeliveryDate,
+            LocalDateTime endDeliveryDate,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Pageable pageable) {
+
+        log.info("Fetching deliveries with filters");
+
+        Page<Delivery> deliveryPage = deliveryRepository.findByFilters(
+                deliveryNumber, shipmentNumber, soNumber, packageNumber,
+                customerCode, customerName, trackingNumber, deliveryStatus,
+                receivedBy, startDate, endDate,
+                startDeliveryDate, endDeliveryDate,
+                minQuantity, maxQuantity, pageable);
+
+        return deliveryPage.map(this::buildDeliveryResponse);
+    }
+
+    // ====== SEARCH DELIVERIES ======
+
+    @Override
+    public Page<DeliveryResponse> searchDeliveries(String search, Pageable pageable) {
+        log.info("Searching deliveries with keyword: {}", search);
+        return deliveryRepository.searchDeliveries(search, pageable)
+                .map(this::buildDeliveryResponse);
+    }
+    
+    
+    
 
     @Override
     public DeliveryResponse updateDeliveryStatus(String deliveryNumber, String status) {
