@@ -175,13 +175,13 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
         long thisMonthGRN = goodsReceiptRepository.countByCreatedDateBetween(
                 today.minusDays(30), today);
         
-        // Get top supplier
+     // Get top supplier - FIXED with safe casting
         List<Object[]> supplierData = goodsReceiptRepository.findTopSupplier();
         String topSupplier = "";
         long topSupplierCount = 0;
         if (!supplierData.isEmpty()) {
             topSupplier = (String) supplierData.get(0)[0];
-            topSupplierCount = (Long) supplierData.get(0)[1];
+            topSupplierCount = safeGetLong(supplierData.get(0)[1]);
         }
         
         return InboundStats.builder()
@@ -210,84 +210,87 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
 
     // ====== OUTBOUND STATISTICS ======
 
-    private OutboundStats getOutboundStats(LocalDateTime startDate, LocalDateTime endDate) {
-        long totalOrders = salesOrderRepository.count();
-        
-        LocalDateTime today = LocalDateTime.now();
-        long todayOrders = salesOrderRepository.countByCreatedDateBetween(
-                today.withHour(0).withMinute(0).withSecond(0), today);
-        long thisWeekOrders = salesOrderRepository.countByCreatedDateBetween(
-                today.minusDays(7), today);
-        long thisMonthOrders = salesOrderRepository.countByCreatedDateBetween(
-                today.minusDays(30), today);
-        
-        long pendingOrders = salesOrderRepository.countByStatusIn(
-                Arrays.asList("DRAFT", "PENDING", "APPROVED"));
-        long processingOrders = salesOrderRepository.countByStatusIn(
-                Arrays.asList("PROCESSING", "PICKING", "PACKING"));
-        long completedOrders = salesOrderRepository.countByStatus("DELIVERED");
-        long cancelledOrders = salesOrderRepository.countByStatus("CANCELLED");
-        
-        // Get top customer
-        List<Object[]> customerData = salesOrderRepository.findTopCustomer();
-        String topCustomer = "";
-        long topCustomerOrders = 0;
-        if (!customerData.isEmpty()) {
-            topCustomer = (String) customerData.get(0)[0];
-            topCustomerOrders = (Long) customerData.get(0)[1];
-        }
-        
-        // Get top item
-        List<Object[]> itemData = salesOrderItemRepository.findTopItem();
-        String topItem = "";
-        int topItemQuantity = 0;
-        if (!itemData.isEmpty()) {
-            topItem = (String) itemData.get(0)[0];
-            topItemQuantity = (Integer) itemData.get(0)[1];
-        }
-        
-        // Get top transporter
-        List<Object[]> transporterData = dispatchRepository.findTopTransporter();
-        String topTransporter = "";
-        long topTransporterCount = 0;
-        if (!transporterData.isEmpty()) {
-            topTransporter = (String) transporterData.get(0)[0];
-            topTransporterCount = (Long) transporterData.get(0)[1];
-        }
-        
-        return OutboundStats.builder()
-                .totalOrders(totalOrders)
-                .todayOrders(todayOrders)
-                .thisWeekOrders(thisWeekOrders)
-                .thisMonthOrders(thisMonthOrders)
-                .pendingOrders(pendingOrders)
-                .processingOrders(processingOrders)
-                .completedOrders(completedOrders)
-                .cancelledOrders(cancelledOrders)
-                .totalItemsShipped(getTotalItemsShipped())
-                .totalWeightShipped(getTotalWeightShipped())
-                .totalVolumeShipped(getTotalVolumeShipped())
-                .avgProcessingTimeHours(calculateAvgOutboundProcessingTime())
-                .totalPickLists(pickListRepository.count())
-                .pendingPickLists(pickListRepository.countByStatus("RELEASED"))
-                .completedPickLists(pickListRepository.countByStatus("COMPLETED"))
-                .totalPickTasks(pickTaskRepository.count())
-                .pendingPickTasks(pickTaskRepository.countByStatus("PENDING"))
-                .completedPickTasks(pickTaskRepository.countByStatus("CONFIRMED"))
-                .totalPackages(packageInfoRepository.count())
-                .totalShipments(shipmentConfirmationRepository.count())
-                .totalDeliveries(deliveryRepository.count())
-                .topCustomer(topCustomer)
-                .topCustomerOrders(topCustomerOrders)
-                .topItem(topItem)
-                .topItemQuantity(topItemQuantity)
-                .topTransporter(topTransporter)
-                .topTransporterCount(topTransporterCount)
-                .orderStatusCounts(getOrderStatusCounts())
-                .dailyOutbound(getDailyOutbound(startDate, endDate))
-                .pickPerformance(getPickPerformance(startDate, endDate))
-                .build();
+private OutboundStats getOutboundStats(LocalDateTime startDate, LocalDateTime endDate) {
+    long totalOrders = salesOrderRepository.count();
+    
+    LocalDateTime today = LocalDateTime.now();
+    long todayOrders = salesOrderRepository.countByCreatedDateBetween(
+            today.withHour(0).withMinute(0).withSecond(0), today);
+    long thisWeekOrders = salesOrderRepository.countByCreatedDateBetween(
+            today.minusDays(7), today);
+    long thisMonthOrders = salesOrderRepository.countByCreatedDateBetween(
+            today.minusDays(30), today);
+    
+    long pendingOrders = salesOrderRepository.countByStatusIn(
+            Arrays.asList("DRAFT", "PENDING", "APPROVED"));
+    long processingOrders = salesOrderRepository.countByStatusIn(
+            Arrays.asList("PROCESSING", "PICKING", "PACKING"));
+    long completedOrders = salesOrderRepository.countByStatus("DELIVERED");
+    long cancelledOrders = salesOrderRepository.countByStatus("CANCELLED");
+    
+    // Get top customer - FIXED
+    // Query returns: [customer_code, customer_name, count(id)]
+    List<Object[]> customerData = salesOrderRepository.findTopCustomer();
+    String topCustomer = "";
+    long topCustomerOrders = 0;
+    if (!customerData.isEmpty()) {
+        topCustomer = (String) customerData.get(0)[1];  // customer_name is at index 1
+        topCustomerOrders = safeGetLong(customerData.get(0)[2]);  // count is at index 2
     }
+    
+    // Get top item - FIXED
+    // Query returns: [item_code, item_name, sum(ordered_quantity), count(distinct so_number), uom]
+    List<Object[]> itemData = salesOrderItemRepository.findTopItem();
+    String topItem = "";
+    int topItemQuantity = 0;
+    if (!itemData.isEmpty()) {
+        topItem = (String) itemData.get(0)[1];  // item_name is at index 1 (more user-friendly)
+        topItemQuantity = safeGetInt(itemData.get(0)[2]);  // sum(ordered_quantity) is at index 2
+    }
+    
+    // Get top transporter - FIXED
+    // Query returns: [transporter_name, count(id)] (assuming this is the structure)
+    List<Object[]> transporterData = dispatchRepository.findTopTransporter();
+    String topTransporter = "";
+    long topTransporterCount = 0;
+    if (!transporterData.isEmpty()) {
+        topTransporter = (String) transporterData.get(0)[0];  // transporter_name
+        topTransporterCount = safeGetLong(transporterData.get(0)[1]);  // count
+    }
+    
+    return OutboundStats.builder()
+            .totalOrders(totalOrders)
+            .todayOrders(todayOrders)
+            .thisWeekOrders(thisWeekOrders)
+            .thisMonthOrders(thisMonthOrders)
+            .pendingOrders(pendingOrders)
+            .processingOrders(processingOrders)
+            .completedOrders(completedOrders)
+            .cancelledOrders(cancelledOrders)
+            .totalItemsShipped(getTotalItemsShipped())
+            .totalWeightShipped(getTotalWeightShipped())
+            .totalVolumeShipped(getTotalVolumeShipped())
+            .avgProcessingTimeHours(calculateAvgOutboundProcessingTime())
+            .totalPickLists(pickListRepository.count())
+            .pendingPickLists(pickListRepository.countByStatus("RELEASED"))
+            .completedPickLists(pickListRepository.countByStatus("COMPLETED"))
+            .totalPickTasks(pickTaskRepository.count())
+            .pendingPickTasks(pickTaskRepository.countByStatus("PENDING"))
+            .completedPickTasks(pickTaskRepository.countByStatus("CONFIRMED"))
+            .totalPackages(packageInfoRepository.count())
+            .totalShipments(shipmentConfirmationRepository.count())
+            .totalDeliveries(deliveryRepository.count())
+            .topCustomer(topCustomer)
+            .topCustomerOrders(topCustomerOrders)
+            .topItem(topItem)
+            .topItemQuantity(topItemQuantity)
+            .topTransporter(topTransporter)
+            .topTransporterCount(topTransporterCount)
+            .orderStatusCounts(getOrderStatusCounts())
+            .dailyOutbound(getDailyOutbound(startDate, endDate))
+            .pickPerformance(getPickPerformance(startDate, endDate))
+            .build();
+}
 
     // ====== INVENTORY OVERVIEW ======
 
@@ -494,4 +497,38 @@ public class WarehouseDashboardServiceImpl implements WarehouseDashboardService 
     private List<CategoryPerformanceResponse> getCategoryPerformance(LocalDateTime start, LocalDateTime end) { return new ArrayList<>(); }
     private List<HourlyActivityResponse> getHourlyActivity() { return new ArrayList<>(); }
     private Double calculateTotalInventoryValue() { return 0.0; }
+    
+    
+    
+    private long safeGetLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Long) {
+            return (Long) value;
+        }
+        if (value instanceof String) {
+            return Long.parseLong((String) value);
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return 0L;
+    }
+
+    private int safeGetInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof String) {
+            return Integer.parseInt((String) value);
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return 0;
+    }
 }
