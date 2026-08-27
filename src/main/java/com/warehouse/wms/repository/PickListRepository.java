@@ -98,6 +98,10 @@ public interface PickListRepository extends JpaRepository<PickList, Long> {
            "LOWER(pli.itemName) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<PickList> searchPickLists(@Param("search") String search, Pageable pageable);
     
+    // Count by status
+    @Query("SELECT COUNT(pl) FROM PickList pl WHERE pl.status = :status")
+    long countByStatus(@Param("status") String status);
+    
     
     
 }

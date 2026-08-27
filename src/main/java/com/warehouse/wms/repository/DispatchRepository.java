@@ -87,4 +87,17 @@ public interface DispatchRepository extends JpaRepository<Dispatch, Long> {
             "LOWER(d.driverName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(d.status) LIKE LOWER(CONCAT('%', :search, '%'))")
      Page<Dispatch> searchDispatches(@Param("search") String search, Pageable pageable);
+     
+     
+     
+     // Get top transporter
+     @Query("SELECT d.transporter, COUNT(d) as count FROM Dispatch d GROUP BY d.transporter ORDER BY COUNT(d) DESC")
+     List<Object[]> findTopTransporter();
+
+     // Get top transporter with date range
+     @Query("SELECT d.transporter, COUNT(d) as count FROM Dispatch d " +
+            "WHERE d.createdAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY d.transporter ORDER BY COUNT(d) DESC")
+     List<Object[]> findTopTransporterByDateRange(@Param("startDate") LocalDateTime startDate,
+                                                  @Param("endDate") LocalDateTime endDate);
 }

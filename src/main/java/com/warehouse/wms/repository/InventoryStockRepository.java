@@ -108,4 +108,12 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
         @Param("inventoryNumber") String inventoryNumber,
         @Param("binId") String binId
     );
+    
+    
+    @Query("SELECT COUNT(DISTINCT is.itemCode) FROM InventoryStock is")
+    long countDistinctItemCode();
+    
+    // Count total quantity
+    @Query("SELECT COALESCE(SUM(is.quantity), 0) FROM InventoryStock is")
+    Long getTotalQuantity();
 }

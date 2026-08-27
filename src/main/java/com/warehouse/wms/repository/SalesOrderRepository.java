@@ -125,4 +125,50 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
              @Param("shippingMethod") String shippingMethod,
              @Param("createdBy") String createdBy,
              Pageable pageable);
+    
+    
+    
+    
+    // Count by status in list
+    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.status IN :statuses")
+    long countByStatusIn(@Param("statuses") List<String> statuses);
+
+    // Count by created date range
+    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate")
+    long countByCreatedDateBetween(@Param("startDate") LocalDateTime startDate,
+                                   @Param("endDate") LocalDateTime endDate);
+
+    // Count by status and created date range
+    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.status = :status AND so.createdAt BETWEEN :startDate AND :endDate")
+    long countByStatusAndCreatedDateBetween(@Param("status") String status,
+                                            @Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate);
+
+    // Count by priority
+    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.priority = :priority")
+    long countByPriority(@Param("priority") String priority);
+
+    // Count by priority and status
+    @Query("SELECT COUNT(so) FROM SalesOrder so WHERE so.priority = :priority AND so.status = :status")
+    long countByPriorityAndStatus(@Param("priority") String priority,
+                                  @Param("status") String status);
+    
+    
+    @Query("SELECT so.customerCode, so.customerName, COUNT(so) as orderCount, SUM(so.totalQuantity) as totalQuantity, SUM(so.totalWeight) as totalWeight " +
+            "FROM SalesOrder so WHERE so.createdAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY so.customerCode, so.customerName " +
+            "ORDER BY COUNT(so) DESC")
+     List<Object[]> findTopCustomers(@Param("startDate") LocalDateTime startDate,
+                                     @Param("endDate") LocalDateTime endDate);
+
+     // Get top customer
+     @Query("SELECT so.customerCode, so.customerName, COUNT(so) as orderCount " +
+            "FROM SalesOrder so GROUP BY so.customerCode, so.customerName " +
+            "ORDER BY COUNT(so) DESC")
+     List<Object[]> findTopCustomer();
+     
+     
+     
+     @Query("SELECT so FROM SalesOrder so ORDER BY so.createdAt DESC")
+     List<SalesOrder> findTop10ByOrderByCreatedAtDesc();
 }

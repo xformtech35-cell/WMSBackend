@@ -103,4 +103,8 @@ public interface PickTaskRepository extends JpaRepository<PickTask, Long> {
             "LOWER(pt.pickerId) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(pt.pickerName) LIKE LOWER(CONCAT('%', :search, '%'))")
      Page<PickTask> searchPickTasks(@Param("search") String search, Pageable pageable);
+     
+     
+     @Query("SELECT COUNT(pt) FROM PickTask pt WHERE pt.status = :status")
+     long countByStatus(@Param("status") String status);
 }

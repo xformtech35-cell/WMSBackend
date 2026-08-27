@@ -32,4 +32,16 @@ public class GoodsReceipt {
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "goodsReceipt", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GoodsReceiptLine> lines;
+    
+    private String createdBy;
+    private String status;
+    
+    private String supplierName;
+
+    
+    
+
+    
+    
+    
 }
