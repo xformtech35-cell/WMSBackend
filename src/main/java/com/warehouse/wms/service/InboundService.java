@@ -6,20 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.util.Objects;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.BeanUtils;
-
 
 import com.warehouse.wms.dto.CreateInboundDTO;
 import com.warehouse.wms.dto.GateEntryDTO;
@@ -36,6 +28,9 @@ import com.warehouse.wms.dto.QualityInspectionApprovalDTO;
 import com.warehouse.wms.dto.QualityInspectionDTO;
 import com.warehouse.wms.dto.QualityInspectionItemDTO;
 import com.warehouse.wms.dto.UnloadingDTO;
+import com.warehouse.wms.dto.request.PurchaseReturnLineRequestDTO;
+import com.warehouse.wms.dto.request.PurchaseReturnRequestDTO;
+import com.warehouse.wms.dto.response.PurchaseReturnResponseDTO;
 import com.warehouse.wms.entity.Inbound;
 import com.warehouse.wms.entity.InboundLine;
 import com.warehouse.wms.entity.InboundStage;
@@ -44,6 +39,7 @@ import com.warehouse.wms.entity.InspectionImage;
 import com.warehouse.wms.entity.Item;
 import com.warehouse.wms.entity.PurchaseOrder;
 import com.warehouse.wms.entity.PurchaseOrderLine;
+import com.warehouse.wms.entity.PurchaseReturn;
 import com.warehouse.wms.entity.Rock;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.RockMapper;
@@ -54,6 +50,7 @@ import com.warehouse.wms.repository.PurchaseOrderLineRepository;
 import com.warehouse.wms.repository.PurchaseOrderRepository;
 import com.warehouse.wms.repository.RockRepository;
 import com.warehouse.wms.repository.SupplierRepository;
+import com.warehouse.wms.service.impl.PurchaseReturnServiceImpl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +68,7 @@ public class InboundService {
     private final ItemRepository itemRepository;
     private final ImageService imageService;
     private final RockMapper rockMapper;
+    private final PurchaseReturnServiceImpl purchaseReturnServiceImpl; // Add this
 
     private final RockRepository rockRepository;
 
@@ -241,72 +239,237 @@ public class InboundService {
     }
 
     // ============ 5. QUALITY INSPECTION ============
-    @Transactional
-    public InboundDTO qualityInspection(Long inboundId, QualityInspectionDTO inspectionDTO) {
-        log.info("Quality inspection for inbound: {}", inboundId);
+  @Transactional
+public InboundDTO qualityInspection(Long inboundId, QualityInspectionDTO inspectionDTO) {
+    log.info("Quality inspection for inbound: {}", inboundId);
 
-        Inbound inbound = inboundRepository.findById(inboundId)
-                .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
+    Inbound inbound = inboundRepository.findById(inboundId)
+            .orElseThrow(() -> new ResourceNotFoundException("Inbound not found with id: " + inboundId));
 
-        // Update lines with quality results and handle images
-        for (QualityInspectionItemDTO itemDTO : inspectionDTO.getItems()) {
-            InboundLine line = inboundLineRepository.findById(itemDTO.getLineId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Line not found with id: " + itemDTO.getLineId()));
+    // ✅ Initialize rejected items list
+    List<QualityInspectionItemDTO> rejectedItems = new ArrayList<>();
+    List<QualityInspectionItemDTO> acceptedItems = new ArrayList<>();
 
-            // Validate line belongs to inbound
-            if (!line.getInbound().getId().equals(inboundId)) {
-                throw new IllegalArgumentException("Line does not belong to this inbound");
-            }
+    // Update lines with quality results and handle images
+    for (QualityInspectionItemDTO itemDTO : inspectionDTO.getItems()) {
+        InboundLine line = inboundLineRepository.findById(itemDTO.getLineId())
+                .orElseThrow(() -> new ResourceNotFoundException("Line not found with id: " + itemDTO.getLineId()));
 
-            // Update line details
-            line.setAcceptedQuantity(itemDTO.getAcceptedQuantity());
-            line.setRemainingQuantity(itemDTO.getAcceptedQuantity());
-            line.setRejectedQuantity(itemDTO.getRejectedQuantity());
-            line.setQualityStatus(itemDTO.getQualityStatus());
-            line.setReason(itemDTO.getReason());
-            line.setRemarks(itemDTO.getRemarks());
-            inboundLineRepository.save(line);
-
-            // Handle images if present
-            if (itemDTO.getImageFiles() != null && !itemDTO.getImageFiles().isEmpty()) {
-                // Delete existing images for this line
-                imageService.deleteImagesByLineId(line.getId());
-
-                // Save new images
-                imageService.saveInspectionImages(
-                        inboundId,
-                        line.getId(),
-                        itemDTO.getImageFiles(),
-                        inspectionDTO.getInspectedBy());
-            }
+        // Validate line belongs to inbound
+        if (!line.getInbound().getId().equals(inboundId)) {
+            throw new IllegalArgumentException("Line does not belong to this inbound");
         }
 
-        // Update inbound header
-        inbound.setInspectedBy(inspectionDTO.getInspectedBy());
-        inbound.setInspectionDate(LocalDateTime.now());
-        inbound.setQualityRemarks(inspectionDTO.getOverallRemarks());
-        inbound.setStatus(InboundStatus.QUALITY_INSPECTION);
-        inbound.setStage(InboundStage.QUALITY_INSPECTION);
-        inbound.setApprovalStatus("PENDING");
-        // Determine overall quality status
-        boolean allAccepted = inspectionDTO.getItems().stream()
-                .allMatch(item -> "GOOD".equals(item.getQualityStatus()));
-        boolean anyRejected = inspectionDTO.getItems().stream()
-                .anyMatch(item -> "REJECTED".equals(item.getQualityStatus()) ||
-                        (item.getRejectedQuantity() != null && item.getRejectedQuantity() > 0));
+        // Update line details
+        line.setAcceptedQuantity(itemDTO.getAcceptedQuantity());
+        line.setRemainingQuantity(itemDTO.getAcceptedQuantity());
+        line.setRejectedQuantity(itemDTO.getRejectedQuantity());
+        line.setQualityStatus(itemDTO.getQualityStatus());
+        line.setReason(itemDTO.getReason());
+        line.setRemarks(itemDTO.getRemarks());
+        inboundLineRepository.save(line);
 
-        if (allAccepted) {
-            inbound.setQualityStatus("GOOD");
-        } else if (anyRejected) {
-            inbound.setQualityStatus("PARTIAL");
+        // ✅ Track rejected items
+        if (itemDTO.getRejectedQuantity() != null && itemDTO.getRejectedQuantity() > 0) {
+            rejectedItems.add(itemDTO);
+            log.info("❌ Rejected: {} - Qty: {}", itemDTO.getItemName(), itemDTO.getRejectedQuantity());
         } else {
-            inbound.setQualityStatus("GOOD");
+            acceptedItems.add(itemDTO);
+            log.info("✅ Accepted: {} - Qty: {}", itemDTO.getItemName(), itemDTO.getAcceptedQuantity());
         }
 
-        inbound = inboundRepository.save(inbound);
-        log.info("Quality inspection completed for inbound: {}", inbound.getInboundNumber());
+        // Handle images if present
+        if (itemDTO.getImageFiles() != null && !itemDTO.getImageFiles().isEmpty()) {
+            imageService.deleteImagesByLineId(line.getId());
+            imageService.saveInspectionImages(
+                    inboundId,
+                    line.getId(),
+                    itemDTO.getImageFiles(),
+                    inspectionDTO.getInspectedBy());
+        }
+    }
 
-        return convertToDTO(inbound);
+    // Update inbound header
+    inbound.setInspectedBy(inspectionDTO.getInspectedBy());
+    inbound.setInspectionDate(LocalDateTime.now());
+    inbound.setQualityRemarks(inspectionDTO.getOverallRemarks());
+    inbound.setStatus(InboundStatus.QUALITY_INSPECTION);
+    inbound.setStage(InboundStage.QUALITY_INSPECTION);
+    inbound.setApprovalStatus("PENDING");
+    
+    // Determine overall quality status
+    boolean allAccepted = inspectionDTO.getItems().stream()
+            .allMatch(item -> "GOOD".equals(item.getQualityStatus()) || "ACCEPTED".equals(item.getQualityStatus()));
+    boolean anyRejected = inspectionDTO.getItems().stream()
+            .anyMatch(item -> "REJECTED".equals(item.getQualityStatus()) ||
+                    (item.getRejectedQuantity() != null && item.getRejectedQuantity() > 0));
+
+    if (allAccepted) {
+        inbound.setQualityStatus("GOOD");
+    } else if (anyRejected) {
+        inbound.setQualityStatus("PARTIAL");
+    } else {
+        inbound.setQualityStatus("GOOD");
+    }
+
+    inbound = inboundRepository.save(inbound);
+    log.info("Quality inspection completed for inbound: {}", inbound.getInboundNumber());
+    
+    // ✅ LOG SUMMARY
+    log.info("📊 Inspection Summary - Accepted: {}, Rejected: {}", 
+            acceptedItems.size(), rejectedItems.size());
+    
+    // ✅ AUTO CREATE PURCHASE RETURN FOR REJECTED ITEMS
+    if (!rejectedItems.isEmpty()) {
+        try {
+            log.info("🚀 Creating purchase return for {} rejected items", rejectedItems.size());
+            PurchaseReturnResponseDTO purchaseReturn = createPurchaseReturnFromRejectedItems(inbound, rejectedItems);
+            log.info("✅ Auto-created purchase return: {} for inbound: {}", 
+                    purchaseReturn.getReturnNumber(), inbound.getInboundNumber());
+        } catch (Exception e) {
+            log.error("❌ Failed to auto-create purchase return for inbound: {}", inbound.getInboundNumber(), e);
+            // Optionally: You might want to throw the exception or handle it differently
+        }
+    } else {
+        log.info("ℹ️ No rejected items found, skipping purchase return creation");
+    }
+
+    return convertToDTO(inbound);
+}
+
+/**
+ * Creates a purchase return from rejected items during quality inspection
+ */
+private PurchaseReturnResponseDTO createPurchaseReturnFromRejectedItems(
+        Inbound inbound, 
+        List<QualityInspectionItemDTO> rejectedItems) {
+    
+    log.info("Creating purchase return for inbound: {} with {} rejected items", 
+            inbound.getInboundNumber(), rejectedItems.size());
+
+    // Build purchase return request
+    PurchaseReturnRequestDTO request = PurchaseReturnRequestDTO.builder()
+            .returnDate(LocalDate.now())
+            .poNumber(inbound.getPoNumber())
+            .grnNumber(inbound.getGrnNumber())
+            .invoiceNumber(inbound.getInvoiceNumber())
+            .supplierName(inbound.getSupplierName())
+            .supplierId(inbound.getSupplier() != null ? inbound.getSupplier().getId() : null)
+            .inboundId(inbound.getId())
+            .purchaseOrderId(inbound.getPurchaseOrder() != null ? inbound.getPurchaseOrder().getId() : null)
+            .returnType(PurchaseReturn.ReturnType.QUALITY_ISSUE)
+            .status(PurchaseReturn.ReturnStatus.PENDING)
+            .reason("Auto-created from quality inspection - Rejected items")
+            .remarks("Auto-generated purchase return for rejected items during quality inspection")
+            .lines(new ArrayList<>())
+            .build();
+
+    // Add rejected items as return lines
+    for (QualityInspectionItemDTO itemDTO : rejectedItems) {
+        // Find the corresponding inbound line for more details
+        InboundLine inboundLine = inboundLineRepository.findById(itemDTO.getLineId())
+                .orElse(null);
+
+        Double unitPrice = 0.0;
+        if (inboundLine != null) {
+            if (inboundLine.getPurchaseOrderLine() != null && 
+                inboundLine.getPurchaseOrderLine().getUnitPrice() != null) {
+                unitPrice = inboundLine.getPurchaseOrderLine().getUnitPrice();
+            } else if (inboundLine.getItem() != null && 
+                       inboundLine.getItem().getUnitPrice() != null) {
+                unitPrice = inboundLine.getItem().getUnitPrice();
+            }
+        }
+
+        PurchaseReturnLineRequestDTO lineRequest = PurchaseReturnLineRequestDTO.builder()
+                .itemCode(itemDTO.getItemCode())
+                .itemName(itemDTO.getItemName())
+                .uom(inboundLine != null ? inboundLine.getUom() : "NOS")
+                .returnQuantity(itemDTO.getRejectedQuantity())
+                .unitPrice(unitPrice)
+                .totalAmount(itemDTO.getRejectedQuantity() * unitPrice)
+                .originalQuantity(inboundLine != null ? inboundLine.getOrderedQuantity() : 0)
+                .receivedQuantity(inboundLine != null ? inboundLine.getReceivedQuantity() : 0)
+                .reason(itemDTO.getReason() != null ? itemDTO.getReason() : "Rejected during quality inspection")
+                .remarks(itemDTO.getRemarks())
+                .inboundLineId(itemDTO.getLineId())
+                .build();
+        
+        request.getLines().add(lineRequest);
+        log.info("📦 Added return line: {} - Qty: {}", itemDTO.getItemName(), itemDTO.getRejectedQuantity());
+    }
+
+    // Create the purchase return
+    return purchaseReturnServiceImpl.createPurchaseReturn(request);
+}
+    
+    
+    
+//    private PurchaseReturnResponseDTO createPurchaseReturnFromRejectedItems(
+//            Inbound inbound, 
+//            List<QualityInspectionItemDTO> rejectedItems) {
+//        
+//        log.info("Creating purchase return for inbound: {} with {} rejected items", 
+//                inbound.getInboundNumber(), rejectedItems.size());
+//
+//        // Build purchase return request
+//        PurchaseReturnRequestDTO request = PurchaseReturnRequestDTO.builder()
+//                .returnDate(LocalDate.now())
+//                .poNumber(inbound.getPoNumber())
+//                .grnNumber(inbound.getGrnNumber())
+//                .invoiceNumber(inbound.getInvoiceNumber())
+//                .supplierName(inbound.getSupplierName())
+//                .supplierId(inbound.getSupplier() != null ? inbound.getSupplier().getId() : null)
+//                .inboundId(inbound.getId())
+//                .purchaseOrderId(inbound.getPurchaseOrder() != null ? inbound.getPurchaseOrder().getId() : null)
+//                .returnType(PurchaseReturn.ReturnType.QUALITY_ISSUE)
+//                .status(PurchaseReturn.ReturnStatus.PENDING)
+//                .reason("Auto-created from quality inspection - Rejected items")
+//                .remarks("Auto-generated purchase return for rejected items during quality inspection")
+//                .lines(new ArrayList<>())
+//                .build();
+//
+//        // Add rejected items as return lines
+//        for (QualityInspectionItemDTO itemDTO : rejectedItems) {
+//            // Find the corresponding inbound line for more details
+//            InboundLine inboundLine = inboundLineRepository.findById(itemDTO.getLineId())
+//                    .orElse(null);
+//
+//            PurchaseReturnLineRequestDTO lineRequest = PurchaseReturnLineRequestDTO.builder()
+//                    .itemCode(itemDTO.getItemCode())
+//                    .itemName(itemDTO.getItemName())
+//                    .uom(inboundLine != null ? inboundLine.getUom() : "NOS")
+//                    .returnQuantity(itemDTO.getRejectedQuantity())
+//                    .unitPrice(inboundLine != null ? getItemUnitPrice(inboundLine) : 0.0)
+//                    .totalAmount(itemDTO.getRejectedQuantity() * (inboundLine != null ? getItemUnitPrice(inboundLine) : 0.0))
+//                    .originalQuantity(inboundLine != null ? inboundLine.getOrderedQuantity() : 0)
+//                    .receivedQuantity(inboundLine != null ? inboundLine.getReceivedQuantity() : 0)
+//                    .reason(itemDTO.getReason() != null ? itemDTO.getReason() : "Rejected during quality inspection")
+//                    .remarks(itemDTO.getRemarks())
+//                    .inboundLineId(itemDTO.getLineId())
+//                    .build();
+//            
+//            request.getLines().add(lineRequest);
+//        }
+//
+//        // Create the purchase return
+//        return purchaseReturnService.createPurchaseReturn(request);
+//    }
+
+    /**
+     * Helper method to get unit price from inbound line
+     */
+    private Double getItemUnitPrice(InboundLine line) {
+        // Try to get from purchase order line
+        if (line.getPurchaseOrderLine() != null && line.getPurchaseOrderLine().getUnitPrice() != null) {
+            return line.getPurchaseOrderLine().getUnitPrice();
+        }
+        // Try to get from item
+        if (line.getItem() != null && line.getItem().getUnitPrice() != null) {
+            return line.getItem().getUnitPrice();
+        }
+        // Default
+        return 0.0;
     }
 
     // ============ 6. GENERATE GRN ============
