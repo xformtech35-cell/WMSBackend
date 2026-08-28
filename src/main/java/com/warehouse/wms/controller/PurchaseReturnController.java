@@ -38,7 +38,6 @@ public class PurchaseReturnController {
     private final PurchaseReturnService purchaseReturnService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('CREATE_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> createPurchaseReturn(
             @Valid @RequestBody PurchaseReturnRequestDTO request) {
         log.info("REST request to create Purchase Return");
@@ -48,7 +47,6 @@ public class PurchaseReturnController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('UPDATE_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> updatePurchaseReturn(
             @PathVariable Long id,
             @Valid @RequestBody PurchaseReturnRequestDTO request) {
@@ -58,7 +56,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> getPurchaseReturnById(@PathVariable Long id) {
         log.info("REST request to get Purchase Return by ID: {}", id);
         PurchaseReturnResponseDTO response = purchaseReturnService.getPurchaseReturnById(id);
@@ -66,7 +63,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/number/{returnNumber}")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> getPurchaseReturnByNumber(@PathVariable String returnNumber) {
         log.info("REST request to get Purchase Return by Number: {}", returnNumber);
         PurchaseReturnResponseDTO response = purchaseReturnService.getPurchaseReturnByNumber(returnNumber);
@@ -74,7 +70,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<Page<PurchaseReturnResponseDTO>>> getAllPurchaseReturns(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         log.info("REST request to get all Purchase Returns");
@@ -83,7 +78,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<Page<PurchaseReturnResponseDTO>>> searchPurchaseReturns(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String supplierName,
@@ -96,7 +90,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/supplier/{supplierId}")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<List<PurchaseReturnResponseDTO>>> getPurchaseReturnsBySupplier(
             @PathVariable Long supplierId) {
         log.info("REST request to get Purchase Returns by Supplier ID: {}", supplierId);
@@ -105,7 +98,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<List<PurchaseReturnResponseDTO>>> getPurchaseReturnsByStatus(
             @PathVariable String status) {
         log.info("REST request to get Purchase Returns by Status: {}", status);
@@ -124,7 +116,6 @@ public class PurchaseReturnController {
     }
 
     @PatchMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority('REJECT_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> rejectPurchaseReturn(
             @PathVariable Long id,
             @RequestParam Long rejectedBy,
@@ -135,7 +126,6 @@ public class PurchaseReturnController {
     }
 
     @PatchMapping("/{id}/ship")
-    @PreAuthorize("hasAuthority('SHIP_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> shipPurchaseReturn(
             @PathVariable Long id,
             @RequestParam Long shippedBy,
@@ -146,7 +136,6 @@ public class PurchaseReturnController {
     }
 
     @PatchMapping("/{id}/complete")
-    @PreAuthorize("hasAuthority('COMPLETE_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> completePurchaseReturn(@PathVariable Long id) {
         log.info("REST request to complete Purchase Return: {}", id);
         PurchaseReturnResponseDTO response = purchaseReturnService.completePurchaseReturn(id);
@@ -154,7 +143,6 @@ public class PurchaseReturnController {
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAuthority('CANCEL_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> cancelPurchaseReturn(@PathVariable Long id) {
         log.info("REST request to cancel Purchase Return: {}", id);
         PurchaseReturnResponseDTO response = purchaseReturnService.cancelPurchaseReturn(id);
@@ -162,7 +150,6 @@ public class PurchaseReturnController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('DELETE_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<Void>> deletePurchaseReturn(@PathVariable Long id) {
         log.info("REST request to delete Purchase Return: {}", id);
         purchaseReturnService.deletePurchaseReturn(id);
@@ -170,7 +157,6 @@ public class PurchaseReturnController {
     }
 
     @GetMapping("/status-count/{status}")
-    @PreAuthorize("hasAuthority('VIEW_PURCHASE_RETURN')")
     public ResponseEntity<ApiResponse<Long>> getCountByStatus(@PathVariable String status) {
         log.info("REST request to get count by status: {}", status);
         long count = purchaseReturnService.getCountByStatus(status);
