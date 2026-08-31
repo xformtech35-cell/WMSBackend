@@ -135,4 +135,9 @@ public interface RackRepository extends JpaRepository<Rack, Long> {
             @Param("warehouseId") String warehouseId,
             @Param("zoneId") String zoneId,
             @Param("aisleId") String aisleId);
+    
+    
+    
+    @Query("SELECT r FROM Rack r LEFT JOIN FETCH r.aisle WHERE r.aisle.id = :aisleId")
+    List<Rack> findByAisleIdWithFullHierarchy(@Param("aisleId") Long aisleId);
 }

@@ -14,6 +14,13 @@ import java.util.List;
 @AllArgsConstructor
 public class StockAvailabilitySummary {
     // ====== Stock Counts ======
+	
+    private Long totalItems;      // Total stock in quantity
+    private Long occupiedItems;      // Total stock in quantity
+    private Long availableItems;      // Total stock in quantity
+
+    
+
     private Integer totalQuantity;      // Total stock in quantity
     private Integer stockin;             // Stock available for picking (was availableQuantity)
     private Integer reservedQuantity;    // Reserved stock

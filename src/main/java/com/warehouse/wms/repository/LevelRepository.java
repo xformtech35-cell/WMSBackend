@@ -75,4 +75,10 @@ public interface LevelRepository extends JpaRepository<Level, Long> {
             @Param("zoneId") String zoneId,
             @Param("aisleId") String aisleId,
             @Param("rackId") String rackId);
+    
+    
+    
+    
+    @Query("SELECT l FROM Level l LEFT JOIN FETCH l.rack WHERE l.rack.id = :rackId")
+    List<Level> findByRackIdWithFullHierarchy(@Param("rackId") Long rackId);
 }

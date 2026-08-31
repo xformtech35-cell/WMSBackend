@@ -117,4 +117,11 @@ public interface AisleRepository extends JpaRepository<Aisle, Long> {
     List<Aisle> findByWarehouseIdAndZoneId(
             @Param("warehouseId") String warehouseId,
             @Param("zoneId") String zoneId);
+    
+    
+    
+    
+    
+    @Query("SELECT a FROM Aisle a LEFT JOIN FETCH a.zone WHERE a.zone.id = :zoneId")
+    List<Aisle> findByZoneIdWithFullHierarchy(@Param("zoneId") Long zoneId);
 }

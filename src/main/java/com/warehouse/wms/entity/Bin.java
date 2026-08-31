@@ -117,6 +117,9 @@ public class Bin {
     @Column(name = "created_by", length = 100)
     private String createdBy;
 
+    private BigDecimal utilizationPercentage;
+
+    
     public enum BinStatus {
         AVAILABLE, FULL, BLOCKED
     }

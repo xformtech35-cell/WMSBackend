@@ -25,4 +25,39 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Page<Warehouse> searchWarehouses(@Param("search") String search, Pageable pageable);
 
     boolean existsByWarehouseId(String warehouseId);
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  List<Warehouse> findByNameContainingIgnoreCase(String name, Pageable pageable);
+    
+    Long countByNameContainingIgnoreCase(String name);
+    
+    List<Warehouse> findByWarehouseIdContainingIgnoreCase(String warehouseId, Pageable pageable);
+    
+    Long countByWarehouseIdContainingIgnoreCase(String warehouseId);
+    
+    List<Warehouse> findByIsActive(Boolean isActive, Pageable pageable);
+    
+    Long countByIsActive(Boolean isActive);
+    
+
+    
+    @Query("SELECT COUNT(w) FROM Warehouse w WHERE " +
+           "LOWER(w.name) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+           "LOWER(w.warehouseId) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+           "LOWER(w.location) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+           "LOWER(w.address) LIKE LOWER(CONCAT('%', :term, '%'))")
+    Long countSearchWarehouses(@Param("term") String term);
 }

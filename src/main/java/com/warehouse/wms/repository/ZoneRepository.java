@@ -109,5 +109,8 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
             @Param("warehouseId") String warehouseId, 
             @Param("zoneId") String zoneId);
     
+    
+    @Query("SELECT z FROM Zone z LEFT JOIN FETCH z.warehouse WHERE z.warehouse.id = :warehouseId")
+    List<Zone> findByWarehouseIdWithFullHierarchy(@Param("warehouseId") Long warehouseId);   
    
 }
