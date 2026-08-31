@@ -475,6 +475,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                         bin.getLevel().getRack().getId() : null)
                 .rackName(bin.getLevel() != null && bin.getLevel().getRack() != null ? 
                         bin.getLevel().getRack().getName() : null)
+                .stockSummary(calculatebinStockSummary(bin))  // ✅ Fixed: Use .stockSummary() not .setStockSummary()
                 .build();
     }
 
@@ -520,6 +521,17 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     private StockAvailabilitySummary calculateLevelStockSummary(Level level) {
+        // Implementation depends on your business logic
+        return StockAvailabilitySummary.builder()
+                .totalItems(50L)
+                .availableItems(40L)
+                .occupiedItems(10L)
+                .utilizationPercentage(20.0)
+                .build();
+    }
+    
+    
+    private StockAvailabilitySummary calculatebinStockSummary(Bin bin) {
         // Implementation depends on your business logic
         return StockAvailabilitySummary.builder()
                 .totalItems(50L)
