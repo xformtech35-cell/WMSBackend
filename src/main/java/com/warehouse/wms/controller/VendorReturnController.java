@@ -119,7 +119,6 @@ public class VendorReturnController {
 
     @PatchMapping("/requests/{id}/approve")
     @Operation(summary = "Approve return request")
-    @PreAuthorize("hasAuthority('APPROVE_VENDOR_RETURN')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> approveReturnRequest(
             @PathVariable Long id,
             @RequestParam Long approvedBy) {
@@ -130,7 +129,6 @@ public class VendorReturnController {
 
     @PatchMapping("/requests/{id}/reject")
     @Operation(summary = "Reject return request")
-    @PreAuthorize("hasAuthority('APPROVE_VENDOR_RETURN')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> rejectReturnRequest(
             @PathVariable Long id,
             @RequestParam Long rejectedBy,
@@ -142,7 +140,6 @@ public class VendorReturnController {
 
     @DeleteMapping("/requests/{id}")
     @Operation(summary = "Delete return request")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReturnRequest(@PathVariable Long id) {
         log.info("REST request to delete return request: {}", id);
         vendorReturnService.deleteReturnRequest(id);

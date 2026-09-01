@@ -93,7 +93,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
         returnRequest.setReturnType(request.getReturnType());
         returnRequest.setReturnReason(request.getReturnReason());
         returnRequest.setPriority(request.getPriority() != null ? request.getPriority() : VendorReturnRequest.Priority.MEDIUM);
-        returnRequest.setStatus(VendorReturnRequest.RequestStatus.DRAFT);
+        returnRequest.setStatus(VendorReturnRequest.RequestStatus.PENDING_APPROVAL);
         returnRequest.setRemarks(request.getRemarks());
         
         if (request.getSupplierId() != null) {
