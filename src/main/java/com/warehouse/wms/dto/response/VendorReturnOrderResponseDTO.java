@@ -63,7 +63,8 @@ public class VendorReturnOrderResponseDTO {
     // Totals
     private Integer totalQuantity;
     private BigDecimal totalAmount;
-    
+    private String assignTo;
+
     // Audit
     private Long createdBy;
     private String createdByName;

@@ -89,6 +89,10 @@ public class VendorReturnOrder {
 
     @Column(name = "packed_by")
     private Long packedBy;
+    
+    
+    private String assignTo;
+
 
     @Column(name = "packed_at")
     private LocalDateTime packedAt;

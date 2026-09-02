@@ -428,7 +428,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
     }
 
     @Override
-    public VendorReturnOrderResponseDTO generatePickList(Long id) {
+    public VendorReturnOrderResponseDTO generatePickList(Long id,String assignTo) {
         log.info("Generating pick list for order ID: {}", id);
         
         VendorReturnOrder order = orderRepository.findById(id)
@@ -438,6 +438,8 @@ public class VendorReturnServiceImpl implements VendorReturnService {
             throw new IllegalStateException("Only CREATED orders can generate pick list");
         }
         
+        
+        order.setAssignTo(assignTo);
         order.setStatus(VendorReturnOrder.OrderStatus.PENDING_PICKING);
         order.setPickListGenerated(true);
         order.setPickListGeneratedAt(LocalDateTime.now());
@@ -1207,6 +1209,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
                 .createdBy(order.getCreatedBy())
+                .assignTo(order.getAssignTo())
                 .updatedAt(order.getUpdatedAt())
                 .updatedBy(order.getUpdatedBy())
                 .lines(order.getLines() != null ? order.getLines().stream()

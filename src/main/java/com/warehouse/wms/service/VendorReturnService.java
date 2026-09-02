@@ -42,7 +42,7 @@ public interface VendorReturnService {
     VendorReturnOrderResponseDTO getReturnOrderByNumber(String orderNumber);
     Page<VendorReturnOrderResponseDTO> getAllReturnOrders(Pageable pageable);
     Page<VendorReturnOrderResponseDTO> searchReturnOrders(String supplierName, String status, String searchTerm, Pageable pageable);
-    VendorReturnOrderResponseDTO generatePickList(Long id);
+    VendorReturnOrderResponseDTO generatePickList(Long id,String assignTo);
     VendorReturnOrderResponseDTO cancelReturnOrder(Long id);
     void deleteReturnOrder(Long id);
     

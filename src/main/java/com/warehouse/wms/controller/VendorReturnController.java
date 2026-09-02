@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
@@ -181,12 +182,15 @@ public class VendorReturnController {
     @PostMapping("/orders/{id}/generate-picklist")
     @Operation(summary = "Generate pick list for return order")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
-    public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> generatePickList(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> generatePickList(@PathVariable Long id, @RequestParam  String assignTo) 
+    {
+    	
+    	
         log.info("REST request to generate pick list for order: {}", id);
-        VendorReturnOrderResponseDTO response = vendorReturnService.generatePickList(id);
+        VendorReturnOrderResponseDTO response = vendorReturnService.generatePickList(id,assignTo);
         return ResponseEntity.ok(ApiResponse.success("Pick list generated successfully", response));
     }
-
+    
     // ========== WAREHOUSE EXECUTION APIs ==========
 
     @PatchMapping("/orders/{id}/pick")
@@ -210,6 +214,20 @@ public class VendorReturnController {
         VendorReturnOrderResponseDTO response = vendorReturnService.performQC(id, qcDetails);
         return ResponseEntity.ok(ApiResponse.success("QC completed successfully", response));
     }
+    
+    
+    
+    @PatchMapping("/orders/{orderId}/pack")
+    @Operation(summary = "Perform packing for return order")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
+    public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> performPacking(
+            @PathVariable Long orderId,
+            @Valid @RequestBody List<PackingDTO> packingDetails) {
+        log.info("REST request to perform packing for order ID: {}", orderId);
+        VendorReturnOrderResponseDTO response = vendorReturnService.performPacking(orderId, packingDetails);
+        return ResponseEntity.ok(ApiResponse.success("Packing completed successfully", response));
+    }
+    
 
     // ========== DISPATCH APIs ==========
 

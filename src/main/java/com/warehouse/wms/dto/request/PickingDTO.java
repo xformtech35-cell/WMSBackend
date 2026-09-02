@@ -10,6 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PickingDTO {
+	
+   
+
     private Long lineId;
     private Integer pickedQuantity;
     private Long pickedBy;
