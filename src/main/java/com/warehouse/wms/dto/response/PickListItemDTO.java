@@ -21,7 +21,6 @@ public class PickListItemDTO {
     private String pickLocation;
     private Integer pickSequence;
     private String status;
-    private String statusDisplayName;
     private String batchNumber;
     private String serialNumbers;
     private String remarks;

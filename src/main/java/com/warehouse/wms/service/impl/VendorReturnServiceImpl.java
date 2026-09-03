@@ -1541,7 +1541,6 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .pickLocation(line.getPickLocation())
                 .pickSequence(line.getPickSequence())
                 .status(line.getStatus() != null ? line.getStatus().name() : "PENDING")
-                .statusDisplayName(line.getStatus() != null ? line.getStatus().getDisplayName() : "Pending")
                 .batchNumber(line.getBatchNumber())
                 .serialNumbers(line.getSerialNumbers())
                 .build();

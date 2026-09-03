@@ -197,13 +197,21 @@ public class VendorReturnController {
     
     @PostMapping("/picklists/search")
     @Operation(summary = "Search pick lists with advanced filters")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
             @RequestBody(required = false) PickListFilterDTO filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "pickListGeneratedAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection) {
-        log.info("REST request to search pick lists with filters: {}", filter);
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) String search) {  // ✅ Added search parameter
+        log.info("REST request to search pick lists with filters: {}, search: {}", filter, search);
+        
+        // Set search term in filter if provided
+        if (filter == null) {
+            filter = new PickListFilterDTO();
+        }
+        filter.setSearchTerm(search);
         
         Pageable pageable = PageRequest.of(page, size, 
                 Sort.Direction.fromString(sortDirection), sortBy);

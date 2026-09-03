@@ -20,9 +20,7 @@ public class PickListResponseDTO {
     private String supplierName;
     private String supplierCode;
     private String assignedTo;
-    private String assignedToName;
     private String status;
-    private String statusDisplayName;
     private Integer totalItems;
     private Integer totalQuantity;
     private Integer pickedQuantity;
