@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.warehouse.wms.entity.VendorReturnOrder.OrderStatus;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,7 +22,6 @@ public class PickListResponseDTO {
     private String supplierName;
     private String supplierCode;
     private String assignedTo;
-    private String status;
     private Integer totalItems;
     private Integer totalQuantity;
     private Integer pickedQuantity;
@@ -29,6 +30,8 @@ public class PickListResponseDTO {
     private LocalDateTime assignedAt;
     private LocalDateTime pickedAt;
     private LocalDateTime completedAt;
+    
+    private OrderStatus status;
     private String priority;
     private String createdBy;
     private String createdByName;
