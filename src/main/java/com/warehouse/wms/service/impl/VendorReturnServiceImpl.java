@@ -108,13 +108,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
             PurchaseReturn purchaseReturn = purchaseReturnRepository.findById(purchaseReturnId)
                     .orElseThrow(() -> new ResourceNotFoundException("Purchase Return not found with ID: " + purchaseReturnId));
             
-            // ✅ Check if Purchase Return is in PENDING status (can be requested)
-            if (purchaseReturn.getStatus() != PurchaseReturn.ReturnStatus.PENDING) {
-                throw new IllegalStateException(
-                    String.format("Purchase Return with ID: %d is not in PENDING status. Current status: %s. Only PENDING can be requested.",
-                        purchaseReturnId, purchaseReturn.getStatus().getDisplayName())
-                );
-            }
+         
             
             // ✅ Update Purchase Return status to REQUESTED
             purchaseReturn.setStatus(PurchaseReturn.ReturnStatus.REQUESTED);
@@ -650,20 +644,20 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                     .findFirst()
                     .orElseThrow(() -> new ResourceNotFoundException("Order line not found with ID: " + pick.getLineId()));
             
-            // Validate pick quantity
-            if (pick.getPickedQuantity() > line.getOrderQuantity()) {
-                throw new IllegalArgumentException(
-                    String.format("Picked quantity (%d) cannot exceed order quantity (%d) for item: %s", 
-                        pick.getPickedQuantity(), line.getOrderQuantity(), line.getItemCode())
-                );
-            }
+//            // Validate pick quantity
+//            if (pick.getPickedQuantity() > line.getOrderQuantity()) {
+//                throw new IllegalArgumentException(
+//                    String.format("Picked quantity (%d) cannot exceed order quantity (%d) for item: %s", 
+//                        pick.getPickedQuantity(), line.getOrderQuantity(), line.getItemCode())
+//                );
+//            }
             
-            line.setPickedQuantity(pick.getPickedQuantity());
+            line.setPickedQuantity(line.getOrderQuantity());
             line.setStatus(VendorReturnOrderLine.LineStatus.PICKED);
         }
         
         order.setStatus(VendorReturnOrder.OrderStatus.PENDING_QC);
-        order.setPickedBy(pickingDetails.get(0).getPickedBy());
+        order.setPickedBy(order.getAssignTo());
         order.setPickedAt(LocalDateTime.now());
         
         VendorReturnOrder updated = orderRepository.save(order);

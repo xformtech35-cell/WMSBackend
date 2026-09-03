@@ -49,7 +49,7 @@ public class VendorReturnOrderResponseDTO {
     // Warehouse execution flags
     private Boolean pickListGenerated;
     private LocalDateTime pickListGeneratedAt;
-    private Long pickedBy;
+    private String pickedBy;
     private String pickedByName;
     private LocalDateTime pickedAt;
     private Long qcVerifiedBy;

@@ -79,7 +79,7 @@ public class VendorReturnOrder {
     private LocalDateTime pickListGeneratedAt;
 
     @Column(name = "picked_by")
-    private Long pickedBy;
+    private String pickedBy;
 
     @Column(name = "picked_at")
     private LocalDateTime pickedAt;
