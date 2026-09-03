@@ -32,7 +32,7 @@ public class VendorReturnOrderDTO {
     private String supplierName;
     private String supplierCode;
     
-    private String rockArea;
+    private Long purchseReturnId;
 
     
     private VendorReturnRequest.ReturnType returnType;

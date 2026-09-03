@@ -179,6 +179,7 @@ public class PurchaseReturn {
     
     public enum ReturnStatus {
         PENDING("Pending"),
+        REQUESTED("Requested"),  // ✅ ADD THIS - When return order is created
         APPROVED("Approved"),
         REJECTED("Rejected"),
         SHIPPED("Shipped"),

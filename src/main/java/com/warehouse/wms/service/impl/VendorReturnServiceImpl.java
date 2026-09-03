@@ -15,7 +15,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.DispatchItemDTO;
@@ -42,6 +41,7 @@ import com.warehouse.wms.dto.response.VendorReturnLineResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderLineResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnResponseDTO;
+import com.warehouse.wms.entity.PurchaseReturn;
 import com.warehouse.wms.entity.ReturnDispatch;
 import com.warehouse.wms.entity.ReturnDispatchItem;
 import com.warehouse.wms.entity.ReturnSettlement;
@@ -52,6 +52,7 @@ import com.warehouse.wms.entity.VendorReturnOrderLine;
 import com.warehouse.wms.entity.VendorReturnRequest;
 import com.warehouse.wms.entity.VendorReturnRequestLine;
 import com.warehouse.wms.exception.ResourceNotFoundException;
+import com.warehouse.wms.repository.PurchaseReturnRepository;
 import com.warehouse.wms.repository.ReturnDispatchRepository;
 import com.warehouse.wms.repository.ReturnSettlementRepository;
 import com.warehouse.wms.repository.SupplierRepository;
@@ -75,6 +76,9 @@ public class VendorReturnServiceImpl implements VendorReturnService {
     private final VendorReceiptRepository receiptRepository;
     private final ReturnSettlementRepository settlementRepository;
     private final SupplierRepository supplierRepository;
+    
+    private final PurchaseReturnRepository purchaseReturnRepository; // ✅ ADD THIS
+
 
     private static final String REQUEST_PREFIX = "VRR-";
     private static final String ORDER_PREFIX = "VRO-";
@@ -87,6 +91,54 @@ public class VendorReturnServiceImpl implements VendorReturnService {
     @Override
     public VendorReturnResponseDTO createReturnRequest(VendorReturnRequestDTO request) {
         log.info("Creating return request for supplier: {}", request.getSupplierName());
+        
+        
+        
+        
+        
+        
+        // 1. Check for Purchase Return ID
+        Long purchaseReturnId = request.getPurchseReturnId();
+        log.info("Purchase Return ID provided: {}", purchaseReturnId);
+        
+   
+        // 3. If Purchase Return ID is provided, use it
+        if (purchaseReturnId != null) {
+            // ✅ Validate Purchase Return exists
+            PurchaseReturn purchaseReturn = purchaseReturnRepository.findById(purchaseReturnId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Purchase Return not found with ID: " + purchaseReturnId));
+            
+            // ✅ Check if Purchase Return is in PENDING status (can be requested)
+            if (purchaseReturn.getStatus() != PurchaseReturn.ReturnStatus.PENDING) {
+                throw new IllegalStateException(
+                    String.format("Purchase Return with ID: %d is not in PENDING status. Current status: %s. Only PENDING can be requested.",
+                        purchaseReturnId, purchaseReturn.getStatus().getDisplayName())
+                );
+            }
+            
+            // ✅ Update Purchase Return status to REQUESTED
+            purchaseReturn.setStatus(PurchaseReturn.ReturnStatus.REQUESTED);
+            purchaseReturnRepository.save(purchaseReturn);
+            
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         VendorReturnRequest returnRequest = new VendorReturnRequest();
         returnRequest.setReturnRequestNumber(generateRequestNumber());
@@ -304,6 +356,11 @@ public class VendorReturnServiceImpl implements VendorReturnService {
         order.setVroNumber(generateOrderNumber());
         order.setOrderDate(request.getOrderDate() != null ? request.getOrderDate() : LocalDate.now());
         order.setExpectedReturnDate(request.getExpectedReturnDate());
+        
+        
+        
+        
+        
         
         if (request.getReturnRequestId() != null) {
             VendorReturnRequest returnRequest = requestRepository.findById(request.getReturnRequestId())

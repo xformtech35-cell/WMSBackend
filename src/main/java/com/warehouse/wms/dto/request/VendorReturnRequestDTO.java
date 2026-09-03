@@ -35,7 +35,7 @@ public class VendorReturnRequestDTO {
     private Long supplierId;
     
     
-    private Long purchseReturnIdsss;
+    private Long purchseReturnId;
 
 
     
