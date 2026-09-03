@@ -1,5 +1,6 @@
 package com.warehouse.wms.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -199,19 +200,31 @@ public class VendorReturnController {
     @Operation(summary = "Search pick lists with advanced filters")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
-            @RequestBody(required = false) PickListFilterDTO filter,
+            @RequestParam(required = false) String vroNumber,
+            @RequestParam(required = false) String assignTo,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String assignedFromDate,
+            @RequestParam(required = false) String assignedToDate,
+            @RequestParam(required = false) String pickedFromDate,
+            @RequestParam(required = false) String pickedToDate,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "pickListGeneratedAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection,
-            @RequestParam(required = false) String search) {  // ✅ Added search parameter
-        log.info("REST request to search pick lists with filters: {}, search: {}", filter, search);
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        log.info("REST request to search pick lists with filters");
         
-        // Set search term in filter if provided
-        if (filter == null) {
-            filter = new PickListFilterDTO();
-        }
-        filter.setSearchTerm(search);
+        // Build filter from query parameters
+        PickListFilterDTO filter = PickListFilterDTO.builder()
+                .vroNumber(vroNumber)
+                .assignedTo(assignTo)
+                .supplierName(supplierName)
+                .assignedFromDate(assignedFromDate != null ? LocalDate.parse(assignedFromDate) : null)
+                .assignedToDate(assignedToDate != null ? LocalDate.parse(assignedToDate) : null)
+                .pickedFromDate(pickedFromDate != null ? LocalDate.parse(pickedFromDate) : null)
+                .pickedToDate(pickedToDate != null ? LocalDate.parse(pickedToDate) : null)
+                .searchTerm(search)
+                .build();
         
         Pageable pageable = PageRequest.of(page, size, 
                 Sort.Direction.fromString(sortDirection), sortBy);
