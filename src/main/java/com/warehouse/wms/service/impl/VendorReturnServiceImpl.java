@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.DispatchItemDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
+import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
@@ -29,6 +31,8 @@ import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestLineDTO;
 import com.warehouse.wms.dto.response.DispatchItemResponseDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PickListItemDTO;
+import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptLineResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
@@ -1431,4 +1435,116 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .updatedBy(settlement.getUpdatedBy())
                 .build();
     }
+    
+    
+    
+    
+    @Override
+    public Page<PickListResponseDTO> searchPickLists(PickListFilterDTO filter, Pageable pageable) {
+        log.info("Searching pick lists with filters: {}", filter);
+        
+        if (filter == null) {
+            return getAllPickLists(pageable);
+        }
+        
+        // ✅ FIXED: Extract values from DTO and pass as individual parameters
+        Page<VendorReturnOrder> orders = orderRepository.findPickListsWithAdvancedFilters(
+                filter.getVroNumber(),
+                filter.getAssignedTo(),
+                filter.getSupplierName(),
+                filter.getAssignedFromDate(),
+                filter.getAssignedToDate(),
+                filter.getPickedFromDate(),
+                filter.getPickedToDate(),
+                pageable
+        );
+        
+        List<PickListResponseDTO> pickLists = orders.getContent().stream()
+                .map(this::mapToPickListResponseDTO)
+                .collect(Collectors.toList());
+        
+        return new PageImpl<>(pickLists, pageable, orders.getTotalElements());
+    }
+
+    
+    @Override
+    public Page<PickListResponseDTO> getAllPickLists(Pageable pageable) {
+        log.info("Fetching all pick lists with pagination");
+        
+        Page<VendorReturnOrder> orders = orderRepository.findOrdersWithPickList(pageable);
+        List<PickListResponseDTO> pickLists = orders.getContent().stream()
+                .map(this::mapToPickListResponseDTO)
+                .collect(Collectors.toList());
+        
+        return new PageImpl<>(pickLists, pageable, orders.getTotalElements());
+    }
+    
+    
+    private PickListResponseDTO mapToPickListResponseDTO(VendorReturnOrder order) {
+        // Calculate progress
+        int totalItems = order.getLines().size();
+        int pickedItems = (int) order.getLines().stream()
+                .filter(line -> line.getPickedQuantity() > 0)
+                .count();
+        int totalQuantity = order.getTotalQuantity();
+        int pickedQuantity = order.getLines().stream()
+                .mapToInt(VendorReturnOrderLine::getPickedQuantity)
+                .sum();
+        int remainingQuantity = totalQuantity - pickedQuantity;
+        
+        double progress = totalQuantity > 0 
+                ? (double) pickedQuantity / totalQuantity * 100 
+                : 0.0;
+        
+        return PickListResponseDTO.builder()
+                .id(order.getId())
+                .pickListNumber("PL-" + order.getVroNumber())
+                .vroNumber(order.getVroNumber())
+                .orderId(order.getId())
+                .supplierName(order.getSupplierName())
+                .supplierCode(order.getSupplierCode())
+                .assignedTo(order.getAssignTo())
+//                .status(order.getPickListStatus())
+//                .statusDisplayName(getStatusDisplayName(order.getPickListStatus()))
+                .totalItems(totalItems)
+                .totalQuantity(totalQuantity)
+                .pickedQuantity(pickedQuantity)
+                .remainingQuantity(remainingQuantity)
+                .pickingProgress(progress)
+                .assignedAt(order.getPickListGeneratedAt())
+                .pickedAt(order.getPickedAt())
+                .completedAt(order.getPickedAt() != null ? order.getPickedAt() : null)
+                .priority(order.getPriority() != null ? order.getPriority().name() : "MEDIUM")
+                .createdAt(order.getCreatedAt())
+                .items(order.getLines().stream()
+                        .map(this::mapToPickListItemDTO)
+                        .collect(Collectors.toList()))
+                .build();
+    }
+    
+    
+    
+    
+
+    private PickListItemDTO mapToPickListItemDTO(VendorReturnOrderLine line) {
+        int remainingQuantity = line.getOrderQuantity() - line.getPickedQuantity();
+        
+        return PickListItemDTO.builder()
+                .id(line.getId())
+                .lineId(line.getId())
+                .itemCode(line.getItemCode())
+                .itemName(line.getItemName())
+                .uom(line.getUom())
+                .orderQuantity(line.getOrderQuantity())
+                .pickedQuantity(line.getPickedQuantity() != null ? line.getPickedQuantity() : 0)
+                .remainingQuantity(remainingQuantity)
+                .pickLocation(line.getPickLocation())
+                .pickSequence(line.getPickSequence())
+                .status(line.getStatus() != null ? line.getStatus().name() : "PENDING")
+                .statusDisplayName(line.getStatus() != null ? line.getStatus().getDisplayName() : "Pending")
+                .batchNumber(line.getBatchNumber())
+                .serialNumbers(line.getSerialNumbers())
+                .build();
+    }
+
 }

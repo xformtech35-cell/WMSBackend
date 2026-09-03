@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
+import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
@@ -16,6 +17,7 @@ import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
@@ -43,6 +45,10 @@ public interface VendorReturnService {
     Page<VendorReturnOrderResponseDTO> getAllReturnOrders(Pageable pageable);
     Page<VendorReturnOrderResponseDTO> searchReturnOrders(String supplierName, String status, String searchTerm, Pageable pageable);
     VendorReturnOrderResponseDTO generatePickList(Long id,String assignTo);
+    
+    Page<PickListResponseDTO> searchPickLists(PickListFilterDTO filter, Pageable pageable);
+    Page<PickListResponseDTO> getAllPickLists(Pageable pageable);
+
     VendorReturnOrderResponseDTO cancelReturnOrder(Long id);
     void deleteReturnOrder(Long id);
     

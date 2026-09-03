@@ -1,6 +1,9 @@
 package com.warehouse.wms.repository;
 
-import com.warehouse.wms.entity.VendorReturnOrder;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,9 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import com.warehouse.wms.dto.request.PickListFilterDTO;
+import com.warehouse.wms.entity.VendorReturnOrder;
 
 @Repository
 public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnOrder, Long> {
@@ -24,6 +26,9 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
      * Find return orders by supplier ID
      */
     List<VendorReturnOrder> findBySupplierId(Long supplierId);
+    
+    @Query("SELECT o FROM VendorReturnOrder o WHERE o.pickListGenerated = true")
+    Page<VendorReturnOrder> findOrdersWithPickList(Pageable pageable);
     
     /**
      * Find return orders by status
@@ -109,4 +114,27 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
      */
     @Query("SELECT o FROM VendorReturnOrder o WHERE o.status IN ('PENDING_PICKING', 'PICKING', 'PENDING_QC', 'QC', 'QC_PASSED', 'QC_FAILED', 'PENDING_PACKING', 'PACKED')")
     List<VendorReturnOrder> findInProgressOrders();
+    
+    @Query("SELECT o FROM VendorReturnOrder o " +
+            "WHERE o.pickListGenerated = true " +
+            "AND (:vroNumber IS NULL OR o.vroNumber LIKE CONCAT('%', :vroNumber, '%')) " +
+            "AND (:assignTo IS NULL OR o.assignTo LIKE CONCAT('%', :assignTo, '%')) " +
+            "AND (:supplierName IS NULL OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%'))) " +
+            "AND (:assignedFromDate IS NULL OR DATE(o.pickListGeneratedAt) >= :assignedFromDate) " +
+            "AND (:assignedToDate IS NULL OR DATE(o.pickListGeneratedAt) <= :assignedToDate) " +
+            "AND (:pickedFromDate IS NULL OR DATE(o.pickedAt) >= :pickedFromDate) " +
+            "AND (:pickedToDate IS NULL OR DATE(o.pickedAt) <= :pickedToDate)")
+     Page<VendorReturnOrder> findPickListsWithAdvancedFilters(
+             @Param("vroNumber") String vroNumber,
+             @Param("assignTo") String assignTo,
+             @Param("supplierName") String supplierName,
+             @Param("assignedFromDate") LocalDate assignedFromDate,
+             @Param("assignedToDate") LocalDate assignedToDate,
+             @Param("pickedFromDate") LocalDate pickedFromDate,
+             @Param("pickedToDate") LocalDate pickedToDate,
+             Pageable pageable);
+    
+    
+    
+    
 }

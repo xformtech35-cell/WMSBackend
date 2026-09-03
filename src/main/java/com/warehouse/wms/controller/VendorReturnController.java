@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
+import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
@@ -31,6 +33,7 @@ import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
@@ -191,6 +194,24 @@ public class VendorReturnController {
         return ResponseEntity.ok(ApiResponse.success("Pick list generated successfully", response));
     }
     
+    
+    @PostMapping("/picklists/search")
+    @Operation(summary = "Search pick lists with advanced filters")
+    public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
+            @RequestBody(required = false) PickListFilterDTO filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "pickListGeneratedAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        log.info("REST request to search pick lists with filters: {}", filter);
+        
+        Pageable pageable = PageRequest.of(page, size, 
+                Sort.Direction.fromString(sortDirection), sortBy);
+        
+        Page<PickListResponseDTO> response = vendorReturnService.searchPickLists(filter, pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+    
     // ========== WAREHOUSE EXECUTION APIs ==========
 
     @PatchMapping("/orders/{id}/pick")
@@ -214,7 +235,6 @@ public class VendorReturnController {
         VendorReturnOrderResponseDTO response = vendorReturnService.performQC(id, qcDetails);
         return ResponseEntity.ok(ApiResponse.success("QC completed successfully", response));
     }
-    
     
     
     @PatchMapping("/orders/{orderId}/pack")
