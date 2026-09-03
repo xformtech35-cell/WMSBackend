@@ -1456,6 +1456,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 filter.getAssignedToDate(),
                 filter.getPickedFromDate(),
                 filter.getPickedToDate(),
+                filter.getSearchTerm(),
                 pageable
         );
         

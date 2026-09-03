@@ -123,7 +123,14 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
             "AND (:assignedFromDate IS NULL OR DATE(o.pickListGeneratedAt) >= :assignedFromDate) " +
             "AND (:assignedToDate IS NULL OR DATE(o.pickListGeneratedAt) <= :assignedToDate) " +
             "AND (:pickedFromDate IS NULL OR DATE(o.pickedAt) >= :pickedFromDate) " +
-            "AND (:pickedToDate IS NULL OR DATE(o.pickedAt) <= :pickedToDate)")
+            "AND (:pickedToDate IS NULL OR DATE(o.pickedAt) <= :pickedToDate) " +
+            "AND (:searchTerm IS NULL OR " +
+            "LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.assignTo) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
      Page<VendorReturnOrder> findPickListsWithAdvancedFilters(
              @Param("vroNumber") String vroNumber,
              @Param("assignTo") String assignTo,
@@ -132,8 +139,8 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
              @Param("assignedToDate") LocalDate assignedToDate,
              @Param("pickedFromDate") LocalDate pickedFromDate,
              @Param("pickedToDate") LocalDate pickedToDate,
+             @Param("searchTerm") String searchTerm,
              Pageable pageable);
-    
     
     
     
