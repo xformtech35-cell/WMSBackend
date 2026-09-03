@@ -27,6 +27,9 @@ public class DispatchItemDTO {
     @NotNull(message = "Dispatched quantity is required")
     private Integer dispatchedQuantity;
     
+    private String rejectedArea;
+
+    
     private Integer packedQuantity;
     private String packagingType;
     private Integer packageCount;

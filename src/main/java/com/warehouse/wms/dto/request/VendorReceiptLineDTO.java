@@ -22,6 +22,9 @@ public class VendorReceiptLineDTO {
     @NotBlank(message = "Item name is required")
     private String itemName;
     
+    private String rejectedArea;
+
+    
     private Integer dispatchedQuantity;
     
     @NotNull(message = "Received quantity is required")

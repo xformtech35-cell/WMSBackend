@@ -823,6 +823,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 ReturnDispatchItem item = new ReturnDispatchItem();
                 item.setItemCode(itemDTO.getItemCode());
                 item.setItemName(itemDTO.getItemName());
+                item.setRejectedArea(itemDTO.getRejectedArea());
                 item.setDispatchedQuantity(itemDTO.getDispatchedQuantity());
                 item.setPackedQuantity(itemDTO.getPackedQuantity());
                 item.setPackagingType(itemDTO.getPackagingType());
@@ -933,6 +934,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                         lineDTO.getAcceptedQuantity() : lineDTO.getReceivedQuantity());
                 line.setRejectedQuantity(lineDTO.getRejectedQuantity() != null ? 
                         lineDTO.getRejectedQuantity() : 0);
+                line.setRejectedArea(lineDTO.getRejectedArea());
                 line.setShortQuantity(lineDTO.getShortQuantity() != null ? 
                         lineDTO.getShortQuantity() : 0);
                 line.setDamagedQuantity(lineDTO.getDamagedQuantity() != null ? 
@@ -1194,6 +1196,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
             orderLine.setItemCode(requestLine.getItemCode());
             orderLine.setItemName(requestLine.getItemName());
             orderLine.setUom(requestLine.getUom());
+            orderLine.setRejectedArea(requestLine.getRejectedArea());
             orderLine.setOrderQuantity(requestLine.getRequestedQuantity());
             orderLine.setBatchNumber(requestLine.getBatchNumber());
             orderLine.setSerialNumbers(requestLine.getSerialNumbers());
@@ -1278,7 +1281,8 @@ public class VendorReturnServiceImpl implements VendorReturnService {
      * Map VendorReturnRequestLine to VendorReturnLineResponseDTO
      */
     private VendorReturnLineResponseDTO mapLineToResponseDTO(VendorReturnRequestLine line) {
-        if (line == null) {
+        if (line == null) 
+        {
             return null;
         }
         
@@ -1304,6 +1308,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .createdAt(line.getCreatedAt())
                 .updatedAt(line.getUpdatedAt())
                 .build();
+        
     }
 
     /**
