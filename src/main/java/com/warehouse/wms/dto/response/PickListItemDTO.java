@@ -18,6 +18,7 @@ public class PickListItemDTO {
     private Integer orderQuantity;
     private Integer pickedQuantity;
     private Integer remainingQuantity;
+    
     private String pickLocation;
     private Integer pickSequence;
     private String status;

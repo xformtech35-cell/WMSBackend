@@ -32,6 +32,11 @@ public class VendorReceiptLine {
     @Column(name = "received_quantity")
     private Integer receivedQuantity;
 
+    
+    
+    private String rejectedArea;
+
+    
     @Column(name = "accepted_quantity")
     private Integer acceptedQuantity;
 

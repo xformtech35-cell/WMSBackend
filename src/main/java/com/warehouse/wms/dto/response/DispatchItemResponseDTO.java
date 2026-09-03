@@ -20,6 +20,8 @@ public class DispatchItemResponseDTO {
     private Integer dispatchedQuantity;
     private Integer packedQuantity;
     private String packagingType;
+    private String rejectedArea;
+
     private Integer packageCount;
     private BigDecimal packageWeight;
     private String packageWeightUnit;

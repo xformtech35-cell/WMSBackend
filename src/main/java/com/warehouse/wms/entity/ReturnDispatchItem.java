@@ -31,6 +31,10 @@ public class ReturnDispatchItem {
 
     @Column(name = "packed_quantity")
     private Integer packedQuantity;
+    
+    
+    private String rejectedArea;
+
 
     @Column(name = "packaging_type")
     private String packagingType;

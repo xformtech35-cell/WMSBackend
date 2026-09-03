@@ -26,6 +26,9 @@ public class VendorReceiptLineResponseDTO {
     private Integer shortQuantity;
     private Integer damagedQuantity;
     
+    private String rejectedArea;
+
+    
     // Quality details
     private String rejectionReason;
     private String damagedRemarks;

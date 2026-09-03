@@ -30,6 +30,10 @@ public class VendorReturnOrderResponseDTO {
     private String supplierName;
     private String supplierCode;
     
+    
+    private String rejectedArea;
+
+    
     // Return details
     private VendorReturnRequest.ReturnType returnType;
     private String returnReason;

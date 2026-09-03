@@ -31,6 +31,9 @@ public class VendorReturnOrderLineResponseDTO {
     private Integer dispatchedQuantity;
     private Integer receivedQuantity;
     
+    
+
+    
     // Batch/Serial
     private String batchNumber;
     private String serialNumbers;
