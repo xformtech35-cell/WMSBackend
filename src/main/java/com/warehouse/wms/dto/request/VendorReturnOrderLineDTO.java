@@ -27,6 +27,10 @@ public class VendorReturnOrderLineDTO {
     
     private String uom;
     
+    
+    private String rejectedArea;
+
+    
     @NotNull(message = "Order quantity is required")
     private Integer orderQuantity;
     

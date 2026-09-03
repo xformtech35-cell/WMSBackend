@@ -45,6 +45,9 @@ public class VendorReturnOrderLineResponseDTO {
     private Integer pickSequence;
     private String packBarcode;
     
+    private String rejectedArea;
+
+    
     // QC
     private VendorReturnOrderLine.QCStatus qcStatus;
     private String qcRemarks;

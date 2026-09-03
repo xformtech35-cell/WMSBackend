@@ -30,6 +30,10 @@ public class VendorReturnOrderLine {
 
     @Column(name = "uom")
     private String uom;
+    
+    
+    private String rejectedArea;
+
 
     @Column(name = "order_quantity", nullable = false)
     private Integer orderQuantity;

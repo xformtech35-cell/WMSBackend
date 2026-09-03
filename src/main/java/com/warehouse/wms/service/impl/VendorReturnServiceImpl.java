@@ -334,6 +334,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 line.setItemCode(lineRequest.getItemCode());
                 line.setItemName(lineRequest.getItemName());
                 line.setUom(lineRequest.getUom());
+                line.setRejectedArea(lineRequest.getRejectedArea());
                 line.setOrderQuantity(lineRequest.getOrderQuantity());
                 line.setBatchNumber(lineRequest.getBatchNumber());
                 line.setSerialNumbers(lineRequest.getSerialNumbers());
@@ -380,6 +381,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 line.setItemCode(lineRequest.getItemCode());
                 line.setItemName(lineRequest.getItemName());
                 line.setUom(lineRequest.getUom());
+                line.setRejectedArea(lineRequest.getRejectedArea());
                 line.setOrderQuantity(lineRequest.getOrderQuantity());
                 line.setBatchNumber(lineRequest.getBatchNumber());
                 line.setSerialNumbers(lineRequest.getSerialNumbers());

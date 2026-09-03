@@ -35,8 +35,8 @@ public class VendorReturnRequestDTO {
     private Long supplierId;
     
     
-    
-    private String rockArea;
+    private Long purchseReturnIdsss;
+
 
     
     @NotNull(message = "Return type is required")
