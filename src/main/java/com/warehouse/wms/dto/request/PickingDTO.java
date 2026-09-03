@@ -14,7 +14,7 @@ public class PickingDTO {
    
 
     private Long lineId;
-    private String pickLocation;
+   // private String pickLocation;
 }
 
 // QCDTO.java
