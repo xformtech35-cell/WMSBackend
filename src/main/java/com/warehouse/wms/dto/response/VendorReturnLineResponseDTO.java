@@ -23,6 +23,9 @@ public class VendorReturnLineResponseDTO {
     private Integer actualReturnedQuantity;
     private Integer originalQuantity;
     private Integer receivedQuantity;
+    
+    private String rejectedArea;
+
     private String batchNumber;
     private String serialNumbers;
     private LocalDate expiryDate;

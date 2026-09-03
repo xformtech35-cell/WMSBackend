@@ -168,6 +168,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 line.setUom(lineRequest.getUom());
                 line.setRequestedQuantity(lineRequest.getRequestedQuantity());
                 line.setUnitPrice(lineRequest.getUnitPrice());
+                line.setRejectedArea(lineRequest.getRejectedArea());
                 line.setTotalAmount(lineRequest.getTotalAmount() != null ? 
                         lineRequest.getTotalAmount() : 
                         BigDecimal.valueOf(lineRequest.getRequestedQuantity()).multiply(lineRequest.getUnitPrice()));
@@ -1288,6 +1289,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .uom(line.getUom())
                 .requestedQuantity(line.getRequestedQuantity())
                 .approvedQuantity(line.getApprovedQuantity())
+                .rejectedArea(line.getRejectedArea())
                 .actualReturnedQuantity(line.getActualReturnedQuantity())
                 .originalQuantity(line.getOriginalQuantity())
                 .receivedQuantity(line.getReceivedQuantity())

@@ -31,6 +31,9 @@ public class VendorReturnRequestLine {
     @Column(name = "uom")
     private String uom;
 
+    private String rejectedArea;
+
+    
     @Column(name = "requested_quantity", nullable = false)
     private Integer requestedQuantity;
 
