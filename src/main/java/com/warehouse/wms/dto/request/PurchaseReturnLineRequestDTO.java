@@ -21,6 +21,8 @@ public class PurchaseReturnLineRequestDTO {
     private Double totalAmount;
     private Integer originalQuantity;
     private Integer receivedQuantity;
+    private String rejectedArea;
+
     private String reason;
     private String batchNumber;
     private LocalDate expiryDate;

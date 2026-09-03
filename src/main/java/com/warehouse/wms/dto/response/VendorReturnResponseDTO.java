@@ -37,7 +37,8 @@ public class VendorReturnResponseDTO {
     private String rejectionReason;
     private String remarks;
     private Long createdBy;
-    
+    private String rockArea;
+
     private Long updatedBy;
     private String createdByName;
     private LocalDateTime createdAt;

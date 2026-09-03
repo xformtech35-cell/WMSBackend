@@ -35,6 +35,10 @@ public class PurchaseReturnLine {
     @Column(name = "uom")
     private String uom;
     
+    private String rejectedArea;
+
+
+    
     @Column(name = "return_quantity", nullable = false)
     private Integer returnQuantity = 0;
     

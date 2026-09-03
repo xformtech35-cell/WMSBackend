@@ -35,6 +35,10 @@ public class PurchaseReturn {
     @Column(name = "grn_number")
     private String grnNumber;
     
+    
+    private String rockArea;
+
+    
     @Column(name = "invoice_number")
     private String invoiceNumber;
     

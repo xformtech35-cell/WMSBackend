@@ -20,6 +20,7 @@ public class PurchaseReturnResponseDTO {
     private LocalDate returnDate;
     private String poNumber;
     private String grnNumber;
+    private String rockArea;
     private String invoiceNumber;
     private String supplierName;
     private String supplierCode;

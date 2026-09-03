@@ -63,6 +63,7 @@ public class VendorReturnOrderResponseDTO {
     private Integer totalQuantity;
     private BigDecimal totalAmount;
     private String assignTo;
+    private String rockArea;
 
     // Audit
     private Long createdBy;

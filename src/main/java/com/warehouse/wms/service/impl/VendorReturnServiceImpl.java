@@ -1122,6 +1122,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
         order.setSupplier(request.getSupplier());
         order.setSupplierName(request.getSupplierName());
         order.setSupplierCode(request.getSupplierCode());
+        order.setRockArea(request.getRockArea());
         order.setReturnType(request.getReturnType());
         order.setReturnReason(request.getReturnReason());
         order.setPriority(request.getPriority());
@@ -1198,6 +1199,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .status(request.getStatus())
                 .approvedBy(request.getApprovedBy())
                 .approvedDate(request.getApprovedDate())
+                .rockArea(request.getRockArea())
                 .rejectedBy(request.getRejectedBy())
                 .rejectedDate(request.getRejectedDate())
                 .rejectionReason(request.getRejectionReason())
@@ -1262,6 +1264,7 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .supplierId(order.getSupplier() != null ? order.getSupplier().getId() : null)
                 .supplierName(order.getSupplierName())
                 .supplierCode(order.getSupplierCode())
+                .rockArea(order.getRockArea())
                 .returnType(order.getReturnType())
                 .returnReason(order.getReturnReason())
                 .priority(order.getPriority())

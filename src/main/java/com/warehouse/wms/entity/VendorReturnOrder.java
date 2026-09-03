@@ -45,6 +45,9 @@ public class VendorReturnOrder {
 
     @Column(name = "supplier_name")
     private String supplierName;
+    
+    private String rockArea;
+
 
     @Column(name = "supplier_code")
     private String supplierCode;

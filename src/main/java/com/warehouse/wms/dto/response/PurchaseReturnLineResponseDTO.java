@@ -17,6 +17,9 @@ public class PurchaseReturnLineResponseDTO {
     private String itemName;
     private String uom;
     private Integer returnQuantity;
+    
+    private String rejectedArea;
+
     private Double unitPrice;
     private Double totalAmount;
     private String reason;

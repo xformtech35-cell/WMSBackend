@@ -34,6 +34,11 @@ public class VendorReturnRequestDTO {
     private String supplierCode;
     private Long supplierId;
     
+    
+    
+    private String rockArea;
+
+    
     @NotNull(message = "Return type is required")
     private VendorReturnRequest.ReturnType returnType;
     

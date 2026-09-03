@@ -32,6 +32,9 @@ public class VendorReturnOrderDTO {
     private String supplierName;
     private String supplierCode;
     
+    private String rockArea;
+
+    
     private VendorReturnRequest.ReturnType returnType;
     private String returnReason;
     private VendorReturnRequest.Priority priority;

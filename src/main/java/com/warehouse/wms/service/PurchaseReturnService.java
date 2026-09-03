@@ -1,12 +1,13 @@
 package com.warehouse.wms.service;
 
-import com.warehouse.wms.dto.request.PurchaseReturnRequestDTO;
-import com.warehouse.wms.dto.response.PurchaseReturnResponseDTO;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.warehouse.wms.dto.request.PurchaseReturnRequestDTO;
+import com.warehouse.wms.dto.response.PurchaseReturnLineResponseDTO;
+import com.warehouse.wms.dto.response.PurchaseReturnResponseDTO;
 
 public interface PurchaseReturnService {
     PurchaseReturnResponseDTO createPurchaseReturn(PurchaseReturnRequestDTO request);
@@ -24,4 +25,8 @@ public interface PurchaseReturnService {
     PurchaseReturnResponseDTO cancelPurchaseReturn(Long id);
     void deletePurchaseReturn(Long id);
     long getCountByStatus(String status);
+    
+    
+    PurchaseReturnLineResponseDTO updateRejectedArea(Long lineId, String rejectedArea);
+
 }

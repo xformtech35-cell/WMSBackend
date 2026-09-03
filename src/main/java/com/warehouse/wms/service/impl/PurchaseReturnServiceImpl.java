@@ -19,6 +19,7 @@ import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.repository.InboundLineRepository;
 import com.warehouse.wms.repository.InboundRepository;
 import com.warehouse.wms.repository.PurchaseOrderRepository;
+import com.warehouse.wms.repository.PurchaseReturnLineRepository;
 import com.warehouse.wms.repository.PurchaseReturnRepository;
 import com.warehouse.wms.repository.SupplierRepository;
 import com.warehouse.wms.service.PurchaseReturnService;
@@ -37,6 +38,9 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
     private final InboundRepository inboundRepository;
     private final SupplierRepository supplierRepository;
     private final InboundLineRepository inboundLineRepository;
+    
+    private final PurchaseReturnLineRepository purchaseReturnLineRepository;
+
 
     private static final String RETURN_NUMBER_PREFIX = "PR-";
 
@@ -50,6 +54,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
         purchaseReturn.setPoNumber(request.getPoNumber());
         purchaseReturn.setGrnNumber(request.getGrnNumber());
         purchaseReturn.setInvoiceNumber(request.getInvoiceNumber());
+        purchaseReturn.setRockArea(request.getRockArea());
         purchaseReturn.setSupplierName(request.getSupplierName());
         purchaseReturn.setSupplierCode(request.getSupplierCode());
         purchaseReturn.setReason(request.getReason());
@@ -134,6 +139,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
                 line.setUom(lineRequest.getUom());
                 line.setReturnQuantity(lineRequest.getReturnQuantity());
                 line.setUnitPrice(lineRequest.getUnitPrice());
+                line.setRejectedArea(lineRequest.getRejectedArea());
                 line.setTotalAmount(lineRequest.getTotalAmount() != null ? 
                         lineRequest.getTotalAmount() : lineRequest.getReturnQuantity() * lineRequest.getUnitPrice());
                 line.setOriginalQuantity(lineRequest.getOriginalQuantity());
@@ -363,6 +369,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
                 .itemCode(line.getItemCode())
                 .itemName(line.getItemName())
                 .uom(line.getUom())
+                .rejectedArea(line.getRejectedArea())
                 .returnQuantity(line.getReturnQuantity())
                 .unitPrice(line.getUnitPrice())
                 .totalAmount(line.getTotalAmount())
@@ -372,4 +379,29 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
                 .remarks(line.getRemarks())
                 .build();
     }
+    
+    
+    
+    @Override
+    public PurchaseReturnLineResponseDTO updateRejectedArea(Long lineId, String rejectedArea) {
+        log.info("Updating rejected area for line ID: {} to: {}", lineId, rejectedArea);
+        
+        PurchaseReturnLine line = purchaseReturnLineRepository.findById(lineId)
+                .orElseThrow(() -> new ResourceNotFoundException("Purchase return line not found with ID: " + lineId));
+        
+        // Check if purchase return is editable
+        if (line.getPurchaseReturn().getStatus() != PurchaseReturn.ReturnStatus.PENDING) {
+            throw new IllegalStateException("Cannot update rejected area when purchase return is not in PENDING status");
+        }
+        
+        line.setRejectedArea(rejectedArea);
+        
+        PurchaseReturnLine updated = purchaseReturnLineRepository.save(line);
+        log.info("Rejected area updated for line ID: {}", updated.getId());
+        return mapLineToResponseDTO(updated);
+    }
+    
+    
+    
+
 }

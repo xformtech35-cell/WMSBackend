@@ -37,6 +37,8 @@ public class VendorReturnRequest {
     
     private String remarks;
 
+    private String rockArea;
+
 
     @Column(name = "invoice_number")
     private String invoiceNumber;

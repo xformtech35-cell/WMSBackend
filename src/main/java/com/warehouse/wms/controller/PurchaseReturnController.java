@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.warehouse.wms.dto.ApiResponse;
+import com.warehouse.wms.dto.request.PurchaseReturnLineRequestDTO;
 import com.warehouse.wms.dto.request.PurchaseReturnRequestDTO;
+import com.warehouse.wms.dto.response.PurchaseReturnLineResponseDTO;
 import com.warehouse.wms.dto.response.PurchaseReturnResponseDTO;
 import com.warehouse.wms.service.PurchaseReturnService;
 
@@ -54,7 +56,16 @@ public class PurchaseReturnController {
         PurchaseReturnResponseDTO response = purchaseReturnService.updatePurchaseReturn(id, request);
         return ResponseEntity.ok(ApiResponse.success("Purchase Return updated successfully", response));
     }
-
+    
+    
+    @PatchMapping("/lines/{lineId}/rejected-area")
+    public ResponseEntity<ApiResponse<PurchaseReturnLineResponseDTO>> updateRejectedArea(
+            @PathVariable Long lineId,
+            @RequestParam String rejectedArea) {
+        log.info("REST request to update rejected area for line ID: {} to: {}", lineId, rejectedArea);
+        PurchaseReturnLineResponseDTO response = purchaseReturnService.updateRejectedArea(lineId, rejectedArea);
+        return ResponseEntity.ok(ApiResponse.success("Rejected area updated successfully", response));
+    }
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PurchaseReturnResponseDTO>> getPurchaseReturnById(@PathVariable Long id) {
         log.info("REST request to get Purchase Return by ID: {}", id);
