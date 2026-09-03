@@ -35,7 +35,6 @@ public class VendorReturnOrderResponseDTO {
     private String returnReason;
     private VendorReturnRequest.Priority priority;
     private VendorReturnOrder.OrderStatus status;
-    private String statusDisplayName;
     
     // Shipping
     private String shippingAddress;

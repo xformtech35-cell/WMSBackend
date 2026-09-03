@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.DispatchItemDTO;
@@ -22,6 +23,7 @@ import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
+import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReceiptLineDTO;
@@ -422,6 +424,77 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .map(this::mapToOrderResponseDTO);
     }
 
+    
+    
+    @Override
+    public Page<VendorReturnOrderResponseDTO> getAllReturnOrdersWithFilters(ReturnOrderFilterDTO filter, Pageable pageable) {
+        log.info("Fetching return orders with filters: {}", filter);
+        
+        if (filter == null) {
+            return getAllReturnOrders(pageable);
+        }
+        
+        // Check if only search term is provided
+        if (hasOnlySearchTerm(filter)) {
+            Page<VendorReturnOrder> orders = orderRepository.searchOrders(filter.getSearchTerm(), pageable);
+            return orders.map(this::mapToOrderResponseDTO);
+        }
+        
+        // Use full filters (without pickListStatus)
+        Page<VendorReturnOrder> orders = orderRepository.findAllWithFiltersAndSearch(
+                filter.getVroNumber(),
+                filter.getSupplierName(),
+                filter.getSupplierCode(),
+                filter.getStatus(),
+                filter.getPriority(),
+                filter.getReturnType(),
+                filter.getAssignTo(),
+                filter.getPickListGenerated(),
+                filter.getOrderFromDate(),
+                filter.getOrderToDate(),
+                filter.getExpectedFromDate(),
+                filter.getExpectedToDate(),
+                filter.getActualFromDate(),
+                filter.getActualToDate(),
+                filter.getMinQuantity(),
+                filter.getMaxQuantity(),
+                filter.getMinAmount(),
+                filter.getMaxAmount(),
+                filter.getSearchTerm(),
+                pageable
+        );
+        
+        return orders.map(this::mapToOrderResponseDTO);
+    }
+
+    /**
+     * Check if filter only has search term (no other filters)
+     */
+    private boolean hasOnlySearchTerm(ReturnOrderFilterDTO filter) {
+        return filter.getSearchTerm() != null && !filter.getSearchTerm().isEmpty()
+                && filter.getVroNumber() == null
+                && filter.getSupplierName() == null
+                && filter.getSupplierCode() == null
+                && filter.getStatus() == null
+                && filter.getPriority() == null
+                && filter.getReturnType() == null
+                && filter.getAssignTo() == null
+                && filter.getPickListGenerated() == null
+                && filter.getOrderFromDate() == null
+                && filter.getOrderToDate() == null
+                && filter.getExpectedFromDate() == null
+                && filter.getExpectedToDate() == null
+                && filter.getActualFromDate() == null
+                && filter.getActualToDate() == null
+                && filter.getMinQuantity() == null
+                && filter.getMaxQuantity() == null
+                && filter.getMinAmount() == null
+                && filter.getMaxAmount() == null;
+    }
+    
+    
+    
+    
     @Override
     public Page<VendorReturnOrderResponseDTO> searchReturnOrders(String supplierName, String status, String searchTerm, Pageable pageable) {
         log.info("Searching return orders with filters");
@@ -1193,7 +1266,6 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .returnReason(order.getReturnReason())
                 .priority(order.getPriority())
                 .status(order.getStatus())
-                .statusDisplayName(order.getStatus() != null ? order.getStatus().getDisplayName() : null)
                 .shippingAddress(order.getShippingAddress())
                 .shippingMethod(order.getShippingMethod())
                 .trackingNumber(order.getTrackingNumber())
@@ -1251,10 +1323,8 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .pickSequence(line.getPickSequence())
                 .packBarcode(line.getPackBarcode())
                 .qcStatus(line.getQcStatus())
-                .qcStatusDisplayName(line.getQcStatus() != null ? line.getQcStatus().getDisplayName() : null)
                 .qcRemarks(line.getQcRemarks())
                 .status(line.getStatus())
-                .statusDisplayName(line.getStatus() != null ? line.getStatus().getDisplayName() : null)
                 .createdAt(line.getCreatedAt())
                 .updatedAt(line.getUpdatedAt())
                 .build();

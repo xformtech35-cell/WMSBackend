@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.entity.VendorReturnOrder;
+import com.warehouse.wms.entity.VendorReturnRequest;
 
 @Repository
 public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnOrder, Long> {
@@ -60,6 +60,80 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
     /**
      * Count orders by number prefix for generating sequence
      */
+    
+    
+    
+    
+    
+    
+    @Query("SELECT o FROM VendorReturnOrder o " +
+            "WHERE (:vroNumber IS NULL OR o.vroNumber LIKE CONCAT('%', :vroNumber, '%')) " +
+            "AND (:supplierName IS NULL OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%'))) " +
+            "AND (:supplierCode IS NULL OR LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :supplierCode, '%'))) " +
+            "AND (:status IS NULL OR o.status = :status) " +
+            "AND (:priority IS NULL OR o.priority = :priority) " +
+            "AND (:returnType IS NULL OR o.returnType = :returnType) " +
+            "AND (:assignTo IS NULL OR o.assignTo LIKE CONCAT('%', :assignTo, '%')) " +
+            "AND (:pickListGenerated IS NULL OR o.pickListGenerated = :pickListGenerated) " +
+            "AND (:orderFromDate IS NULL OR DATE(o.orderDate) >= :orderFromDate) " +
+            "AND (:orderToDate IS NULL OR DATE(o.orderDate) <= :orderToDate) " +
+            "AND (:expectedFromDate IS NULL OR DATE(o.expectedReturnDate) >= :expectedFromDate) " +
+            "AND (:expectedToDate IS NULL OR DATE(o.expectedReturnDate) <= :expectedToDate) " +
+            "AND (:actualFromDate IS NULL OR DATE(o.actualReturnDate) >= :actualFromDate) " +
+            "AND (:actualToDate IS NULL OR DATE(o.actualReturnDate) <= :actualToDate) " +
+            "AND (:minQuantity IS NULL OR o.totalQuantity >= :minQuantity) " +
+            "AND (:maxQuantity IS NULL OR o.totalQuantity <= :maxQuantity) " +
+            "AND (:minAmount IS NULL OR o.totalAmount >= :minAmount) " +
+            "AND (:maxAmount IS NULL OR o.totalAmount <= :maxAmount) " +
+            "AND (:searchTerm IS NULL OR " +
+            "LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.assignTo) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+     Page<VendorReturnOrder> findAllWithFiltersAndSearch(
+             @Param("vroNumber") String vroNumber,
+             @Param("supplierName") String supplierName,
+             @Param("supplierCode") String supplierCode,
+             @Param("status") VendorReturnOrder.OrderStatus status,
+             @Param("priority") VendorReturnRequest.Priority priority,
+             @Param("returnType") VendorReturnRequest.ReturnType returnType,
+             @Param("assignTo") String assignTo,
+             @Param("pickListGenerated") Boolean pickListGenerated,
+             @Param("orderFromDate") LocalDate orderFromDate,
+             @Param("orderToDate") LocalDate orderToDate,
+             @Param("expectedFromDate") LocalDate expectedFromDate,
+             @Param("expectedToDate") LocalDate expectedToDate,
+             @Param("actualFromDate") LocalDate actualFromDate,
+             @Param("actualToDate") LocalDate actualToDate,
+             @Param("minQuantity") Integer minQuantity,
+             @Param("maxQuantity") Integer maxQuantity,
+             @Param("minAmount") Double minAmount,
+             @Param("maxAmount") Double maxAmount,
+             @Param("searchTerm") String searchTerm,
+             Pageable pageable);
+
+     // ========== SEARCH ONLY ==========
+
+     /**
+      * Search return orders by search term only
+      */
+     @Query("SELECT o FROM VendorReturnOrder o " +
+            "WHERE (:searchTerm IS NULL OR " +
+            "LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(o.assignTo) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+     Page<VendorReturnOrder> searchOrders(
+             @Param("searchTerm") String searchTerm,
+             Pageable pageable);
+     
+     
+     
+     
     @Query("SELECT COUNT(o) FROM VendorReturnOrder o WHERE o.vroNumber LIKE CONCAT(:prefix, '%')")
     Long countByVroNumberStartingWith(@Param("prefix") String prefix);
     

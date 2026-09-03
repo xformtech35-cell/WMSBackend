@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,7 @@ import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
+import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
@@ -39,6 +41,8 @@ import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnResponseDTO;
+import com.warehouse.wms.entity.VendorReturnOrder;
+import com.warehouse.wms.entity.VendorReturnRequest;
 import com.warehouse.wms.service.VendorReturnService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -173,13 +177,83 @@ public class VendorReturnController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+//    @GetMapping("/orders")
+//    @Operation(summary = "Get all return orders with pagination")
+//    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+//    public ResponseEntity<ApiResponse<Page<VendorReturnOrderResponseDTO>>> getAllReturnOrders(
+//            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+//        log.info("REST request to get all return orders");
+//        Page<VendorReturnOrderResponseDTO> response = vendorReturnService.getAllReturnOrders(pageable);
+//        return ResponseEntity.ok(ApiResponse.success(response));
+//    }
+    
+    
     @GetMapping("/orders")
-    @Operation(summary = "Get all return orders with pagination")
+    @Operation(summary = "Get all return orders with pagination and filters")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<VendorReturnOrderResponseDTO>>> getAllReturnOrders(
+            // Search parameter
+            @RequestParam(required = false) String search,
+            
+            // Order filters
+            @RequestParam(required = false) String vroNumber,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierCode,
+            
+            // Status and Priority
+            @RequestParam(required = false) VendorReturnOrder.OrderStatus status,
+            @RequestParam(required = false) VendorReturnRequest.Priority priority,
+            @RequestParam(required = false) VendorReturnRequest.ReturnType returnType,
+            
+            // Pick List filters
+            @RequestParam(required = false) String assignTo,
+            @RequestParam(required = false) String pickListStatus,
+            @RequestParam(required = false) Boolean pickListGenerated,
+            
+            // Date filters
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate orderFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate orderToDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expectedFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expectedToDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate actualFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate actualToDate,
+            
+            // Quantity filters
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @RequestParam(required = false) Double minAmount,
+            @RequestParam(required = false) Double maxAmount,
+            
+            // Pagination
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("REST request to get all return orders");
-        Page<VendorReturnOrderResponseDTO> response = vendorReturnService.getAllReturnOrders(pageable);
+        
+        log.info("REST request to get all return orders with filters");
+        
+        // Build filter DTO
+        ReturnOrderFilterDTO filter = ReturnOrderFilterDTO.builder()
+                .searchTerm(search)
+                .vroNumber(vroNumber)
+                .supplierName(supplierName)
+                .supplierCode(supplierCode)
+                .status(status)
+                .priority(priority)
+                .returnType(returnType)
+                .assignTo(assignTo)
+                .pickListStatus(pickListStatus)
+                .pickListGenerated(pickListGenerated)
+                .orderFromDate(orderFromDate)
+                .orderToDate(orderToDate)
+                .expectedFromDate(expectedFromDate)
+                .expectedToDate(expectedToDate)
+                .actualFromDate(actualFromDate)
+                .actualToDate(actualToDate)
+                .minQuantity(minQuantity)
+                .maxQuantity(maxQuantity)
+                .minAmount(minAmount)
+                .maxAmount(maxAmount)
+                .build();
+        
+        Page<VendorReturnOrderResponseDTO> response = vendorReturnService.getAllReturnOrdersWithFilters(filter, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

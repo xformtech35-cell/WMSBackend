@@ -47,12 +47,10 @@ public class VendorReturnOrderLineResponseDTO {
     
     // QC
     private VendorReturnOrderLine.QCStatus qcStatus;
-    private String qcStatusDisplayName;
     private String qcRemarks;
     
     // Status
     private VendorReturnOrderLine.LineStatus status;
-    private String statusDisplayName;
     
     // Progress
     private Integer pickingProgress; // Percentage

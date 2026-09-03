@@ -12,6 +12,7 @@ import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
 import com.warehouse.wms.dto.request.QCDTO;
+import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
@@ -51,6 +52,9 @@ public interface VendorReturnService {
 
     VendorReturnOrderResponseDTO cancelReturnOrder(Long id);
     void deleteReturnOrder(Long id);
+    
+    
+    Page<VendorReturnOrderResponseDTO> getAllReturnOrdersWithFilters(ReturnOrderFilterDTO filter, Pageable pageable);
     
     // ========== Warehouse Execution Operations ==========
     VendorReturnOrderResponseDTO performPicking(Long orderId, List<PickingDTO> pickingDetails);
