@@ -299,8 +299,8 @@ case PLACED:
                                   targetLine.getSuggestedZone() + "/" +
                                   targetLine.getSuggestedAisle() + "/" +
                                   targetLine.getSuggestedRack() + "/" +
-                                  (targetLine.getSuggestedLevel() != null ? targetLine.getSuggestedLevel() : "") + "/" +
-                                  (targetLine.getSuggestedBin() != null ? targetLine.getSuggestedBin() : "");
+                                  targetLine.getSuggestedLevel() + "/" +
+                                  targetLine.getSuggestedBin();
     
     log.info("Expected full location: {}", expectedFullLocation);
     

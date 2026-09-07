@@ -116,4 +116,18 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
     // Count total quantity
     @Query("SELECT COALESCE(SUM(is.quantity), 0) FROM InventoryStock is")
     Long getTotalQuantity();
+    
+    
+    
+    Optional<InventoryStock> findByItemCodeAndFullLocationAndAvailableQuantityGreaterThan(
+            String itemCode, 
+            String fullLocation, 
+            int minQuantity
+        );
+        
+        // Find any available inventory for an item
+        Optional<InventoryStock> findFirstByItemCodeAndAvailableQuantityGreaterThan(
+            String itemCode, 
+            int minQuantity
+        );
 }
