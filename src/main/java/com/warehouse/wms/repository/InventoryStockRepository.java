@@ -130,4 +130,103 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
             String itemCode, 
             int minQuantity
         );
+        
+        
+        
+        // ====== BIN LEVEL QUERIES ======
+        
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.binId = :binId")
+        Long getTotalQuantityByBinId(@Param("binId") String binId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.binId = :binId")
+        Long getAvailableQuantityByBinId(@Param("binId") String binId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.binId = :binId")
+        Long getReservedQuantityByBinId(@Param("binId") String binId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.binId = :binId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByBinId(@Param("binId") String binId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.binId = :binId AND i.quantity > 0")
+        Integer countUniqueItemsByBinId(@Param("binId") String binId);
+        
+        // ====== LEVEL QUERIES ======
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.level = :levelId")
+        Long getTotalQuantityByLevel(@Param("levelId") String levelId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.level = :levelId")
+        Long getAvailableQuantityByLevel(@Param("levelId") String levelId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.level = :levelId")
+        Long getReservedQuantityByLevel(@Param("levelId") String levelId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.level = :levelId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByLevel(@Param("levelId") String levelId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.level = :levelId AND i.quantity > 0")
+        Integer countUniqueItemsByLevel(@Param("levelId") String levelId);
+        
+        // ====== RACK QUERIES ======
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.rack = :rackId")
+        Long getTotalQuantityByRack(@Param("rackId") String rackId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.rack = :rackId")
+        Long getAvailableQuantityByRack(@Param("rackId") String rackId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.rack = :rackId")
+        Long getReservedQuantityByRack(@Param("rackId") String rackId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.rack = :rackId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByRack(@Param("rackId") String rackId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.rack = :rackId AND i.quantity > 0")
+        Integer countUniqueItemsByRack(@Param("rackId") String rackId);
+        
+        // ====== AISLE QUERIES ======
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.aisle = :aisleId")
+        Long getTotalQuantityByAisle(@Param("aisleId") String aisleId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.aisle = :aisleId")
+        Long getAvailableQuantityByAisle(@Param("aisleId") String aisleId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.aisle = :aisleId")
+        Long getReservedQuantityByAisle(@Param("aisleId") String aisleId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.aisle = :aisleId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByAisle(@Param("aisleId") String aisleId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.aisle = :aisleId AND i.quantity > 0")
+        Integer countUniqueItemsByAisle(@Param("aisleId") String aisleId);
+        
+        // ====== ZONE QUERIES ======
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.zone = :zoneId")
+        Long getTotalQuantityByZone(@Param("zoneId") String zoneId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.zone = :zoneId")
+        Long getAvailableQuantityByZone(@Param("zoneId") String zoneId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.zone = :zoneId")
+        Long getReservedQuantityByZone(@Param("zoneId") String zoneId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.zone = :zoneId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByZone(@Param("zoneId") String zoneId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.zone = :zoneId AND i.quantity > 0")
+        Integer countUniqueItemsByZone(@Param("zoneId") String zoneId);
+        
+        // ====== WAREHOUSE QUERIES ======
+        @Query("SELECT SUM(i.quantity) FROM InventoryStock i WHERE i.warehouseId = :warehouseId")
+        Long getTotalQuantityByWarehouseId(@Param("warehouseId") String warehouseId);
+        
+        @Query("SELECT SUM(i.availableQuantity) FROM InventoryStock i WHERE i.warehouseId = :warehouseId")
+        Long getAvailableQuantityByWarehouseId(@Param("warehouseId") String warehouseId);
+        
+        @Query("SELECT SUM(i.reservedQuantity) FROM InventoryStock i WHERE i.warehouseId = :warehouseId")
+        Long getReservedQuantityByWarehouseId(@Param("warehouseId") String warehouseId);
+        
+        @Query("SELECT i FROM InventoryStock i WHERE i.warehouseId = :warehouseId AND i.quantity > 0")
+        List<InventoryStock> findItemsWithStockByWarehouseId(@Param("warehouseId") String warehouseId);
+        
+        @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.warehouseId = :warehouseId AND i.quantity > 0")
+        Integer countUniqueItemsByWarehouseId(@Param("warehouseId") String warehouseId);
 }

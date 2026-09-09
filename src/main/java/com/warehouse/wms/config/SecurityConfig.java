@@ -49,6 +49,7 @@ public class SecurityConfig {
                         req.requestMatchers(
                                         // ===== AUTH ENDPOINTS =====
                                         "/api/auth/**",
+                                        "/api/auth/login",
                                         "/api/auth/password/forgot",
                                         "/api/auth/password/verify-otp",
                                         "/api/auth/password/reset",

@@ -1,4 +1,3 @@
-// ====== FILE: src/main/java/com/warehouse/wms/service/impl/WarehouseServiceImpl.java ======
 package com.warehouse.wms.service.impl;
 
 import java.util.List;
@@ -15,6 +14,7 @@ import com.warehouse.wms.dto.request.WarehouseFilterRequest;
 import com.warehouse.wms.dto.request.WarehouseRequest;
 import com.warehouse.wms.dto.response.AisleResponse;
 import com.warehouse.wms.dto.response.BinResponse;
+import com.warehouse.wms.dto.response.ItemStockSummary;
 import com.warehouse.wms.dto.response.LevelResponse;
 import com.warehouse.wms.dto.response.RackResponse;
 import com.warehouse.wms.dto.response.StockAvailabilitySummary;
@@ -22,6 +22,8 @@ import com.warehouse.wms.dto.response.WarehouseResponse;
 import com.warehouse.wms.dto.response.ZoneResponse;
 import com.warehouse.wms.entity.Aisle;
 import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.InventoryStock;
+import com.warehouse.wms.entity.Item;
 import com.warehouse.wms.entity.Level;
 import com.warehouse.wms.entity.Rack;
 import com.warehouse.wms.entity.Warehouse;
@@ -31,6 +33,8 @@ import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.WarehouseMapper;
 import com.warehouse.wms.repository.AisleRepository;
 import com.warehouse.wms.repository.BinRepository;
+import com.warehouse.wms.repository.InventoryStockRepository;
+import com.warehouse.wms.repository.ItemRepository;
 import com.warehouse.wms.repository.LevelRepository;
 import com.warehouse.wms.repository.RackRepository;
 import com.warehouse.wms.repository.WarehouseRepository;
@@ -54,9 +58,9 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final AisleRepository aisleRepository;
     private final RackRepository rackRepository;
     private final LevelRepository levelRepository;
-
+    private final InventoryStockRepository inventoryStockRepository;
     private final ZoneRepository zoneRepository;
-
+    private final ItemRepository itemRepository;
 
     @Override
     public WarehouseResponse createWarehouse(WarehouseRequest request) {
@@ -74,7 +78,6 @@ public class WarehouseServiceImpl implements WarehouseService {
         
         barcodeServiceImpl.generateWarehouseBarcode(savedWarehouse.getWarehouseId());
         
-
         return warehouseMapper.toResponse(savedWarehouse);
     }
 
@@ -117,7 +120,6 @@ public class WarehouseServiceImpl implements WarehouseService {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with ID: " + id));
 
-        // Check uniqueness if warehouseId is changed
         if (!request.getWarehouseId().equals(warehouse.getWarehouseId()) &&
             warehouseRepository.existsByWarehouseId(request.getWarehouseId())) {
             throw new InvalidOperationException("Warehouse ID already exists: " + request.getWarehouseId());
@@ -125,10 +127,8 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         warehouseMapper.updateEntity(warehouse, request);
         
-        if(warehouse.getBarcodeImage()==null)
-        {
+        if(warehouse.getBarcodeImage() == null) {
             barcodeServiceImpl.generateWarehouseBarcode(warehouse.getWarehouseId());
-
         }
         
         Warehouse updatedWarehouse = warehouseRepository.save(warehouse);
@@ -143,7 +143,6 @@ public class WarehouseServiceImpl implements WarehouseService {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with ID: " + id));
 
-        // Soft delete
         warehouse.setIsActive(false);
         warehouseRepository.save(warehouse);
         log.info("✅ Warehouse deactivated: {}", id);
@@ -160,12 +159,10 @@ public class WarehouseServiceImpl implements WarehouseService {
         log.info("✅ Warehouse status updated: {} -> {}", id, isActive);
     }
     
-    
     @Override
     public Page<WarehouseResponse> getWarehousesWithFullHierarchy(WarehouseFilterRequest filter, Pageable pageable) {
         log.debug("Fetching warehouses with filters: {}", filter);
         
-        // Build the query based on filters
         List<Warehouse> warehouses = findWarehousesWithFilters(filter, pageable);
         Long total = countWarehousesWithFilters(filter);
         
@@ -186,29 +183,11 @@ public class WarehouseServiceImpl implements WarehouseService {
         return convertToFullHierarchyResponse(warehouse);
     }
 
-//    @Override
-//    public Page<WarehouseResponse> searchWarehouses(String searchTerm, Pageable pageable) {
-//        log.debug("Searching warehouses with term: {}", searchTerm);
-//        
-//        List<Warehouse> warehouses = warehouseRepository.searchWarehouses(searchTerm, pageable);
-//        Long total = warehouseRepository.countSearchWarehouses(searchTerm);
-//        
-//        List<WarehouseResponse> warehouseResponses = warehouses.stream()
-//                .map(this::convertToFullHierarchyResponse)
-//                .collect(Collectors.toList());
-//        
-//        return new PageImpl<>(warehouseResponses, pageable, total);
-//    }
-
     private List<Warehouse> findWarehousesWithFilters(WarehouseFilterRequest filter, Pageable pageable) {
-        // Build dynamic query with specifications
-        // This is a simplified version - you can use JPA Specifications for more complex queries
-        
         if (filter == null) {
             return warehouseRepository.findAll(pageable).getContent();
         }
         
-        // Example: Search by warehouse name or ID
         if (StringUtils.hasText(filter.getName())) {
             return warehouseRepository.findByNameContainingIgnoreCase(filter.getName(), pageable);
         }
@@ -244,14 +223,14 @@ public class WarehouseServiceImpl implements WarehouseService {
         return warehouseRepository.count();
     }
 
+    // ====== HIERARCHY CONVERSION METHODS ======
+
     private WarehouseResponse convertToFullHierarchyResponse(Warehouse warehouse) {
-        // 1. Get zones with their hierarchy
         List<Zone> zones = zoneRepository.findByWarehouseIdWithFullHierarchy(warehouse.getId());
         List<ZoneResponse> zoneResponses = zones.stream()
                 .map(this::convertZoneWithHierarchy)
                 .collect(Collectors.toList());
         
-        // 2. Build warehouse response with zones
         WarehouseResponse response = WarehouseResponse.builder()
                 .id(warehouse.getId())
                 .warehouseId(warehouse.getWarehouseId())
@@ -274,20 +253,16 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .zones(zoneResponses)
                 .build();
         
-        // Calculate stock summary
         response.setStockSummary(calculateWarehouseStockSummary(warehouse));
-        
         return response;
     }
 
     private ZoneResponse convertZoneWithHierarchy(Zone zone) {
-        // 1. Get aisles with their hierarchy
         List<Aisle> aisles = aisleRepository.findByZoneIdWithFullHierarchy(zone.getId());
         List<AisleResponse> aisleResponses = aisles.stream()
                 .map(this::convertAisleWithHierarchy)
                 .collect(Collectors.toList());
         
-        // 2. Build zone response with minimal warehouse info (break circular reference)
         WarehouseResponse minimalWarehouse = WarehouseResponse.builder()
                 .id(zone.getWarehouse().getId())
                 .warehouseId(zone.getWarehouse().getWarehouseId())
@@ -315,20 +290,16 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .aisles(aisleResponses)
                 .build();
         
-        // Calculate stock summary for zone
         response.setStockSummary(calculateZoneStockSummary(zone));
-        
         return response;
     }
 
     private AisleResponse convertAisleWithHierarchy(Aisle aisle) {
-        // 1. Get racks with their hierarchy
         List<Rack> racks = rackRepository.findByAisleIdWithFullHierarchy(aisle.getId());
         List<RackResponse> rackResponses = racks.stream()
                 .map(this::convertRackWithHierarchy)
                 .collect(Collectors.toList());
         
-        // 2. Build minimal zone info (break circular reference)
         ZoneResponse minimalZone = ZoneResponse.builder()
                 .id(aisle.getZone().getId())
                 .zoneId(aisle.getZone().getZoneId())
@@ -356,20 +327,16 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .racks(rackResponses)
                 .build();
         
-        // Calculate stock summary for aisle
         response.setStockSummary(calculateAisleStockSummary(aisle));
-        
         return response;
     }
 
     private RackResponse convertRackWithHierarchy(Rack rack) {
-        // 1. Get levels with their hierarchy (bins)
         List<Level> levels = levelRepository.findByRackIdWithFullHierarchy(rack.getId());
         List<LevelResponse> levelResponses = levels.stream()
                 .map(this::convertLevelWithHierarchy)
                 .collect(Collectors.toList());
         
-        // 2. Build minimal aisle info (break circular reference)
         AisleResponse minimalAisle = AisleResponse.builder()
                 .id(rack.getAisle().getId())
                 .aisleId(rack.getAisle().getAisleId())
@@ -398,20 +365,16 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .levels(levelResponses)
                 .build();
         
-        // Calculate stock summary for rack
         response.setStockSummary(calculateRackStockSummary(rack));
-        
         return response;
     }
 
     private LevelResponse convertLevelWithHierarchy(Level level) {
-        // 1. Get bins
         List<Bin> bins = binRepository.findByLevelId(level.getId());
         List<BinResponse> binResponses = bins.stream()
                 .map(this::convertBinWithMinimalInfo)
                 .collect(Collectors.toList());
         
-        // 2. Build minimal rack info (break circular reference)
         RackResponse minimalRack = RackResponse.builder()
                 .id(level.getRack().getId())
                 .rackId(level.getRack().getRackId())
@@ -440,9 +403,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .bins(binResponses)
                 .build();
         
-        // Calculate stock summary for level
         response.setStockSummary(calculateLevelStockSummary(level));
-        
         return response;
     }
 
@@ -475,71 +436,350 @@ public class WarehouseServiceImpl implements WarehouseService {
                         bin.getLevel().getRack().getId() : null)
                 .rackName(bin.getLevel() != null && bin.getLevel().getRack() != null ? 
                         bin.getLevel().getRack().getName() : null)
-                .stockSummary(calculatebinStockSummary(bin))  // ✅ Fixed: Use .stockSummary() not .setStockSummary()
+                .stockSummary(calculateBinStockSummary(bin))
                 .build();
     }
 
-    // Stock summary calculation methods
+    // ====== REAL STOCK SUMMARY CALCULATION METHODS ======
+
     private StockAvailabilitySummary calculateWarehouseStockSummary(Warehouse warehouse) {
-        // Implementation depends on your business logic
-        return StockAvailabilitySummary.builder()
-                .totalItems(1000L)
-                .availableItems(750L)
-                .occupiedItems(250L)
-                .utilizationPercentage(25.0)
-                .build();
+        try {
+            String warehouseId = warehouse.getWarehouseId();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByWarehouseId(warehouseId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByWarehouseId(warehouseId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByWarehouseId(warehouseId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByWarehouseId(warehouseId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByWarehouseId(warehouseId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .limit(10)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, warehouse.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                warehouse.getMaxCapacity(), warehouse.getMinCapacity(),
+                utilization, "WAREHOUSE", warehouse.getWarehouseId(),
+                warehouse.getName(), uniqueItems, itemSummaries
+            );
+        } catch (Exception e) {
+            log.error("Error calculating warehouse stock summary for: {}", warehouse.getWarehouseId(), e);
+            return getEmptyStockSummary();
+        }
     }
 
     private StockAvailabilitySummary calculateZoneStockSummary(Zone zone) {
-        // Implementation depends on your business logic
-        return StockAvailabilitySummary.builder()
-                .totalItems(500L)
-                .availableItems(400L)
-                .occupiedItems(100L)
-                .utilizationPercentage(20.0)
-                .build();
+        try {
+            String zoneId = zone.getZoneId();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByZone(zoneId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByZone(zoneId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByZone(zoneId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByZone(zoneId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByZone(zoneId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .limit(10)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, zone.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                zone.getMaxCapacity(), zone.getMinCapacity(),
+                utilization, "ZONE", zone.getZoneId(),
+                zone.getName(), uniqueItems, itemSummaries
+            );
+        } catch (Exception e) {
+            log.error("Error calculating zone stock summary for: {}", zone.getZoneId(), e);
+            return getEmptyStockSummary();
+        }
     }
 
     private StockAvailabilitySummary calculateAisleStockSummary(Aisle aisle) {
-        // Implementation depends on your business logic
-        return StockAvailabilitySummary.builder()
-                .totalItems(200L)
-                .availableItems(150L)
-                .occupiedItems(50L)
-                .utilizationPercentage(25.0)
-                .build();
+        try {
+            String aisleId = aisle.getAisleId();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByAisle(aisleId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByAisle(aisleId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByAisle(aisleId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByAisle(aisleId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByAisle(aisleId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .limit(10)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, aisle.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                aisle.getMaxCapacity(), aisle.getMinCapacity(),
+                utilization, "AISLE", aisle.getAisleId(),
+                aisle.getName(), uniqueItems, itemSummaries
+            );
+        } catch (Exception e) {
+            log.error("Error calculating aisle stock summary for: {}", aisle.getAisleId(), e);
+            return getEmptyStockSummary();
+        }
     }
 
     private StockAvailabilitySummary calculateRackStockSummary(Rack rack) {
-        // Implementation depends on your business logic
-        return StockAvailabilitySummary.builder()
-                .totalItems(100L)
-                .availableItems(80L)
-                .occupiedItems(20L)
-                .utilizationPercentage(20.0)
-                .build();
+        try {
+            String rackId = rack.getRackId();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByRack(rackId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByRack(rackId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByRack(rackId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByRack(rackId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByRack(rackId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .limit(10)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, rack.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                rack.getMaxCapacity(), rack.getMinCapacity(),
+                utilization, "RACK", rack.getRackId(),
+                rack.getName(), uniqueItems, itemSummaries
+            );
+        } catch (Exception e) {
+            log.error("Error calculating rack stock summary for: {}", rack.getRackId(), e);
+            return getEmptyStockSummary();
+        }
     }
 
     private StockAvailabilitySummary calculateLevelStockSummary(Level level) {
-        // Implementation depends on your business logic
+        try {
+            String levelId = level.getLevelId();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByLevel(levelId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByLevel(levelId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByLevel(levelId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByLevel(levelId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByLevel(levelId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .limit(10)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, level.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                level.getMaxCapacity(), level.getMinCapacity(),
+                utilization, "LEVEL", level.getLevelId(),
+                level.getName(), uniqueItems, itemSummaries
+            );
+        } catch (Exception e) {
+            log.error("Error calculating level stock summary for: {}", level.getLevelId(), e);
+            return getEmptyStockSummary();
+        }
+    }
+
+    private StockAvailabilitySummary calculateBinStockSummary(Bin bin) {
+        try {
+            String binId = bin.getBarcode();
+            
+            Long totalItems = inventoryStockRepository.getTotalQuantityByBinId(binId);
+            Long availableItems = inventoryStockRepository.getAvailableQuantityByBinId(binId);
+            Long reservedItems = inventoryStockRepository.getReservedQuantityByBinId(binId);
+            
+            totalItems = totalItems != null ? totalItems : 0L;
+            availableItems = availableItems != null ? availableItems : 0L;
+            reservedItems = reservedItems != null ? reservedItems : 0L;
+            
+            Integer uniqueItems = inventoryStockRepository.countUniqueItemsByBinId(binId);
+            uniqueItems = uniqueItems != null ? uniqueItems : 0;
+            
+            List<InventoryStock> stockItems = inventoryStockRepository.findItemsWithStockByBinId(binId);
+            List<ItemStockSummary> itemSummaries = stockItems.stream()
+                    .map(this::convertToItemStockSummary)
+                    .collect(Collectors.toList());
+            
+            Double utilization = calculateUtilization(totalItems, bin.getMaxCapacity());
+            
+            return buildFullStockSummary(
+                totalItems, availableItems, reservedItems,
+                bin.getMaxCapacity(), bin.getMinCapacity(),
+                utilization, "BIN", bin.getBarcode(),
+                bin.getBarcode(), uniqueItems, itemSummaries
+            );
+                    
+        } catch (Exception e) {
+            log.error("Error calculating bin stock summary for bin: {}", bin.getBarcode(), e);
+            return getEmptyStockSummary();
+        }
+    }
+
+    // ====== HELPER METHODS ======
+
+    private StockAvailabilitySummary buildFullStockSummary(
+            Long totalItems, Long availableItems, Long reservedItems,
+            Integer maxCapacity, Integer minCapacity,
+            Double utilization, String locationLevel, String locationId,
+            String locationName, Integer uniqueItems, List<ItemStockSummary> items) {
+        
         return StockAvailabilitySummary.builder()
-                .totalItems(50L)
-                .availableItems(40L)
-                .occupiedItems(10L)
-                .utilizationPercentage(20.0)
+                // Stock Counts
+                .totalItems(totalItems)
+                .availableItems(availableItems)
+                .occupiedItems(totalItems - availableItems)
+                .totalQuantity(totalItems.intValue())
+                .stockin(availableItems.intValue())
+                .reservedQuantity(reservedItems.intValue())
+                .inTransitQuantity(0)
+                
+                // Capacity Information
+                .maxCapacity(maxCapacity)
+                .minCapacity(minCapacity)
+                .utilizationPercentage(Math.min(utilization, 100.0))
+                .availableSlots(maxCapacity != null ? maxCapacity - totalItems.intValue() : null)
+                .occupiedSlots(totalItems.intValue())
+                
+                // Stock Status
+                .hasStock(totalItems > 0)
+                .isFull(maxCapacity != null && totalItems >= maxCapacity)
+                .isAvailable(availableItems > 0)
+                .isLowStock(utilization < 20.0 && totalItems > 0)
+                .isHighStock(utilization > 80.0)
+                .stockStatus(determineStockStatus(totalItems, utilization, maxCapacity))
+                
+                // Location Information
+                .locationPath(locationId)
+                .locationLevel(locationLevel)
+                
+                // Item Information
+                .uniqueItemsCount(uniqueItems)
+                .items(items != null && !items.isEmpty() ? items : null)
+                
+                // Summary
+                .totalBinsUsed(totalItems > 0 ? 1 : 0)
+                .totalBinsAvailable(1)
+                .stockTurnoverRate(0.0)
+                
                 .build();
     }
-    
-    
-    private StockAvailabilitySummary calculatebinStockSummary(Bin bin) {
-        // Implementation depends on your business logic
+
+    private StockAvailabilitySummary getEmptyStockSummary() {
         return StockAvailabilitySummary.builder()
-                .totalItems(50L)
-                .availableItems(40L)
-                .occupiedItems(10L)
-                .utilizationPercentage(20.0)
+                .totalItems(0L)
+                .availableItems(0L)
+                .occupiedItems(0L)
+                .totalQuantity(0)
+                .stockin(0)
+                .reservedQuantity(0)
+                .inTransitQuantity(0)
+                .utilizationPercentage(0.0)
+                .hasStock(false)
+                .isFull(false)
+                .isAvailable(false)
+                .isLowStock(false)
+                .isHighStock(false)
+                .stockStatus("EMPTY")
+                .uniqueItemsCount(0)
+                .totalBinsUsed(0)
+                .totalBinsAvailable(0)
+                .stockTurnoverRate(0.0)
                 .build();
     }
-    
-    
+
+    private String determineStockStatus(Long totalItems, Double utilization, Integer maxCapacity) {
+        if (totalItems == null || totalItems <= 0) {
+            return "EMPTY";
+        }
+        if (maxCapacity != null && maxCapacity > 0 && totalItems >= maxCapacity) {
+            return "FULL";
+        }
+        if (utilization != null) {
+            if (utilization > 80.0) return "HIGH";
+            if (utilization < 20.0) return "LOW";
+        }
+        return "NORMAL";
+    }
+
+    private Double calculateUtilization(Long totalItems, Integer maxCapacity) {
+        if (maxCapacity == null || maxCapacity <= 0) {
+            return 0.0;
+        }
+        if (totalItems == null || totalItems <= 0) {
+            return 0.0;
+        }
+        return (totalItems.doubleValue() / maxCapacity) * 100;
+    }
+
+    private ItemStockSummary convertToItemStockSummary(InventoryStock stock) {
+        if (stock == null) {
+            return null;
+        }
+        
+        // Fetch item details for unit price
+        Double unitPrice = null;
+        Double totalValue = null;
+        try {
+            Item item = itemRepository.findByItemCode(stock.getItemCode()).orElse(null);
+            if (item != null) {
+                unitPrice = item.getUnitPrice();
+                if (unitPrice != null && stock.getQuantity() != null) {
+                    totalValue = unitPrice * stock.getQuantity();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch item details for: {}", stock.getItemCode());
+        }
+        
+        return ItemStockSummary.builder()
+                .itemCode(stock.getItemCode())
+                .itemName(stock.getItemName())
+                .quantity(stock.getQuantity())
+                .availableQuantity(stock.getAvailableQuantity())
+                .reservedQuantity(stock.getReservedQuantity())
+                .uom(stock.getUom())
+                .batchNumber(stock.getBatchNumber())
+                .expiryDate(stock.getExpiryDate())
+                .mfgDate(stock.getMfgDate())
+                .unitPrice(unitPrice)
+                .totalValue(totalValue)
+                .build();
+    }
 }

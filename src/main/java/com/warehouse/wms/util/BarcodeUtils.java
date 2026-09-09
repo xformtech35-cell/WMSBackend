@@ -4,6 +4,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -242,34 +243,81 @@ public class BarcodeUtils {
         return matrixToBytes(bitMatrix);
     }
 
-    // ====== GENERATE BARCODE WITH TEXT ======
-    public byte[] generateBarcodeWithText(String data, int width, int height) throws WriterException, IOException {
-        int totalHeight = height + 40;
-        BufferedImage image = new BufferedImage(width, totalHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = image.createGraphics();
+   // ====== GENERATE BARCODE WITH TEXT (Enhanced) ======
+public byte[] generateBarcodeWithText(String data, int width, int height) throws WriterException, IOException {
+    // Add padding for text and borders
+    int paddingTop = 10;
+    int paddingBottom = 40;
+    int paddingLeft = 20;
+    int paddingRight = 20;
+    int barcodeWidth = width - paddingLeft - paddingRight;
+    int barcodeHeight = height - paddingTop - paddingBottom;
+    
+    // Ensure minimum dimensions
+    if (barcodeWidth < 100) barcodeWidth = 100;
+    if (barcodeHeight < 50) barcodeHeight = 50;
+    
+    int totalHeight = height + paddingBottom + paddingTop;
+    BufferedImage image = new BufferedImage(width, totalHeight, BufferedImage.TYPE_INT_RGB);
+    Graphics2D g2d = image.createGraphics();
 
-        // White background
-        g2d.setColor(Color.WHITE);
-        g2d.fillRect(0, 0, width, totalHeight);
+    // Enable anti-aliasing for better text quality
+    g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
-        // Generate barcode
-        Code128Writer writer = new Code128Writer();
-        BitMatrix bitMatrix = writer.encode(data, BarcodeFormat.CODE_128, width, height);
-        BufferedImage barcodeImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
-        g2d.drawImage(barcodeImage, 0, 0, null);
+    // White background
+    g2d.setColor(Color.WHITE);
+    g2d.fillRect(0, 0, width, totalHeight);
 
-        // Draw text
-        g2d.setColor(Color.BLACK);
-        g2d.setFont(new Font("Arial", Font.PLAIN, 14));
-        int textWidth = g2d.getFontMetrics().stringWidth(data);
-        g2d.drawString(data, (width - textWidth) / 2, height + 30);
+    // Light gray border (optional)
+    g2d.setColor(new Color(220, 220, 220));
+    g2d.setStroke(new BasicStroke(1));
+    g2d.drawRect(2, 2, width - 4, totalHeight - 4);
 
-        g2d.dispose();
+    // Generate barcode
+    Code128Writer writer = new Code128Writer();
+    BitMatrix bitMatrix = writer.encode(data, BarcodeFormat.CODE_128, barcodeWidth, barcodeHeight);
+    BufferedImage barcodeImage = MatrixToImageWriter.toBufferedImage(bitMatrix);
+    g2d.drawImage(barcodeImage, paddingLeft, paddingTop, null);
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(image, "PNG", baos);
-        return baos.toByteArray();
+    // Draw text below barcode
+    g2d.setColor(Color.BLACK);
+    g2d.setFont(new Font("Arial", Font.BOLD, 13));
+    
+    // Truncate text if too long
+    String displayText = data;
+    int maxTextWidth = width - 40;
+    if (g2d.getFontMetrics().stringWidth(displayText) > maxTextWidth) {
+        while (g2d.getFontMetrics().stringWidth(displayText + "...") > maxTextWidth && displayText.length() > 5) {
+            displayText = displayText.substring(0, displayText.length() - 1);
+        }
+        displayText = displayText + "...";
     }
+    
+    int textWidth = g2d.getFontMetrics().stringWidth(displayText);
+    int textX = (width - textWidth) / 2;
+    int textY = height + paddingTop + 22;
+    g2d.drawString(displayText, textX, textY);
+
+    // Add small label above barcode (optional)
+    g2d.setFont(new Font("Arial", Font.PLAIN, 9));
+    g2d.setColor(new Color(100, 100, 100));
+    String label = "BARCODE";
+    int labelWidth = g2d.getFontMetrics().stringWidth(label);
+    g2d.drawString(label, (width - labelWidth) / 2, paddingTop - 2);
+
+    // Draw a separator line between barcode and text
+    g2d.setColor(new Color(200, 200, 200));
+    g2d.setStroke(new BasicStroke(1));
+    int lineY = height + paddingTop - 10;
+    g2d.drawLine(paddingLeft + 10, lineY, width - paddingLeft - 10, lineY);
+
+    g2d.dispose();
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ImageIO.write(image, "PNG", baos);
+    return baos.toByteArray();
+}
 
     // ====== HELPER METHODS ======
 
