@@ -355,18 +355,21 @@ public class QRCodeServiceImpl implements QRCodeService {
         }
         if (scannedBy == null || scannedBy.trim().isEmpty()) {
             throw new IllegalArgumentException("Scanned by cannot be empty");
+         
         }
+        
+        
         
         QRCode qrCodeEntity = qrCodeRepository.findByQrCode(qrCode)
                 .orElseThrow(() -> new ResourceNotFoundException("QR Code not found: " + qrCode));
-
-        if (qrCodeEntity.getStatus() == QRStatus.USED) {
-            throw new IllegalStateException("QR Code already used");
-        }
-        
-        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
-            throw new IllegalStateException("QR Code has expired");
-        }
+//
+//        if (qrCodeEntity.getStatus() == QRStatus.USED) {
+//            throw new IllegalStateException("QR Code already used");
+//        }
+//        
+//        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
+//            throw new IllegalStateException("QR Code has expired");
+//        }
 
         // ✅ Update StockAvailability - reserve quantity when QR is scanned
         updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
@@ -466,13 +469,13 @@ private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
         QRCode qrCodeEntity = qrCodeRepository.findByBarcode(qrCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Barcode not found: " + qrCode));
 
-        if (qrCodeEntity.getStatus() == QRStatus.USED) {
-            throw new IllegalStateException("Barcode already used");
-        }
-        
-        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
-            throw new IllegalStateException("Barcode has expired");
-        }
+//        if (qrCodeEntity.getStatus() == QRStatus.USED) {
+//            throw new IllegalStateException("Barcode already used");
+//        }
+//        
+//        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
+//            throw new IllegalStateException("Barcode has expired");
+//        }
 
         // ✅ Update StockAvailability - reserve quantity when barcode is scanned
         updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
@@ -495,31 +498,31 @@ private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
         return qrCodeMapper.toResponse(updatedQRCode);
     }
 
-    @Override
-    @Transactional
-    public QRCodeResponse scanBarcode(String barcode, String scannedBy) {
-        log.info("Scanning Barcode: {}", barcode);
-        
-        QRCode qrCode = qrCodeRepository.findByBarcode(barcode)
-                .orElseThrow(() -> new ResourceNotFoundException("Barcode not found: " + barcode));
-
-        if (qrCode.getStatus() == QRStatus.USED) {
-            throw new IllegalStateException("Barcode already used");
-        }
-
-        // ✅ Update StockAvailability - reserve quantity when barcode is scanned
-        updateReservedQuantityOnScan(qrCode, scannedBy);
-
-        qrCode.setStatus(QRStatus.SCANNED);
-        qrCode.setScannedBy(scannedBy);
-        qrCode.setScannedAt(LocalDateTime.now());
-        qrCode.setScanCount(qrCode.getScanCount() + 1);
-
-        QRCode updatedQRCode = qrCodeRepository.save(qrCode);
-        log.info("Barcode scanned successfully: {}", barcode);
-
-        return qrCodeMapper.toResponse(updatedQRCode);
-    }
+//    @Override
+//    @Transactional
+//    public QRCodeResponse scanBarcode(String barcode, String scannedBy) {
+//        log.info("Scanning Barcode: {}", barcode);
+//        
+//        QRCode qrCode = qrCodeRepository.findByBarcode(barcode)
+//                .orElseThrow(() -> new ResourceNotFoundException("Barcode not found: " + barcode));
+//
+////        if (qrCode.getStatus() == QRStatus.USED) {
+////            throw new IllegalStateException("Barcode already used");
+////        }
+//
+//        // ✅ Update StockAvailability - reserve quantity when barcode is scanned
+//        updateReservedQuantityOnScan(qrCode, scannedBy);
+//
+//        qrCode.setStatus(QRStatus.SCANNED);
+//        qrCode.setScannedBy(scannedBy);
+//        qrCode.setScannedAt(LocalDateTime.now());
+//        qrCode.setScanCount(qrCode.getScanCount() + 1);
+//
+//        QRCode updatedQRCode = qrCodeRepository.save(qrCode);
+//        log.info("Barcode scanned successfully: {}", barcode);
+//
+//        return qrCodeMapper.toResponse(updatedQRCode);
+//    }
 
     @Override
     @Transactional

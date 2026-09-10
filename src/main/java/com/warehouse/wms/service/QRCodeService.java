@@ -32,7 +32,7 @@ public interface QRCodeService {
     QRCodeResponse scanBarCode(String barCode, String scannedBy);
 
 
-    QRCodeResponse scanBarcode(String barcode, String scannedBy);
+   // QRCodeResponse scanBarcode(String barcode, String scannedBy);
 
     void updateQRCodeStatus(Long id, String status);
 

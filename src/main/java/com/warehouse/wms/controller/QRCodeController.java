@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.warehouse.wms.dto.request.QRCodeGenerateRequest;
 import com.warehouse.wms.dto.request.QRCodePrintRequest;
 import com.warehouse.wms.dto.response.QRCodeResponse;
+import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.service.QRCodeService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -133,18 +134,50 @@ public class QRCodeController {
     @PostMapping("/scan")
     @Operation(summary = "Scan QR Code")
     public ResponseEntity<QRCodeResponse> scanQRCode(@RequestParam String qrCode, @RequestParam String scannedBy) {
-        log.info("Received request to scan QR Code: {}", qrCode);
-        QRCodeResponse response = qrCodeService.scanQRCode(qrCode, scannedBy);
-        return ResponseEntity.ok(response);
-    }
-    @PostMapping("/barcode/scan")
-    @Operation(summary = "Scan QR Code")
-    public ResponseEntity<QRCodeResponse> scanBarCode(@RequestParam String barCode, @RequestParam String scannedBy) {
-        log.info("Received request to scan QR Code: {}", barCode);
-        QRCodeResponse response = qrCodeService.scanBarCode(barCode, scannedBy);
-        return ResponseEntity.ok(response);
-    }
+    	 log.info("Received scan request for code: '{}' by user: '{}'", qrCode, scannedBy);
 
+         if (qrCode == null || qrCode.trim().isEmpty()) {
+             throw new IllegalArgumentException("Code cannot be empty");
+         }
+
+         QRCodeResponse response;
+
+         // Try scanning as a QR Code first
+         try {
+             response = qrCodeService.scanQRCode(qrCode, scannedBy);
+             log.info("Successfully scanned as QR Code: {}", qrCode);
+             return ResponseEntity.ok(response);
+         } catch (ResourceNotFoundException e) {
+             log.warn("QR Code not found for '{}'. Falling back to Barcode scan.", qrCode);
+         }
+
+         // Fallback: Try scanning as a Barcode
+         try {
+             response = qrCodeService.scanBarCode(qrCode, scannedBy);
+             log.info("Successfully scanned as Barcode: {}", qrCode);
+             return ResponseEntity.ok(response);
+         } catch (ResourceNotFoundException e) {
+             log.error("Code not found as either QR Code or Barcode: {}", qrCode);
+             throw new ResourceNotFoundException("Code not found as QR or Barcode: " + qrCode);
+         }
+     }
+    
+//    @PostMapping("/barcode/scan")
+//    @Operation(summary = "Scan QR Code")
+//    public ResponseEntity<QRCodeResponse> scanBarCode(@RequestParam String qrCode, @RequestParam String scannedBy) {
+//        log.info("Received request to scan QR Code: {}", qrCode);
+//        QRCodeResponse response = qrCodeService.scanBarCode(qrCode, scannedBy);
+//        return ResponseEntity.ok(response);
+//    }
+
+    
+//    @PostMapping("/barcode/scan")
+//    @Operation(summary = "Scan QR Code")
+//    public ResponseEntity<QRCodeResponse> scanBarCode(@RequestBody ScanRequest request) {
+//        log.info("Received request to scan QR Code: {}", request.getBarCode());
+//        QRCodeResponse response = qrCodeService.scanBarCode(request.getBarCode(), request.getScannedBy());
+//        return ResponseEntity.ok(response);
+//    }
 
     @GetMapping("/generate/image/qr")
     @Operation(summary = "Generate QR Code image")
