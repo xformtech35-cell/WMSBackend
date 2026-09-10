@@ -98,6 +98,16 @@ public class VendorReturnOrderLine {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+    
+    
+
+
+    @Lob
+    @Column(name = "pack_barcode_image_base64", columnDefinition = "LONGTEXT")
+    private String packBarcodeImageBase64;      // "iVBORw0KGgoAAAANSUhEUgAA..."
+
+    @Column(name = "pack_barcode_image_type")
+    private String packBarcodeImageType;        // "i
 
     @UpdateTimestamp
     @Column(name = "updated_at")

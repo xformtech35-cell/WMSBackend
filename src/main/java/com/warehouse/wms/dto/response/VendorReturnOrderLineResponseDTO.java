@@ -30,7 +30,8 @@ public class VendorReturnOrderLineResponseDTO {
     private Integer packedQuantity;
     private Integer dispatchedQuantity;
     private Integer receivedQuantity;
-    
+    private String packBarcodeImageBase64;   // raw Base64 (no data: prefix)
+    private String packBarcodeImageType;     // "image/png"
     
 
     

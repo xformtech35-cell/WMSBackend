@@ -60,6 +60,7 @@ import com.warehouse.wms.repository.VendorReceiptRepository;
 import com.warehouse.wms.repository.VendorReturnOrderRepository;
 import com.warehouse.wms.repository.VendorReturnRequestRepository;
 import com.warehouse.wms.service.VendorReturnService;
+import com.warehouse.wms.util.BarcodeGenerator;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -76,7 +77,8 @@ public class VendorReturnServiceImpl implements VendorReturnService {
     private final VendorReceiptRepository receiptRepository;
     private final ReturnSettlementRepository settlementRepository;
     private final SupplierRepository supplierRepository;
-    
+    private final BarcodeGenerator barcodeGenerator;   // ⬅️ returns Base64
+
     private final PurchaseReturnRepository purchaseReturnRepository; // ✅ ADD THIS
 
 
@@ -734,48 +736,101 @@ public class VendorReturnServiceImpl implements VendorReturnService {
         return mapToOrderResponseDTO(updated);
     }
 
-    @Override
-    public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO> packingDetails) {
-        log.info("Performing packing for order ID: {}", orderId);
-        
-        if (packingDetails == null || packingDetails.isEmpty()) {
-            throw new IllegalArgumentException("Packing details cannot be empty");
-        }
-        
-        VendorReturnOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Return order not found"));
-        
-        if (!order.canPack()) {
-            throw new IllegalStateException("Order is not in a state to perform packing. Current status: " + order.getStatus());
-        }
-        
-        for (PackingDTO pack : packingDetails) {
-            VendorReturnOrderLine line = order.getLines().stream()
-                    .filter(l -> l.getId().equals(pack.getLineId()))
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException("Order line not found with ID: " + pack.getLineId()));
-            
-            // Validate pack quantity
-            if (pack.getPackedQuantity() > line.getQcQuantity()) {
-                throw new IllegalArgumentException(
-                    String.format("Packed quantity (%d) cannot exceed QC quantity (%d) for item: %s", 
-                        pack.getPackedQuantity(), line.getQcQuantity(), line.getItemCode())
-                );
-            }
-            
-            line.setPackedQuantity(pack.getPackedQuantity());
-            line.setPackBarcode(pack.getPackBarcode());
-            line.setStatus(VendorReturnOrderLine.LineStatus.PACKED);
-        }
-        
-        order.setPackedBy(packingDetails.get(0).getPackedBy());
-        order.setPackedAt(LocalDateTime.now());
-        order.setStatus(VendorReturnOrder.OrderStatus.PACKED);
-        
-        VendorReturnOrder updated = orderRepository.save(order);
-        log.info("Packing completed for order: {}", updated.getVroNumber());
-        return mapToOrderResponseDTO(updated);
+  @Override
+public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO> packingDetails) {
+    log.info("Performing packing for order ID: {}", orderId);
+
+    if (packingDetails == null || packingDetails.isEmpty()) {
+        throw new IllegalArgumentException("Packing details cannot be empty");
     }
+
+    VendorReturnOrder order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new ResourceNotFoundException("Return order not found"));
+
+//    if (!order.canPack()) {
+//        throw new IllegalStateException(
+//            "Order is not in a state to perform packing. Current status: " + order.getStatus());
+//    }
+
+    for (PackingDTO pack : packingDetails) {
+        VendorReturnOrderLine line = order.getLines().stream()
+                .filter(l -> l.getId().equals(pack.getLineId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Order line not found with ID: " + pack.getLineId()));
+
+        // Validate pack quantity
+        if (pack.getPackedQuantity() > line.getQcQuantity()) {
+            throw new IllegalArgumentException(String.format(
+                "Packed quantity (%d) cannot exceed QC quantity (%d) for item: %s",
+                pack.getPackedQuantity(), line.getQcQuantity(), line.getItemCode()));
+        }
+
+        // ============ BARCODE GENERATION ============
+        String packBarcode = pack.getPackBarcode();
+        if (packBarcode == null || packBarcode.isBlank()) {
+            packBarcode = generatePackBarcode(order, line);
+        }
+
+        // Generate Base64 PNG and store in entity
+        String base64Image = generatePackBarcodeBase64(packBarcode);
+        // ============================================
+
+        line.setPackedQuantity(pack.getPackedQuantity());
+        line.setPackBarcode(packBarcode);
+        line.setPackBarcodeImageBase64(base64Image);   // ⬅️ new field
+        line.setPackBarcodeImageType("image/png");     // ⬅️ new field
+        line.setStatus(VendorReturnOrderLine.LineStatus.PACKED);
+    }
+
+    order.setPackedBy(packingDetails.get(0).getPackedBy());
+    order.setPackedAt(LocalDateTime.now());
+    order.setStatus(VendorReturnOrder.OrderStatus.PACKED);
+
+    VendorReturnOrder updated = orderRepository.save(order);
+    log.info("Packing completed for order: {}", updated.getVroNumber());
+    return mapToOrderResponseDTO(updated);
+}
+  
+  
+  
+  
+  /**
+   * Generates a unique pack barcode string.
+   * Format: PKG-{VRO_NUMBER}-L{LINE_ID}-{TIMESTAMP_SUFFIX}
+   * Example: PKG-VRO-00000006-L12-8A3F2C
+   */
+  private String generatePackBarcode(VendorReturnOrder order, VendorReturnOrderLine line) {
+      String suffix = Long.toHexString(System.currentTimeMillis()).toUpperCase();
+      suffix = suffix.substring(Math.max(0, suffix.length() - 6));
+      return String.format("PKG-%s-L%d-%s", order.getVroNumber(), line.getId(), suffix);
+  }
+
+  /**
+   * Generates a Code128 barcode PNG (with human-readable text) and
+   * returns it as a Base64-encoded string.
+   */
+  private String generatePackBarcodeBase64(String barcodeData) {
+      try {
+          // BarcodeGenerator already returns Base64 directly
+          String base64 = barcodeGenerator.generateBarcodeBase64(
+                  barcodeData,
+                  com.google.zxing.BarcodeFormat.CODE_128,
+                  400,
+                  140);
+
+          if (base64 == null || base64.isBlank()) {
+              log.warn("Empty Base64 generated for barcode '{}'", barcodeData);
+              return null;
+          }
+          return base64;
+
+      } catch (Exception e) {
+          log.error("Failed to generate barcode Base64 for '{}': {}",
+                  barcodeData, e.getMessage(), e);
+          return null;
+      }
+  }
 
     // ========== DISPATCH OPERATIONS ==========
 
@@ -1378,6 +1433,13 @@ public class VendorReturnServiceImpl implements VendorReturnService {
                 .dispatchedQuantity(line.getDispatchedQuantity())
                 .receivedQuantity(line.getReceivedQuantity())
                 .batchNumber(line.getBatchNumber())
+                
+                
+                
+                
+                .packBarcode(line.getPackBarcode())
+                .packBarcodeImageType(line.getPackBarcodeImageType())
+                .packBarcodeImageBase64(line.getPackBarcodeImageBase64())
                 .rejectedArea(line.getRejectedArea())
                 .serialNumbers(line.getSerialNumbers())
                 .expiryDate(line.getExpiryDate())
