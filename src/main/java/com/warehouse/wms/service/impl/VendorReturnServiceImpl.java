@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.DispatchFilterDTO;
 import com.warehouse.wms.dto.request.DispatchItemDTO;
 import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
@@ -32,6 +33,7 @@ import com.warehouse.wms.dto.request.VendorReturnOrderLineDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestLineDTO;
 import com.warehouse.wms.dto.response.DispatchItemResponseDTO;
+import com.warehouse.wms.dto.response.DispatchListResponseDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
 import com.warehouse.wms.dto.response.PackedOrderItemDTO;
 import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
@@ -899,6 +901,114 @@ public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO
         log.info("Dispatch created with ID: {} and Number: {}", saved.getId(), saved.getDispatchNumber());
         return mapToDispatchResponseDTO(saved);
     }
+    
+    @Override
+    public Page<DispatchListResponseDTO> getAllDispatchesWithFilters(
+            DispatchFilterDTO filter, Pageable pageable) {
+
+        log.info("Fetching dispatches with filters: {}", filter);
+
+        if (filter == null) {
+            filter = new DispatchFilterDTO();
+        }
+
+        Page<ReturnDispatch> dispatches = dispatchRepository.findAllWithFilters(
+                filter.getDispatchNumber(),
+                filter.getReturnOrderId(),
+                filter.getVroNumber(),
+                filter.getSupplierName(),
+                filter.getSupplierCode(),
+                filter.getTransportMode(),
+                filter.getTransporterName(),
+                filter.getTransportCompany(),
+                filter.getVehicleNumber(),
+                filter.getDriverName(),
+                filter.getDriverPhone(),
+                filter.getLrNumber(),
+                filter.getAwbNumber(),
+                filter.getReturnChallanNumber(),
+                filter.getStatus(),
+                filter.getPodReceived(),
+                filter.getDispatchFromDate(),
+                filter.getDispatchToDate(),
+                filter.getPodFromDate(),
+                filter.getPodToDate(),
+                filter.getMinWeight(),
+                filter.getMaxWeight(),
+                filter.getMinVolume(),
+                filter.getMaxVolume(),
+                filter.getItemCode(),
+                filter.getItemName(),
+                filter.getSearchTerm(),
+                pageable
+        );
+
+        return dispatches.map(this::mapToDispatchListDTO);
+    }
+
+    /**
+     * Map ReturnDispatch → DispatchListResponseDTO (list view, no items)
+     */
+    private DispatchListResponseDTO mapToDispatchListDTO(ReturnDispatch dispatch) {
+        if (dispatch == null) {
+            return null;
+        }
+
+        // Compute totalQuantity from items (sum of dispatchedQuantity)
+        int totalQuantity = dispatch.getItems() != null
+                ? dispatch.getItems().stream()
+                      .mapToInt(i -> i.getDispatchedQuantity() != null ? i.getDispatchedQuantity() : 0)
+                      .sum()
+                : 0;
+
+        return DispatchListResponseDTO.builder()
+                .id(dispatch.getId())
+                .dispatchNumber(dispatch.getDispatchNumber())
+                .dispatchDate(dispatch.getDispatchDate())
+                .dispatchTime(dispatch.getDispatchTime())
+
+                .returnOrderId(dispatch.getReturnOrder() != null ? dispatch.getReturnOrder().getId() : null)
+                .returnOrderNumber(dispatch.getReturnOrder() != null ? dispatch.getReturnOrder().getVroNumber() : null)
+                .supplierName(dispatch.getReturnOrder() != null ? dispatch.getReturnOrder().getSupplierName() : null)
+                .supplierCode(dispatch.getReturnOrder() != null ? dispatch.getReturnOrder().getSupplierCode() : null)
+
+                .transportMode(dispatch.getTransportMode())
+                .transportModeDisplayName(dispatch.getTransportMode() != null
+                        ? dispatch.getTransportMode().getDisplayName() : null)
+                .transporterName(dispatch.getTransporterName())
+                .transportCompany(dispatch.getTransportCompany())
+                .vehicleNumber(dispatch.getVehicleNumber())
+                .driverName(dispatch.getDriverName())
+                .driverPhone(dispatch.getDriverPhone())
+
+                .lrNumber(dispatch.getLrNumber())
+                .awbNumber(dispatch.getAwbNumber())
+                .trackingUrl(dispatch.getTrackingUrl())
+                .returnChallanNumber(dispatch.getReturnChallanNumber())
+                .returnChallanDate(dispatch.getReturnChallanDate())
+
+                .podNumber(dispatch.getPodNumber())
+                .podDate(dispatch.getPodDate())
+                .podReceived(dispatch.getPodReceived())
+                .podDocumentPath(dispatch.getPodDocumentPath())
+
+                .status(dispatch.getStatus())
+                .statusDisplayName(dispatch.getStatus() != null
+                        ? dispatch.getStatus().getDisplayName() : null)
+
+                .totalItems(dispatch.getTotalItems())
+                .totalQuantity(totalQuantity)
+                .totalWeight(dispatch.getTotalWeight())
+                .totalVolume(dispatch.getTotalVolume())
+
+                .createdAt(dispatch.getCreatedAt())
+                .updatedAt(dispatch.getUpdatedAt())
+                .items(null)   // list view → no items
+                .build();
+    }
+    
+    
+    
 
     @Override
     public DispatchResponseDTO getDispatchById(Long id) {

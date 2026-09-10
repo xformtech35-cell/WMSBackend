@@ -80,4 +80,85 @@ public interface ReturnDispatchRepository extends JpaRepository<ReturnDispatch, 
      */
     @Query("SELECT d FROM ReturnDispatch d WHERE d.lrNumber = :trackingNumber OR d.awbNumber = :trackingNumber")
     Optional<ReturnDispatch> findByTrackingNumber(@Param("trackingNumber") String trackingNumber);
+    
+    
+    
+    
+    @Query("""
+    	    SELECT DISTINCT d FROM ReturnDispatch d
+    	    LEFT JOIN d.returnOrder o
+    	    LEFT JOIN d.items i
+    	    WHERE (:dispatchNumber IS NULL OR LOWER(d.dispatchNumber) LIKE LOWER(CONCAT('%', :dispatchNumber, '%')))
+    	      AND (:returnOrderId IS NULL OR o.id = :returnOrderId)
+    	      AND (:vroNumber IS NULL OR LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :vroNumber, '%')))
+    	      AND (:supplierName IS NULL OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%')))
+    	      AND (:supplierCode IS NULL OR LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :supplierCode, '%')))
+    	      AND (:transportMode IS NULL OR d.transportMode = :transportMode)
+    	      AND (:transporterName IS NULL OR LOWER(d.transporterName) LIKE LOWER(CONCAT('%', :transporterName, '%')))
+    	      AND (:transportCompany IS NULL OR LOWER(d.transportCompany) LIKE LOWER(CONCAT('%', :transportCompany, '%')))
+    	      AND (:vehicleNumber IS NULL OR LOWER(d.vehicleNumber) LIKE LOWER(CONCAT('%', :vehicleNumber, '%')))
+    	      AND (:driverName IS NULL OR LOWER(d.driverName) LIKE LOWER(CONCAT('%', :driverName, '%')))
+    	      AND (:driverPhone IS NULL OR LOWER(d.driverPhone) LIKE LOWER(CONCAT('%', :driverPhone, '%')))
+    	      AND (:lrNumber IS NULL OR LOWER(d.lrNumber) LIKE LOWER(CONCAT('%', :lrNumber, '%')))
+    	      AND (:awbNumber IS NULL OR LOWER(d.awbNumber) LIKE LOWER(CONCAT('%', :awbNumber, '%')))
+    	      AND (:returnChallanNumber IS NULL OR LOWER(d.returnChallanNumber) LIKE LOWER(CONCAT('%', :returnChallanNumber, '%')))
+    	      AND (:status IS NULL OR d.status = :status)
+    	      AND (:podReceived IS NULL OR d.podReceived = :podReceived)
+    	      AND (:dispatchFromDate IS NULL OR d.dispatchDate >= :dispatchFromDate)
+    	      AND (:dispatchToDate IS NULL OR d.dispatchDate <= :dispatchToDate)
+    	      AND (:podFromDate IS NULL OR d.podDate >= :podFromDate)
+    	      AND (:podToDate IS NULL OR d.podDate <= :podToDate)
+    	      AND (:minWeight IS NULL OR d.totalWeight >= :minWeight)
+    	      AND (:maxWeight IS NULL OR d.totalWeight <= :maxWeight)
+    	      AND (:minVolume IS NULL OR d.totalVolume >= :minVolume)
+    	      AND (:maxVolume IS NULL OR d.totalVolume <= :maxVolume)
+    	      AND (:itemCode IS NULL OR EXISTS (
+    	            SELECT 1 FROM ReturnDispatchItem di
+    	            WHERE di.dispatch = d AND LOWER(di.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%'))
+    	      ))
+    	      AND (:itemName IS NULL OR EXISTS (
+    	            SELECT 1 FROM ReturnDispatchItem dn
+    	            WHERE dn.dispatch = d AND LOWER(dn.itemName) LIKE LOWER(CONCAT('%', :itemName, '%'))
+    	      ))
+    	      AND (:searchTerm IS NULL OR (
+    	            LOWER(d.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.lrNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.awbNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.vehicleNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.driverName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.transporterName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	      ))
+    	    """)
+    	Page<ReturnDispatch> findAllWithFilters(
+    	        @Param("dispatchNumber") String dispatchNumber,
+    	        @Param("returnOrderId") Long returnOrderId,
+    	        @Param("vroNumber") String vroNumber,
+    	        @Param("supplierName") String supplierName,
+    	        @Param("supplierCode") String supplierCode,
+    	        @Param("transportMode") ReturnDispatch.TransportMode transportMode,
+    	        @Param("transporterName") String transporterName,
+    	        @Param("transportCompany") String transportCompany,
+    	        @Param("vehicleNumber") String vehicleNumber,
+    	        @Param("driverName") String driverName,
+    	        @Param("driverPhone") String driverPhone,
+    	        @Param("lrNumber") String lrNumber,
+    	        @Param("awbNumber") String awbNumber,
+    	        @Param("returnChallanNumber") String returnChallanNumber,
+    	        @Param("status") ReturnDispatch.DispatchStatus status,
+    	        @Param("podReceived") Boolean podReceived,
+    	        @Param("dispatchFromDate") LocalDate dispatchFromDate,
+    	        @Param("dispatchToDate") LocalDate dispatchToDate,
+    	        @Param("podFromDate") LocalDate podFromDate,
+    	        @Param("podToDate") LocalDate podToDate,
+    	        @Param("minWeight") Double minWeight,
+    	        @Param("maxWeight") Double maxWeight,
+    	        @Param("minVolume") Double minVolume,
+    	        @Param("maxVolume") Double maxVolume,
+    	        @Param("itemCode") String itemCode,
+    	        @Param("itemName") String itemName,
+    	        @Param("searchTerm") String searchTerm,
+    	        Pageable pageable
+    	);
 }

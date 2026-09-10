@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.DispatchFilterDTO;
 import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
@@ -18,6 +19,7 @@ import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
+import com.warehouse.wms.dto.response.DispatchListResponseDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
 import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
@@ -65,6 +67,9 @@ public interface VendorReturnService {
     
     // ========== Dispatch Operations ==========
     DispatchResponseDTO createDispatch(DispatchDTO dispatchDTO);
+    
+    Page<DispatchListResponseDTO> getAllDispatchesWithFilters(DispatchFilterDTO filter, Pageable pageable);
+
     DispatchResponseDTO getDispatchById(Long id);
     DispatchResponseDTO confirmDispatch(Long id);
     DispatchResponseDTO uploadPOD(Long id, String podNumber, LocalDate podDate, String podDocumentPath);

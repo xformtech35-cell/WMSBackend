@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.DispatchFilterDTO;
 import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
@@ -36,6 +37,7 @@ import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
+import com.warehouse.wms.dto.response.DispatchListResponseDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
 import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
@@ -43,6 +45,7 @@ import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnResponseDTO;
+import com.warehouse.wms.entity.ReturnDispatch;
 import com.warehouse.wms.entity.VendorReturnOrder;
 import com.warehouse.wms.entity.VendorReturnRequest;
 import com.warehouse.wms.service.VendorReturnService;
@@ -422,6 +425,99 @@ public class VendorReturnController {
         DispatchResponseDTO response = vendorReturnService.createDispatch(dispatchDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Dispatch created successfully", response));
+    }
+    
+    
+    
+    @GetMapping("/dispatches")
+    @Operation(summary = "Get all dispatches with search and filters")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
+    public ResponseEntity<ApiResponse<Page<DispatchListResponseDTO>>> getAllDispatches(
+
+            // Free-text search
+            @RequestParam(required = false) String search,
+
+            // Dispatch identity
+            @RequestParam(required = false) String dispatchNumber,
+
+            // Order linkage
+            @RequestParam(required = false) Long returnOrderId,
+            @RequestParam(required = false) String vroNumber,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierCode,
+
+            // Transport
+            @RequestParam(required = false) ReturnDispatch.TransportMode transportMode,
+            @RequestParam(required = false) String transporterName,
+            @RequestParam(required = false) String transportCompany,
+            @RequestParam(required = false) String vehicleNumber,
+            @RequestParam(required = false) String driverName,
+            @RequestParam(required = false) String driverPhone,
+
+            // Documents
+            @RequestParam(required = false) String lrNumber,
+            @RequestParam(required = false) String awbNumber,
+            @RequestParam(required = false) String returnChallanNumber,
+
+            // Status / POD
+            @RequestParam(required = false) ReturnDispatch.DispatchStatus status,
+            @RequestParam(required = false) Boolean podReceived,
+
+            // Items
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+
+            // Date filters
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dispatchFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dispatchToDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate podFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate podToDate,
+
+            // Weight / volume
+            @RequestParam(required = false) Double minWeight,
+            @RequestParam(required = false) Double maxWeight,
+            @RequestParam(required = false) Double minVolume,
+            @RequestParam(required = false) Double maxVolume,
+
+            // Pagination
+            @PageableDefault(size = 20, sort = "dispatchDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        log.info("REST request to get all dispatches with filters");
+
+        DispatchFilterDTO filter = DispatchFilterDTO.builder()
+                .searchTerm(search)
+                .dispatchNumber(dispatchNumber)
+                .returnOrderId(returnOrderId)
+                .vroNumber(vroNumber)
+                .supplierName(supplierName)
+                .supplierCode(supplierCode)
+                .transportMode(transportMode)
+                .transporterName(transporterName)
+                .transportCompany(transportCompany)
+                .vehicleNumber(vehicleNumber)
+                .driverName(driverName)
+                .driverPhone(driverPhone)
+                .lrNumber(lrNumber)
+                .awbNumber(awbNumber)
+                .returnChallanNumber(returnChallanNumber)
+                .status(status)
+                .podReceived(podReceived)
+                .itemCode(itemCode)
+                .itemName(itemName)
+                .dispatchFromDate(dispatchFromDate)
+                .dispatchToDate(dispatchToDate)
+                .podFromDate(podFromDate)
+                .podToDate(podToDate)
+                .minWeight(minWeight)
+                .maxWeight(maxWeight)
+                .minVolume(minVolume)
+                .maxVolume(maxVolume)
+                .build();
+
+        Page<DispatchListResponseDTO> response =
+                vendorReturnService.getAllDispatchesWithFilters(filter, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PatchMapping("/dispatches/{id}/confirm")
