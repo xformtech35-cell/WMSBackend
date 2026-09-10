@@ -17,6 +17,7 @@ import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
+import com.warehouse.wms.dto.request.VendorReceiptFilterDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchListResponseDTO;
@@ -24,6 +25,7 @@ import com.warehouse.wms.dto.response.DispatchResponseDTO;
 import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
+import com.warehouse.wms.dto.response.VendorReceiptListResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnResponseDTO;
@@ -96,5 +98,8 @@ public interface VendorReturnService {
     
     
     Page<PackedOrderResponseDTO> getAllPackedOrders(PackedOrderFilterDTO filter, Pageable pageable);
+    
+    Page<VendorReceiptListResponseDTO> getAllReceiptsWithFilters(
+            VendorReceiptFilterDTO filter, Pageable pageable);
 
 }

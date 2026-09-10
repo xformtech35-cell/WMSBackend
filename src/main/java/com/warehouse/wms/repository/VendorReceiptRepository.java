@@ -82,4 +82,96 @@ public interface VendorReceiptRepository extends JpaRepository<VendorReceipt, Lo
      */
     @Query("SELECT r FROM VendorReceipt r WHERE r.status = 'PARTIAL'")
     List<VendorReceipt> findPartialReceipts();
+    
+    
+    
+    @Query("""
+    	    SELECT DISTINCT r FROM VendorReceipt r
+    	    LEFT JOIN r.returnOrder o
+    	    LEFT JOIN r.dispatch d
+    	    LEFT JOIN r.lines l
+    	    WHERE (:receiptNumber IS NULL OR LOWER(r.receiptNumber) LIKE LOWER(CONCAT('%', :receiptNumber, '%')))
+    	      AND (:acknowledgmentNumber IS NULL OR LOWER(r.acknowledgmentNumber) LIKE LOWER(CONCAT('%', :acknowledgmentNumber, '%')))
+    	      AND (:returnOrderId IS NULL OR o.id = :returnOrderId)
+    	      AND (:dispatchId IS NULL OR d.id = :dispatchId)
+    	      AND (:vroNumber IS NULL OR LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :vroNumber, '%')))
+    	      AND (:dispatchNumber IS NULL OR LOWER(d.dispatchNumber) LIKE LOWER(CONCAT('%', :dispatchNumber, '%')))
+    	      AND (:supplierName IS NULL OR LOWER(r.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%')))
+    	      AND (:supplierCode IS NULL OR LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :supplierCode, '%')))
+    	      AND (:status IS NULL OR r.status = :status)
+    	      AND (:receivedBy IS NULL OR LOWER(r.receivedBy) LIKE LOWER(CONCAT('%', :receivedBy, '%')))
+    	      AND (:receiptFromDate IS NULL OR r.receiptDate >= :receiptFromDate)
+    	      AND (:receiptToDate IS NULL OR r.receiptDate <= :receiptToDate)
+    	      AND (:ackFromDate IS NULL OR r.acknowledgmentDate >= :ackFromDate)
+    	      AND (:ackToDate IS NULL OR r.acknowledgmentDate <= :ackToDate)
+    	      AND (:minReceivedQuantity IS NULL OR r.totalReceivedQuantity >= :minReceivedQuantity)
+    	      AND (:maxReceivedQuantity IS NULL OR r.totalReceivedQuantity <= :maxReceivedQuantity)
+    	      AND (:minAcceptedQuantity IS NULL OR r.totalAcceptedQuantity >= :minAcceptedQuantity)
+    	      AND (:maxAcceptedQuantity IS NULL OR r.totalAcceptedQuantity <= :maxAcceptedQuantity)
+    	      AND (:minRejectedQuantity IS NULL OR r.totalRejectedQuantity >= :minRejectedQuantity)
+    	      AND (:maxRejectedQuantity IS NULL OR r.totalRejectedQuantity <= :maxRejectedQuantity)
+    	      AND (:minShortQuantity IS NULL OR r.totalShortQuantity >= :minShortQuantity)
+    	      AND (:maxShortQuantity IS NULL OR r.totalShortQuantity <= :maxShortQuantity)
+    	      AND (:minDamagedQuantity IS NULL OR r.totalDamagedQuantity >= :minDamagedQuantity)
+    	      AND (:maxDamagedQuantity IS NULL OR r.totalDamagedQuantity <= :maxDamagedQuantity)
+    	      AND (:hasAcknowledgment IS NULL OR
+    	           (:hasAcknowledgment = TRUE AND r.acknowledgmentNumber IS NOT NULL) OR
+    	           (:hasAcknowledgment = FALSE AND r.acknowledgmentNumber IS NULL))
+    	      AND (:hasDocument IS NULL OR
+    	           (:hasDocument = TRUE AND r.receiptDocumentPath IS NOT NULL) OR
+    	           (:hasDocument = FALSE AND r.receiptDocumentPath IS NULL))
+    	      AND (:itemCode IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReceiptLine rl
+    	            WHERE rl.receipt = r AND LOWER(rl.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%'))
+    	      ))
+    	      AND (:itemName IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReceiptLine rn
+    	            WHERE rn.receipt = r AND LOWER(rn.itemName) LIKE LOWER(CONCAT('%', :itemName, '%'))
+    	      ))
+    	      AND (:searchTerm IS NULL OR (
+    	            LOWER(r.receiptNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(r.acknowledgmentNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(r.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(d.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR EXISTS (
+    	              SELECT 1 FROM VendorReceiptLine sl
+    	              WHERE sl.receipt = r
+    	                AND (LOWER(sl.itemCode) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	                  OR LOWER(sl.itemName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+    	         )
+    	      ))
+    	    """)
+    	Page<VendorReceipt> findAllWithFilters(
+    	        @Param("receiptNumber") String receiptNumber,
+    	        @Param("acknowledgmentNumber") String acknowledgmentNumber,
+    	        @Param("returnOrderId") Long returnOrderId,
+    	        @Param("dispatchId") Long dispatchId,
+    	        @Param("vroNumber") String vroNumber,
+    	        @Param("dispatchNumber") String dispatchNumber,
+    	        @Param("supplierName") String supplierName,
+    	        @Param("supplierCode") String supplierCode,
+    	        @Param("status") VendorReceipt.ReceiptStatus status,
+    	        @Param("receivedBy") String receivedBy,
+    	        @Param("receiptFromDate") LocalDate receiptFromDate,
+    	        @Param("receiptToDate") LocalDate receiptToDate,
+    	        @Param("ackFromDate") LocalDate ackFromDate,
+    	        @Param("ackToDate") LocalDate ackToDate,
+    	        @Param("minReceivedQuantity") Integer minReceivedQuantity,
+    	        @Param("maxReceivedQuantity") Integer maxReceivedQuantity,
+    	        @Param("minAcceptedQuantity") Integer minAcceptedQuantity,
+    	        @Param("maxAcceptedQuantity") Integer maxAcceptedQuantity,
+    	        @Param("minRejectedQuantity") Integer minRejectedQuantity,
+    	        @Param("maxRejectedQuantity") Integer maxRejectedQuantity,
+    	        @Param("minShortQuantity") Integer minShortQuantity,
+    	        @Param("maxShortQuantity") Integer maxShortQuantity,
+    	        @Param("minDamagedQuantity") Integer minDamagedQuantity,
+    	        @Param("maxDamagedQuantity") Integer maxDamagedQuantity,
+    	        @Param("hasAcknowledgment") Boolean hasAcknowledgment,
+    	        @Param("hasDocument") Boolean hasDocument,
+    	        @Param("itemCode") String itemCode,
+    	        @Param("itemName") String itemName,
+    	        @Param("searchTerm") String searchTerm,
+    	        Pageable pageable
+    	);
 }

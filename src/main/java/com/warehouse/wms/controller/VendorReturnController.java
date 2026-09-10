@@ -35,6 +35,7 @@ import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
+import com.warehouse.wms.dto.request.VendorReceiptFilterDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchListResponseDTO;
@@ -42,10 +43,12 @@ import com.warehouse.wms.dto.response.DispatchResponseDTO;
 import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
+import com.warehouse.wms.dto.response.VendorReceiptListResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnResponseDTO;
 import com.warehouse.wms.entity.ReturnDispatch;
+import com.warehouse.wms.entity.VendorReceipt;
 import com.warehouse.wms.entity.VendorReturnOrder;
 import com.warehouse.wms.entity.VendorReturnRequest;
 import com.warehouse.wms.service.VendorReturnService;
@@ -540,6 +543,102 @@ public class VendorReturnController {
         VendorReceiptResponseDTO response = vendorReturnService.createReceipt(receiptDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Receipt created successfully", response));
+    }
+    
+    
+    
+    
+    @GetMapping("/receipts")
+    @Operation(summary = "Get all receipts with search and filters")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
+    public ResponseEntity<ApiResponse<Page<VendorReceiptListResponseDTO>>> getAllReceipts(
+
+            // Free-text search
+            @RequestParam(required = false) String search,
+
+            // Receipt identity
+            @RequestParam(required = false) String receiptNumber,
+            @RequestParam(required = false) String acknowledgmentNumber,
+
+            // Linkage
+            @RequestParam(required = false) Long returnOrderId,
+            @RequestParam(required = false) Long dispatchId,
+            @RequestParam(required = false) String vroNumber,
+            @RequestParam(required = false) String dispatchNumber,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierCode,
+
+            // Status / receiver
+            @RequestParam(required = false) VendorReceipt.ReceiptStatus status,
+            @RequestParam(required = false) String receivedBy,
+
+            // Date filters
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate receiptFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate receiptToDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ackFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ackToDate,
+
+            // Quantity filters
+            @RequestParam(required = false) Integer minReceivedQuantity,
+            @RequestParam(required = false) Integer maxReceivedQuantity,
+            @RequestParam(required = false) Integer minAcceptedQuantity,
+            @RequestParam(required = false) Integer maxAcceptedQuantity,
+            @RequestParam(required = false) Integer minRejectedQuantity,
+            @RequestParam(required = false) Integer maxRejectedQuantity,
+            @RequestParam(required = false) Integer minShortQuantity,
+            @RequestParam(required = false) Integer maxShortQuantity,
+            @RequestParam(required = false) Integer minDamagedQuantity,
+            @RequestParam(required = false) Integer maxDamagedQuantity,
+
+            // Boolean flags
+            @RequestParam(required = false) Boolean hasAcknowledgment,
+            @RequestParam(required = false) Boolean hasDocument,
+
+            // Item-level
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+
+            // Pagination
+            @PageableDefault(size = 20, sort = "receiptDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        log.info("REST request to get all receipts with filters");
+
+        VendorReceiptFilterDTO filter = VendorReceiptFilterDTO.builder()
+                .searchTerm(search)
+                .receiptNumber(receiptNumber)
+                .acknowledgmentNumber(acknowledgmentNumber)
+                .returnOrderId(returnOrderId)
+                .dispatchId(dispatchId)
+                .vroNumber(vroNumber)
+                .dispatchNumber(dispatchNumber)
+                .supplierName(supplierName)
+                .supplierCode(supplierCode)
+                .status(status)
+                .receivedBy(receivedBy)
+                .receiptFromDate(receiptFromDate)
+                .receiptToDate(receiptToDate)
+                .ackFromDate(ackFromDate)
+                .ackToDate(ackToDate)
+                .minReceivedQuantity(minReceivedQuantity)
+                .maxReceivedQuantity(maxReceivedQuantity)
+                .minAcceptedQuantity(minAcceptedQuantity)
+                .maxAcceptedQuantity(maxAcceptedQuantity)
+                .minRejectedQuantity(minRejectedQuantity)
+                .maxRejectedQuantity(maxRejectedQuantity)
+                .minShortQuantity(minShortQuantity)
+                .maxShortQuantity(maxShortQuantity)
+                .minDamagedQuantity(minDamagedQuantity)
+                .maxDamagedQuantity(maxDamagedQuantity)
+                .hasAcknowledgment(hasAcknowledgment)
+                .hasDocument(hasDocument)
+                .itemCode(itemCode)
+                .itemName(itemName)
+                .build();
+
+        Page<VendorReceiptListResponseDTO> response =
+                vendorReturnService.getAllReceiptsWithFilters(filter, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // ========== SETTLEMENT APIs ==========

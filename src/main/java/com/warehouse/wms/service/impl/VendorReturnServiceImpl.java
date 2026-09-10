@@ -27,6 +27,7 @@ import com.warehouse.wms.dto.request.QCDTO;
 import com.warehouse.wms.dto.request.ReturnOrderFilterDTO;
 import com.warehouse.wms.dto.request.SettlementDTO;
 import com.warehouse.wms.dto.request.VendorReceiptDTO;
+import com.warehouse.wms.dto.request.VendorReceiptFilterDTO;
 import com.warehouse.wms.dto.request.VendorReceiptLineDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderLineDTO;
@@ -41,6 +42,7 @@ import com.warehouse.wms.dto.response.PickListItemDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptLineResponseDTO;
+import com.warehouse.wms.dto.response.VendorReceiptListResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnLineResponseDTO;
 import com.warehouse.wms.dto.response.VendorReturnOrderLineResponseDTO;
@@ -1990,5 +1992,96 @@ public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO
                 .status(line.getStatus() != null ? line.getStatus().name() : null)
                 .build();
     }
+    
+    
+    @Override
+    public Page<VendorReceiptListResponseDTO> getAllReceiptsWithFilters(
+            VendorReceiptFilterDTO filter, Pageable pageable) {
+
+        log.info("Fetching receipts with filters: {}", filter);
+
+        if (filter == null) {
+            filter = new VendorReceiptFilterDTO();
+        }
+
+        Page<VendorReceipt> receipts = receiptRepository.findAllWithFilters(
+                filter.getReceiptNumber(),
+                filter.getAcknowledgmentNumber(),
+                filter.getReturnOrderId(),
+                filter.getDispatchId(),
+                filter.getVroNumber(),
+                filter.getDispatchNumber(),
+                filter.getSupplierName(),
+                filter.getSupplierCode(),
+                filter.getStatus(),
+                filter.getReceivedBy(),
+                filter.getReceiptFromDate(),
+                filter.getReceiptToDate(),
+                filter.getAckFromDate(),
+                filter.getAckToDate(),
+                filter.getMinReceivedQuantity(),
+                filter.getMaxReceivedQuantity(),
+                filter.getMinAcceptedQuantity(),
+                filter.getMaxAcceptedQuantity(),
+                filter.getMinRejectedQuantity(),
+                filter.getMaxRejectedQuantity(),
+                filter.getMinShortQuantity(),
+                filter.getMaxShortQuantity(),
+                filter.getMinDamagedQuantity(),
+                filter.getMaxDamagedQuantity(),
+                filter.getHasAcknowledgment(),
+                filter.getHasDocument(),
+                filter.getItemCode(),
+                filter.getItemName(),
+                filter.getSearchTerm(),
+                pageable
+        );
+
+        return receipts.map(this::mapToReceiptListDTO);
+    }
+
+    /**
+     * Map VendorReceipt → VendorReceiptListResponseDTO (list view)
+     */
+    private VendorReceiptListResponseDTO mapToReceiptListDTO(VendorReceipt receipt) {
+        if (receipt == null) {
+            return null;
+        }
+
+        return VendorReceiptListResponseDTO.builder()
+                .id(receipt.getId())
+                .receiptNumber(receipt.getReceiptNumber())
+                .receiptDate(receipt.getReceiptDate())
+
+                .returnOrderId(receipt.getReturnOrder() != null ? receipt.getReturnOrder().getId() : null)
+                .returnOrderNumber(receipt.getReturnOrder() != null ? receipt.getReturnOrder().getVroNumber() : null)
+                .dispatchId(receipt.getDispatch() != null ? receipt.getDispatch().getId() : null)
+                .dispatchNumber(receipt.getDispatch() != null ? receipt.getDispatch().getDispatchNumber() : null)
+                .supplierId(receipt.getSupplier() != null ? receipt.getSupplier().getId() : null)
+                .supplierName(receipt.getSupplierName())
+
+                .receivedBy(receipt.getReceivedBy())
+
+                .totalReceivedQuantity(receipt.getTotalReceivedQuantity())
+                .totalAcceptedQuantity(receipt.getTotalAcceptedQuantity())
+                .totalRejectedQuantity(receipt.getTotalRejectedQuantity())
+                .totalShortQuantity(receipt.getTotalShortQuantity())
+                .totalDamagedQuantity(receipt.getTotalDamagedQuantity())
+
+                .status(receipt.getStatus())
+                .statusDisplayName(receipt.getStatus() != null
+                        ? receipt.getStatus().getDisplayName() : null)
+
+                .acknowledgmentNumber(receipt.getAcknowledgmentNumber())
+                .acknowledgmentDate(receipt.getAcknowledgmentDate())
+                .receiptDocumentPath(receipt.getReceiptDocumentPath())
+
+                .createdAt(receipt.getCreatedAt())
+                .updatedAt(receipt.getUpdatedAt())
+                .lines(null)   // list view — omit lines
+                .build();
+    }
+    
+    
 
 }
