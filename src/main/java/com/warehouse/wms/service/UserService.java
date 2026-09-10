@@ -65,7 +65,7 @@ public class UserService {
         user.setUsername(req.getUsername());
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setRole(roleService.findByNameOrThrow(req.getRole()));
-
+        user.setEmail(req.getEmail());
         // Set profile fields
         setProfileFields(user, req.getFullName(), req.getMobileNumber(), 
                 req.getDesignation(), req.getEmployeeId(), req.getEmail(),
@@ -115,6 +115,15 @@ public class UserService {
         if (req.getIsActive() != null) {
             user.setIsActive(req.getIsActive());
         }
+        
+        // Update active status
+     
+        if(user.getEmail()==null)
+        {
+        	user.setEmail(req.getEmail());
+        }
+        
+        
 
         User updatedUser = userRepository.save(user);
         log.info("User updated successfully with ID: {}", updatedUser.getId());
