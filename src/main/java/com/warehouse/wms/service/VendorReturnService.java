@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
@@ -18,6 +19,7 @@ import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
@@ -86,4 +88,8 @@ public interface VendorReturnService {
     long getCountByRequestStatus(String status);
     Map<String, Long> getStatusCounts();
     Map<String, Long> getRequestStatusCounts();
+    
+    
+    Page<PackedOrderResponseDTO> getAllPackedOrders(PackedOrderFilterDTO filter, Pageable pageable);
+
 }

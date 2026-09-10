@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.warehouse.wms.dto.ApiResponse;
 import com.warehouse.wms.dto.request.DispatchDTO;
+import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
@@ -36,6 +37,7 @@ import com.warehouse.wms.dto.request.VendorReceiptDTO;
 import com.warehouse.wms.dto.request.VendorReturnOrderDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
 import com.warehouse.wms.dto.response.VendorReceiptResponseDTO;
@@ -342,6 +344,71 @@ public class VendorReturnController {
         VendorReturnOrderResponseDTO response = vendorReturnService.performPacking(orderId, packingDetails);
         return ResponseEntity.ok(ApiResponse.success("Packing completed successfully", response));
     }
+    
+    @GetMapping("/packs")
+    @Operation(summary = "Get all packed orders with search and filters")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
+    public ResponseEntity<ApiResponse<Page<PackedOrderResponseDTO>>> getAllPackedOrders(
+
+            // Search
+            @RequestParam(required = false) String search,
+
+            // Order filters
+            @RequestParam(required = false) String vroNumber,
+            @RequestParam(required = false) String supplierName,
+            @RequestParam(required = false) String supplierCode,
+
+            // Status / Priority / Type
+            @RequestParam(required = false) VendorReturnOrder.OrderStatus status,
+            @RequestParam(required = false) VendorReturnRequest.Priority priority,
+            @RequestParam(required = false) VendorReturnRequest.ReturnType returnType,
+
+            // Pack-specific filters
+            @RequestParam(required = false) String packedBy,
+            @RequestParam(required = false) String packBarcode,
+            @RequestParam(required = false) Boolean hasPackBarcodeImage,
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+
+            // Date filters (packedAt)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate packedFromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate packedToDate,
+
+            // Amount filters
+            @RequestParam(required = false) Double minAmount,
+            @RequestParam(required = false) Double maxAmount,
+
+            // Pagination
+            @PageableDefault(size = 20, sort = "packedAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        log.info("REST request to get all packed orders with filters");
+
+        PackedOrderFilterDTO filter = PackedOrderFilterDTO.builder()
+                .searchTerm(search)
+                .vroNumber(vroNumber)
+                .supplierName(supplierName)
+                .supplierCode(supplierCode)
+                .status(status)
+                .priority(priority)
+                .returnType(returnType)
+                .packedBy(packedBy)
+                .packBarcode(packBarcode)
+                .hasPackBarcodeImage(hasPackBarcodeImage)
+                .itemCode(itemCode)
+                .itemName(itemName)
+                .packedFromDate(packedFromDate)
+                .packedToDate(packedToDate)
+                .minAmount(minAmount)
+                .maxAmount(maxAmount)
+                .build();
+
+        Page<PackedOrderResponseDTO> response =
+                vendorReturnService.getAllPackedOrders(filter, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+    
+    
     
     	
     // ========== DISPATCH APIs ==========

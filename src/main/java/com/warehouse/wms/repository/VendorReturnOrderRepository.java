@@ -1,6 +1,7 @@
 package com.warehouse.wms.repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -216,6 +217,69 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
              @Param("searchTerm") String searchTerm,
              Pageable pageable);
     
-    
+    @Query("""
+    	    SELECT DISTINCT o FROM VendorReturnOrder o
+    	    LEFT JOIN o.lines l
+    	    WHERE (:vroNumber IS NULL OR LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :vroNumber, '%')))
+    	      AND (:supplierName IS NULL OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%')))
+    	      AND (:supplierCode IS NULL OR LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :supplierCode, '%')))
+    	      AND (:status IS NULL OR o.status = :status)
+    	      AND (:priority IS NULL OR o.priority = :priority)
+    	      AND (:returnType IS NULL OR o.returnType = :returnType)
+    	      AND (:packedBy IS NULL OR o.packedBy = :packedBy)
+    	      AND (:packedFromDate IS NULL OR o.packedAt >= :packedFromDate)
+    	      AND (:packedToDate IS NULL OR o.packedAt < :packedToDate)
+    	      AND (:minAmount IS NULL OR o.totalAmount >= :minAmount)
+    	      AND (:maxAmount IS NULL OR o.totalAmount <= :maxAmount)
+    	      AND (:packBarcode IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReturnOrderLine pl
+    	            WHERE pl.returnOrder = o AND LOWER(pl.packBarcode) LIKE LOWER(CONCAT('%', :packBarcode, '%'))
+    	      ))
+    	      AND (:itemCode IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReturnOrderLine il
+    	            WHERE il.returnOrder = o AND LOWER(il.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%'))
+    	      ))
+    	      AND (:itemName IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReturnOrderLine nl
+    	            WHERE nl.returnOrder = o AND LOWER(nl.itemName) LIKE LOWER(CONCAT('%', :itemName, '%'))
+    	      ))
+    	      AND (:hasPackBarcodeImage IS NULL OR EXISTS (
+    	            SELECT 1 FROM VendorReturnOrderLine bl
+    	            WHERE bl.returnOrder = o
+    	              AND ((:hasPackBarcodeImage = TRUE AND bl.packBarcodeImageBase64 IS NOT NULL)
+    	                OR (:hasPackBarcodeImage = FALSE AND bl.packBarcodeImageBase64 IS NULL))
+    	      ))
+    	      AND (:searchTerm IS NULL OR (
+    	            LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	         OR EXISTS (
+    	              SELECT 1 FROM VendorReturnOrderLine sl
+    	              WHERE sl.returnOrder = o
+    	                AND (LOWER(sl.packBarcode) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	                  OR LOWER(sl.itemCode)    LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+    	                  OR LOWER(sl.itemName)    LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+    	         )
+    	      ))
+    	    """)
+    	Page<VendorReturnOrder> findAllPackedWithFilters(
+    	        @Param("vroNumber") String vroNumber,
+    	        @Param("supplierName") String supplierName,
+    	        @Param("supplierCode") String supplierCode,
+    	        @Param("status") VendorReturnOrder.OrderStatus status,
+    	        @Param("priority") VendorReturnRequest.Priority priority,
+    	        @Param("returnType") VendorReturnRequest.ReturnType returnType,
+    	        @Param("packedBy") Long packedBy,
+    	        @Param("packedFromDate") LocalDateTime packedFromDate,
+    	        @Param("packedToDate") LocalDateTime packedToDate,
+    	        @Param("minAmount") Double minAmount,
+    	        @Param("maxAmount") Double maxAmount,
+    	        @Param("packBarcode") String packBarcode,
+    	        @Param("itemCode") String itemCode,
+    	        @Param("itemName") String itemName,
+    	        @Param("hasPackBarcodeImage") Boolean hasPackBarcodeImage,
+    	        @Param("searchTerm") String searchTerm,
+    	        Pageable pageable
+    	);
     
 }

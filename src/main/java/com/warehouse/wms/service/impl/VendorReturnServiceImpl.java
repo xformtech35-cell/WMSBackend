@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.warehouse.wms.dto.request.DispatchDTO;
 import com.warehouse.wms.dto.request.DispatchItemDTO;
+import com.warehouse.wms.dto.request.PackedOrderFilterDTO;
 import com.warehouse.wms.dto.request.PackingDTO;
 import com.warehouse.wms.dto.request.PickListFilterDTO;
 import com.warehouse.wms.dto.request.PickingDTO;
@@ -32,6 +33,8 @@ import com.warehouse.wms.dto.request.VendorReturnRequestDTO;
 import com.warehouse.wms.dto.request.VendorReturnRequestLineDTO;
 import com.warehouse.wms.dto.response.DispatchItemResponseDTO;
 import com.warehouse.wms.dto.response.DispatchResponseDTO;
+import com.warehouse.wms.dto.response.PackedOrderItemDTO;
+import com.warehouse.wms.dto.response.PackedOrderResponseDTO;
 import com.warehouse.wms.dto.response.PickListItemDTO;
 import com.warehouse.wms.dto.response.PickListResponseDTO;
 import com.warehouse.wms.dto.response.SettlementResponseDTO;
@@ -1742,6 +1745,139 @@ public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO
                 .status(line.getStatus() != null ? line.getStatus().name() : "PENDING")
                 .batchNumber(line.getBatchNumber())
                 .serialNumbers(line.getSerialNumbers())
+                .build();
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @Override
+    public Page<PackedOrderResponseDTO> getAllPackedOrders(PackedOrderFilterDTO filter, Pageable pageable) {
+        log.info("Fetching packed orders with filters: {}", filter);
+
+        if (filter == null) {
+            filter = new PackedOrderFilterDTO();
+        }
+
+        // Convert LocalDate → LocalDateTime boundaries
+        LocalDateTime packedFrom = filter.getPackedFromDate() != null
+                ? filter.getPackedFromDate().atStartOfDay()
+                : null;
+
+        LocalDateTime packedTo = filter.getPackedToDate() != null
+                ? filter.getPackedToDate().plusDays(1).atStartOfDay()   // inclusive end date
+                : null;
+
+        // packedBy: parse string → Long if provided
+        Long packedBy = null;
+        if (filter.getPackedBy() != null && !filter.getPackedBy().isBlank()) {
+            try {
+                packedBy = Long.valueOf(filter.getPackedBy());
+            } catch (NumberFormatException e) {
+                log.warn("Invalid packedBy value: {}", filter.getPackedBy());
+            }
+        }
+
+        Page<VendorReturnOrder> orders = orderRepository.findAllPackedWithFilters(
+                filter.getVroNumber(),
+                filter.getSupplierName(),
+                filter.getSupplierCode(),
+                filter.getStatus(),
+                filter.getPriority(),
+                filter.getReturnType(),
+                packedBy,
+                packedFrom,
+                packedTo,
+                filter.getMinAmount(),
+                filter.getMaxAmount(),
+                filter.getPackBarcode(),
+                filter.getItemCode(),
+                filter.getItemName(),
+                filter.getHasPackBarcodeImage(),
+                filter.getSearchTerm(),
+                pageable
+        );
+
+        return orders.map(this::mapToPackedOrderResponseDTO);
+    }
+
+    /**
+     * Map VendorReturnOrder → PackedOrderResponseDTO
+     */
+    private PackedOrderResponseDTO mapToPackedOrderResponseDTO(VendorReturnOrder order) {
+        if (order == null) {
+            return null;
+        }
+
+        List<VendorReturnOrderLine> lines = order.getLines();
+
+        int totalItems = lines.size();
+        int totalQuantity = lines.stream()
+                .mapToInt(l -> l.getOrderQuantity() != null ? l.getOrderQuantity() : 0)
+                .sum();
+        int packedQuantity = lines.stream()
+                .mapToInt(l -> l.getPackedQuantity() != null ? l.getPackedQuantity() : 0)
+                .sum();
+        int remainingQuantity = totalQuantity - packedQuantity;
+
+        double packingProgress = totalQuantity > 0
+                ? (double) packedQuantity / totalQuantity * 100
+                : 0.0;
+
+        return PackedOrderResponseDTO.builder()
+                .id(order.getId())
+                .vroNumber(order.getVroNumber())
+                .supplierName(order.getSupplierName())
+                .supplierCode(order.getSupplierCode())
+                .status(order.getStatus())
+                .statusDisplayName(order.getStatus() != null ? order.getStatus().getDisplayName() : null)
+                .priority(order.getPriority())
+                .pickListGenerated(order.getPickListGenerated())
+                .pickListGeneratedAt(order.getPickListGeneratedAt())
+                .packedBy(order.getPackedBy() != null ? String.valueOf(order.getPackedBy()) : null)
+                .packedAt(order.getPackedAt())
+                .totalItems(totalItems)
+                .totalQuantity(totalQuantity)
+                .packedQuantity(packedQuantity)
+                .remainingQuantity(remainingQuantity)
+                .packingProgress(packingProgress)
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .items(lines.stream()
+                        .map(this::mapToPackedOrderItemDTO)
+                        .collect(Collectors.toList()))
+                .build();
+    }
+
+    /**
+     * Map VendorReturnOrderLine → PackedOrderItemDTO
+     */
+    private PackedOrderItemDTO mapToPackedOrderItemDTO(VendorReturnOrderLine line) {
+        if (line == null) {
+            return null;
+        }
+
+        return PackedOrderItemDTO.builder()
+                .lineId(line.getId())
+                .itemCode(line.getItemCode())
+                .itemName(line.getItemName())
+                .uom(line.getUom())
+                .orderQuantity(line.getOrderQuantity())
+                .pickedQuantity(line.getPickedQuantity())
+                .qcQuantity(line.getQcQuantity())
+                .packedQuantity(line.getPackedQuantity())
+                .packBarcode(line.getPackBarcode())
+                .packBarcodeImageType(line.getPackBarcodeImageType())
+                .packBarcodeImageBase64(line.getPackBarcodeImageBase64())   // may be large
+                .status(line.getStatus() != null ? line.getStatus().name() : null)
                 .build();
     }
 
