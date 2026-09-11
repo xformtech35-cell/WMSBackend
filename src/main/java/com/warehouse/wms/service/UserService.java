@@ -44,11 +44,17 @@ public class UserService {
     private final EmailService emailService;
 
     @Transactional(readOnly = true)
-    public Page<UserResponse> listAll(Pageable pageable) {
-        log.info("Fetching users - page: {}, size: {}, sort: {}",
+    public Page<UserResponse> listAll(String search, String role, Boolean active, Pageable pageable) {
+        log.info("Fetching users - search: {}, role: {}, active: {}, page: {}, size: {}, sort: {}",
+                search, role, active,
                 pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return userRepository.findAll(pageable)
+        // Normalize blank strings to null so the query treats them as "no filter"
+        String searchFilter = (search == null || search.isBlank()) ? null : search.trim();
+        String roleFilter   = (role   == null || role.isBlank())   ? null : role.trim().toUpperCase();
+
+        return userRepository
+                .searchUsers(searchFilter, roleFilter, active, pageable)
                 .map(this::toResponse);
     }
 

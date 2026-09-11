@@ -46,13 +46,17 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<Page<UserResponse>> listAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) Boolean active,
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
-        log.info("GET /api/users - page: {}, size: {}, sort: {}",
-                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        log.info("GET /api/users - search: {}, role: {}, active: {}, page: {}, size: {}",
+                search, role, active,
+                pageable.getPageNumber(), pageable.getPageSize());
 
-        return ResponseEntity.ok(userService.listAll(pageable));
+        return ResponseEntity.ok(userService.listAll(search, role, active, pageable));
     }
 
     @GetMapping("/{id}")
