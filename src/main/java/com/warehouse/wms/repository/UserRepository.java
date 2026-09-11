@@ -19,17 +19,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     @Query("""
             SELECT u FROM User u
+            LEFT JOIN u.role r
             WHERE (:search IS NULL OR
-                   LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                   LOWER(u.email)    LIKE LOWER(CONCAT('%', :search, '%')) OR
-                   LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')))
-              AND (:role   IS NULL OR u.role = :role)
-              AND (:active IS NULL OR u.active = :active)
+                   LOWER(u.username)     LIKE LOWER(CONCAT('%', :search, '%')) OR
+                   LOWER(u.fullName)     LIKE LOWER(CONCAT('%', :search, '%')) OR
+                   LOWER(u.email)        LIKE LOWER(CONCAT('%', :search, '%')) OR
+                   LOWER(u.mobileNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+              AND (:roleFilter IS NULL OR LOWER(r.name) = LOWER(:roleFilter))
+              AND (:active     IS NULL OR u.isActive = :active)
         """)
         Page<User> searchUsers(
-                @Param("search") String search,
-                @Param("role")   String role,
-                @Param("active") Boolean active,
+                @Param("search")     String search,
+                @Param("roleFilter") String roleFilter,
+                @Param("active")     Boolean active,
                 Pageable pageable
         );
 }
