@@ -15,7 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.warehouse.wms.constant.InventoryStatus;
 import com.warehouse.wms.dto.request.InventorySearchRequest;
 import com.warehouse.wms.dto.request.InventoryStockRequest;
+import com.warehouse.wms.dto.response.InventoryFilterResponse;
 import com.warehouse.wms.dto.response.InventoryStockResponse;
+import com.warehouse.wms.dto.response.InventoryTotalsProjection;
+import com.warehouse.wms.dto.response.LocationSuggestion;
 import com.warehouse.wms.entity.InventoryStock;
 import com.warehouse.wms.exception.ResourceNotFoundException;
 import com.warehouse.wms.mapper.InventoryStockMapper;
@@ -377,4 +380,79 @@ public class InventoryStockServiceImpl implements InventoryStockService {
         return "INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase() 
                + "-" + System.currentTimeMillis() % 10000;
     }
+    
+    
+    
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryFilterResponse filterInventoryWithTotals(
+            String itemCode,
+            String itemName,
+            String warehouseId,
+            Pageable pageable) {
+
+        log.info("Filtering inventory - itemCode: {}, itemName: {}, warehouseId: {}",
+                itemCode, itemName, warehouseId);
+
+        // Normalize empty strings to null
+        String codeFilter = (itemCode == null || itemCode.isBlank()) ? null : itemCode.trim();
+        String nameFilter = (itemName == null || itemName.isBlank()) ? null : itemName.trim();
+        String whFilter   = (warehouseId == null || warehouseId.isBlank()) ? null : warehouseId.trim();
+
+        // 1. Build Specification for pageable items
+        Specification<InventoryStock> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (codeFilter != null) {
+                predicates.add(cb.like(cb.lower(root.get("itemCode")),
+                        "%" + codeFilter.toLowerCase() + "%"));
+            }
+            if (nameFilter != null) {
+                predicates.add(cb.like(cb.lower(root.get("itemName")),
+                        "%" + nameFilter.toLowerCase() + "%"));
+            }
+            if (whFilter != null) {
+                predicates.add(cb.equal(root.get("warehouseId"), whFilter));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        // 2. Fetch paginated items
+        Page<InventoryStock> page = inventoryStockRepository.findAll(spec, pageable);
+        List<InventoryStockResponse> items = page.getContent()
+                .stream()
+                .map(inventoryStockMapper::toResponse)
+                .toList();
+
+        // 3. Fetch aggregated totals
+        InventoryTotalsProjection totals = inventoryStockRepository
+                .getFilteredTotals(codeFilter, nameFilter, whFilter);
+
+        // 4. Fetch location suggestions
+        List<LocationSuggestion> locations = inventoryStockRepository
+                .findLocationSuggestions(codeFilter, nameFilter, whFilter)
+                .stream()
+                .map(row -> LocationSuggestion.builder()
+                        .binId((String) row[0])
+                        .fullLocation((String) row[1])
+                        .zone((String) row[2])
+                        .aisle((String) row[3])
+                        .rack((String) row[4])
+                        .shelf((String) row[5])
+                        .level((String) row[6])
+                        .binBarcode((String) row[7])
+                        .build())
+                .toList();
+
+        return InventoryFilterResponse.builder()
+                .items(items)
+                .totalQuantity(totals.getTotalQuantity())
+                .totalInTransitQuantity(totals.getTotalInTransitQuantity())
+                .totalReservedQuantity(totals.getTotalReservedQuantity())
+                .totalAvailableQuantity(totals.getTotalAvailableQuantity())
+                .locationSuggestions(locations)
+                .build();
+    }
+    
 }

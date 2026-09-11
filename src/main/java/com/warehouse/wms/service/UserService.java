@@ -3,9 +3,10 @@ package com.warehouse.wms.service;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -43,10 +44,12 @@ public class UserService {
     private final EmailService emailService;
 
     @Transactional(readOnly = true)
-    public List<UserResponse> listAll() {
-        return userRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<UserResponse> listAll(Pageable pageable) {
+        log.info("Fetching users - page: {}, size: {}, sort: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+
+        return userRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

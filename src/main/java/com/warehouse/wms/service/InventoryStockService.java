@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import com.warehouse.wms.constant.InventoryStatus;
 import com.warehouse.wms.dto.request.InventorySearchRequest;
 import com.warehouse.wms.dto.request.InventoryStockRequest;
+import com.warehouse.wms.dto.response.InventoryFilterResponse;
 import com.warehouse.wms.dto.response.InventoryStockResponse;
 
 public interface InventoryStockService {
@@ -70,6 +71,14 @@ public interface InventoryStockService {
     void freezeStock(Long id);
     
     void unfreezeStock(Long id);
+    
+    
+    InventoryFilterResponse filterInventoryWithTotals(
+            String itemCode,
+            String itemName,
+            String warehouseId,
+            Pageable pageable
+    );
     
     List<InventoryStockResponse> getLowStockItems();
 }

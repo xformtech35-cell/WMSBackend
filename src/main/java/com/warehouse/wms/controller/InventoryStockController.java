@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.warehouse.wms.constant.InventoryStatus;
 import com.warehouse.wms.dto.request.InventorySearchRequest;
 import com.warehouse.wms.dto.request.InventoryStockRequest;
+import com.warehouse.wms.dto.response.InventoryFilterResponse;
 import com.warehouse.wms.dto.response.InventoryStockResponse;
 import com.warehouse.wms.service.InventoryStockService;
 
@@ -222,5 +223,24 @@ public class InventoryStockController {
         log.info("GET /api/inventory-stock/low-stock - Get low stock items");
         List<InventoryStockResponse> responses = inventoryStockService.getLowStockItems();
         return ResponseEntity.ok(responses);
+    }
+    
+    
+    
+    @GetMapping("/filter")
+    @Operation(summary = "Filter inventory by itemCode, itemName, warehouseId with totals & location suggestions")
+    public ResponseEntity<InventoryFilterResponse> filterInventory(
+            @RequestParam(required = false) String itemCode,
+            @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) String warehouseId,
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/inventory-stock/filter - itemCode: {}, itemName: {}, warehouseId: {}",
+                itemCode, itemName, warehouseId);
+
+        InventoryFilterResponse response = inventoryStockService
+                .filterInventoryWithTotals(itemCode, itemName, warehouseId, pageable);
+
+        return ResponseEntity.ok(response);
     }
 }

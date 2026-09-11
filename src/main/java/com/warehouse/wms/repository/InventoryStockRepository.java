@@ -1,9 +1,8 @@
 package com.warehouse.wms.repository;
 
-import com.warehouse.wms.entity.InventoryStock;
-import com.warehouse.wms.constant.InventoryStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,8 +11,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import com.warehouse.wms.constant.InventoryStatus;
+import com.warehouse.wms.dto.response.InventoryTotalsProjection;
+import com.warehouse.wms.entity.InventoryStock;
 
 @Repository
 public interface InventoryStockRepository extends JpaRepository<InventoryStock, Long>, JpaSpecificationExecutor<InventoryStock> {
@@ -229,4 +229,50 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
         
         @Query("SELECT COUNT(DISTINCT i.itemCode) FROM InventoryStock i WHERE i.warehouseId = :warehouseId AND i.quantity > 0")
         Integer countUniqueItemsByWarehouseId(@Param("warehouseId") String warehouseId);
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        @Query("""
+                SELECT new com.warehouse.wms.dto.response.InventoryTotalsProjection(
+                    COALESCE(SUM(i.quantity), 0),
+                    COALESCE(SUM(i.inTransitQuantity), 0),
+                    COALESCE(SUM(i.reservedQuantity), 0),
+                    COALESCE(SUM(i.availableQuantity), 0)
+                )
+                FROM InventoryStock i
+                WHERE (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
+                  AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
+                  AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
+            """)
+            InventoryTotalsProjection getFilteredTotals(
+                    @Param("itemCode") String itemCode,
+                    @Param("itemName") String itemName,
+                    @Param("warehouseId") String warehouseId
+            );
+
+            /**
+             * Distinct location suggestions for given filters.
+             */
+            @Query("""
+                SELECT DISTINCT i.binId, i.fullLocation, i.zone, i.aisle, i.rack, i.shelf, i.level, i.binBarcode
+                FROM InventoryStock i
+                WHERE i.binId IS NOT NULL
+                  AND (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
+                  AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
+                  AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
+                ORDER BY i.binId
+            """)
+            List<Object[]> findLocationSuggestions(
+                    @Param("itemCode") String itemCode,
+                    @Param("itemName") String itemName,
+                    @Param("warehouseId") String warehouseId
+            );
 }
