@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -383,76 +384,87 @@ public class InventoryStockServiceImpl implements InventoryStockService {
     
     
     
-    @Override
-    @Transactional(readOnly = true)
-    public InventoryFilterResponse filterInventoryWithTotals(
-            String itemCode,
-            String itemName,
-            String warehouseId,
-            Pageable pageable) {
+@Override
+@Transactional(readOnly = true)
+public InventoryFilterResponse filterInventoryWithTotals(
+        String itemCode,
+        String itemName,
+        String warehouseId,
+        Integer quantity,
+        Pageable pageable) {
 
-        log.info("Filtering inventory - itemCode: {}, itemName: {}, warehouseId: {}",
-                itemCode, itemName, warehouseId);
+    log.info("Filtering inventory - itemCode: {}, itemName: {}, warehouseId: {}, quantity: {}",
+            itemCode, itemName, warehouseId, quantity);
 
-        // Normalize empty strings to null
-        String codeFilter = (itemCode == null || itemCode.isBlank()) ? null : itemCode.trim();
-        String nameFilter = (itemName == null || itemName.isBlank()) ? null : itemName.trim();
-        String whFilter   = (warehouseId == null || warehouseId.isBlank()) ? null : warehouseId.trim();
+    String codeFilter = (itemCode == null || itemCode.isBlank()) ? null : itemCode.trim();
+    String nameFilter = (itemName == null || itemName.isBlank()) ? null : itemName.trim();
+    String whFilter   = (warehouseId == null || warehouseId.isBlank()) ? null : warehouseId.trim();
+    Integer qtyFilter = quantity;
 
-        // 1. Build Specification for pageable items
-        Specification<InventoryStock> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
+    // 1. Specification for pageable items
+    Specification<InventoryStock> spec = (root, query, cb) -> {
+        List<Predicate> predicates = new ArrayList<>();
 
-            if (codeFilter != null) {
-                predicates.add(cb.like(cb.lower(root.get("itemCode")),
-                        "%" + codeFilter.toLowerCase() + "%"));
-            }
-            if (nameFilter != null) {
-                predicates.add(cb.like(cb.lower(root.get("itemName")),
-                        "%" + nameFilter.toLowerCase() + "%"));
-            }
-            if (whFilter != null) {
-                predicates.add(cb.equal(root.get("warehouseId"), whFilter));
-            }
+        if (codeFilter != null) {
+            predicates.add(cb.like(cb.lower(root.get("itemCode")),
+                    "%" + codeFilter.toLowerCase() + "%"));
+        }
+        if (nameFilter != null) {
+            predicates.add(cb.like(cb.lower(root.get("itemName")),
+                    "%" + nameFilter.toLowerCase() + "%"));
+        }
+        if (whFilter != null) {
+            predicates.add(cb.equal(root.get("warehouseId"), whFilter));
+        }
+        if (qtyFilter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("quantity"), qtyFilter));
+        }
+        return cb.and(predicates.toArray(new Predicate[0]));
+    };
 
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+    // 2. Paginated items
+//    Page<InventoryStock> page = inventoryStockRepository.findAll(spec, pageable);
+//    List<InventoryStockResponse> items = page.getContent()
+//            .stream()
+//            .map(inventoryStockMapper::toResponses)
+//            .toList();
 
-        // 2. Fetch paginated items
-        Page<InventoryStock> page = inventoryStockRepository.findAll(spec, pageable);
-        List<InventoryStockResponse> items = page.getContent()
-                .stream()
-                .map(inventoryStockMapper::toResponse)
-                .toList();
+    // 3. Aggregated totals
+    InventoryTotalsProjection totals = inventoryStockRepository
+            .getFilteredTotals(codeFilter, nameFilter, whFilter, qtyFilter);
 
-        // 3. Fetch aggregated totals
-        InventoryTotalsProjection totals = inventoryStockRepository
-                .getFilteredTotals(codeFilter, nameFilter, whFilter);
+    // 4. ✅ Total bin capacity (SUM of Bin.maxCapacity)
+    Long totalBinCapacity = inventoryStockRepository
+            .getTotalBinCapacity(codeFilter, nameFilter, whFilter, qtyFilter);
 
-        // 4. Fetch location suggestions
-        List<LocationSuggestion> locations = inventoryStockRepository
-                .findLocationSuggestions(codeFilter, nameFilter, whFilter)
-                .stream()
-                .map(row -> LocationSuggestion.builder()
-                        .binId((String) row[0])
-                        .fullLocation((String) row[1])
-                        .zone((String) row[2])
-                        .aisle((String) row[3])
-                        .rack((String) row[4])
-                        .shelf((String) row[5])
-                        .level((String) row[6])
-                        .binBarcode((String) row[7])
-                        .build())
-                .toList();
+ // 5. Single location suggestion
+    LocationSuggestion locationSuggestion = inventoryStockRepository
+            .findLocationSuggestion(codeFilter, nameFilter, whFilter, qtyFilter, PageRequest.of(0, 1))
+            .stream()
+            .findFirst()
+            .map(row -> LocationSuggestion.builder()
+                    .binId((String) row[0])
+                    .warehouseId((String) row[1])   // ✅ NEW
+                    .fullLocation((String) row[2])
+                    .zone((String) row[3])
+                    .aisle((String) row[4])
+                    .rack((String) row[5])
+                    .shelf((String) row[6])
+                    .level((String) row[7])
+                    .binBarcode((String) row[8])
+                    .build())
+            .orElse(null);
 
-        return InventoryFilterResponse.builder()
-                .items(items)
-                .totalQuantity(totals.getTotalQuantity())
-                .totalInTransitQuantity(totals.getTotalInTransitQuantity())
-                .totalReservedQuantity(totals.getTotalReservedQuantity())
-                .totalAvailableQuantity(totals.getTotalAvailableQuantity())
-                .locationSuggestions(locations)
-                .build();
-    }
-    
+    // 6. Build response
+    return InventoryFilterResponse.builder()
+           // .items(items)
+            .totalQuantity(totals.getTotalQuantity())
+            .totalInTransitQuantity(totals.getTotalInTransitQuantity())
+            .totalReservedQuantity(totals.getTotalReservedQuantity())
+            .totalAvailableQuantity(totals.getTotalAvailableQuantity())
+            .totalBinCapacity(totalBinCapacity == null ? 0L : totalBinCapacity)
+            .availableSlots(totalBinCapacity-totals.getTotalQuantity())
+            .locationSuggestion(locationSuggestion)
+            .build();
+}
 }

@@ -227,20 +227,16 @@ public class InventoryStockController {
     
     
     
-    @GetMapping("/filter")
-    @Operation(summary = "Filter inventory by itemCode, itemName, warehouseId with totals & location suggestions")
+    @PostMapping("/filter")
     public ResponseEntity<InventoryFilterResponse> filterInventory(
             @RequestParam(required = false) String itemCode,
             @RequestParam(required = false) String itemName,
+            @RequestParam(required = false) Integer quantity,
             @RequestParam(required = false) String warehouseId,
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        log.info("GET /api/inventory-stock/filter - itemCode: {}, itemName: {}, warehouseId: {}",
-                itemCode, itemName, warehouseId);
-
         InventoryFilterResponse response = inventoryStockService
-                .filterInventoryWithTotals(itemCode, itemName, warehouseId, pageable);
-
+                .filterInventoryWithTotals(itemCode, itemName, warehouseId, quantity, pageable);
         return ResponseEntity.ok(response);
     }
 }

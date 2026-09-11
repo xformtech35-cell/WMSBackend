@@ -3,6 +3,7 @@ package com.warehouse.wms.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -234,12 +235,6 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
         
         
         
-        
-        
-        
-        
-        
-        
         @Query("""
                 SELECT new com.warehouse.wms.dto.response.InventoryTotalsProjection(
                     COALESCE(SUM(i.quantity), 0),
@@ -251,28 +246,52 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
                 WHERE (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
                   AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
                   AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
+                  AND (:quantity IS NULL OR i.quantity >= :quantity)
             """)
             InventoryTotalsProjection getFilteredTotals(
-                    @Param("itemCode") String itemCode,
-                    @Param("itemName") String itemName,
-                    @Param("warehouseId") String warehouseId
+                    @Param("itemCode")    String itemCode,
+                    @Param("itemName")    String itemName,
+                    @Param("warehouseId") String warehouseId,
+                    @Param("quantity")    Integer quantity
             );
 
-            /**
-             * Distinct location suggestions for given filters.
-             */
-            @Query("""
-                SELECT DISTINCT i.binId, i.fullLocation, i.zone, i.aisle, i.rack, i.shelf, i.level, i.binBarcode
-                FROM InventoryStock i
-                WHERE i.binId IS NOT NULL
-                  AND (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
-                  AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
-                  AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
-                ORDER BY i.binId
-            """)
-            List<Object[]> findLocationSuggestions(
-                    @Param("itemCode") String itemCode,
-                    @Param("itemName") String itemName,
-                    @Param("warehouseId") String warehouseId
-            );
+            // ---------- Single location suggestion (filtered by quantity too) ----------
+        @Query("""
+        	    SELECT i.binId, i.warehouseId, i.fullLocation, i.zone, i.aisle, i.rack, i.shelf, i.level, i.binBarcode
+        	    FROM InventoryStock i
+        	    WHERE i.binId IS NOT NULL
+        	      AND (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
+        	      AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
+        	      AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
+        	      AND (:quantity IS NULL OR i.quantity >= :quantity)
+        	    ORDER BY i.id DESC
+        	""")
+        	List<Object[]> findLocationSuggestion(
+        	        @Param("itemCode")    String itemCode,
+        	        @Param("itemName")    String itemName,
+        	        @Param("warehouseId") String warehouseId,
+        	        @Param("quantity")    Integer quantity,
+        	        Pageable pageable
+        	);
+        	
+        	
+        	/**
+        	 * Sum of Bin.maxCapacity for all bins matching the inventory filters.
+        	 * Joins InventoryStock.binId (String) → Bin.barcode (String).
+        	 */
+        	@Query("""
+        	    SELECT COALESCE(SUM(b.maxCapacity), 0)
+        	    FROM InventoryStock i
+        	    JOIN Bin b ON b.barcode = i.binId
+        	    WHERE (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
+        	      AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
+        	      AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
+        	      AND (:quantity IS NULL OR i.quantity >= :quantity)
+        	""")
+        	Long getTotalBinCapacity(
+        	        @Param("itemCode")    String itemCode,
+        	        @Param("itemName")    String itemName,
+        	        @Param("warehouseId") String warehouseId,
+        	        @Param("quantity")    Integer quantity
+        	);
 }

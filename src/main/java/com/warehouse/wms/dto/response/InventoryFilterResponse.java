@@ -1,11 +1,11 @@
 package com.warehouse.wms.dto.response;
 
-import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class InventoryFilterResponse {
 
-    // List of matching stock entries (your existing InventoryStockResponse)
+    // List of matching stock entries (paginated)
     private List<InventoryStockResponse> items;
 
     // Aggregated totals
@@ -21,7 +21,11 @@ public class InventoryFilterResponse {
     private Long totalInTransitQuantity;
     private Long totalReservedQuantity;
     private Long totalAvailableQuantity;
+    
+    private Long totalBinCapacity;
+    private Long availableSlots;
 
-    // Location suggestions (distinct bin/location values matching filters)
-    private List<LocationSuggestion> locationSuggestions;
+
+    // ✅ SINGLE location suggestion (was a List before)
+    private LocationSuggestion locationSuggestion;
 }

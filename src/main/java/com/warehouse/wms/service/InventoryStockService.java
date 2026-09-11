@@ -77,6 +77,7 @@ public interface InventoryStockService {
             String itemCode,
             String itemName,
             String warehouseId,
+            Integer quantity,
             Pageable pageable
     );
     

@@ -97,6 +97,32 @@ public class InventoryStockMapper {
             .updatedAt(stock.getUpdatedAt())
             .build();
     }
+    
+    
+    
+    
+    public InventoryStockResponse toResponses(InventoryStock stock) {
+        if (stock == null) return null;
+        
+        return InventoryStockResponse.builder()
+            .id(stock.getId())
+            .inventoryNumber(stock.getInventoryNumber())
+            .itemCode(stock.getItemCode())
+            .itemName(stock.getItemName())
+            .quantity(stock.getQuantity())
+            .availableQuantity(stock.getAvailableQuantity())
+            .reservedQuantity(stock.getReservedQuantity())
+            .inTransitQuantity(stock.getInTransitQuantity())
+            .warehouseId(stock.getWarehouseId())
+            .zone(stock.getZone())
+            .aisle(stock.getAisle())
+            .rack(stock.getRack())
+            .level(stock.getLevel())
+            .binId(stock.getBinId())
+            .fullLocation(stock.getFullLocation())
+            .binBarcode(stock.getBinBarcode())
+            .build();
+    }
 
     public List<InventoryStockResponse> toResponseList(List<InventoryStock> stocks) {
         if (stocks == null) return null;

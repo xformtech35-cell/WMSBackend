@@ -10,7 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LocationSuggestion {
+	
     private String binId;
+    private String warehouseId;
+
     private String fullLocation;
     private String zone;
     private String aisle;
