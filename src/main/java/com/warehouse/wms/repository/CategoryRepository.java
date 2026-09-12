@@ -13,14 +13,12 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByCode(String code);
 
-    // Search, Filter and Pagination
+    // Search & Filter with Pagination
     @Query("SELECT c FROM Category c WHERE " +
            "(:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "AND (:active IS NULL OR c.active = :active) " +
-           "AND (:parentId IS NULL OR c.parent.id = :parentId)")
+           "AND (:active IS NULL OR c.active = :active)")
     Page<Category> searchCategories(@Param("keyword") String keyword,
                                     @Param("active") Boolean active,
-                                    @Param("parentId") Long parentId,
                                     Pageable pageable);
 }

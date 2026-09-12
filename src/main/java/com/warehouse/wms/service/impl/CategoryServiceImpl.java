@@ -29,16 +29,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryResponse create(CategoryRequest request) {
         if (repository.existsByCode(request.getCode())) {
-            throw new RuntimeException("Category Code already exists");
+            throw new RuntimeException("Category Code already exists: " + request.getCode());
         }
-
-        Category parent = null;
-        if (request.getParentId() != null) {
-            parent = repository.findById(request.getParentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found"));
-        }
-
-        Category entity = mapper.toEntity(request, parent);
+        Category entity = mapper.toEntity(request);
         return mapper.toResponse(repository.save(entity));
     }
 
@@ -48,15 +41,10 @@ public class CategoryServiceImpl implements CategoryService {
         Category entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
-//        Category parent = null;
-//        if (request.getParentId() != null) {
-//            // Prevent setting itself as parent
-//            if (request.getParentId().equals(id)) {
-//                throw new RuntimeException("Category cannot be its own parent");
-//            }
-//            parent = repository.findById(request.getParentId())
-//                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found"));
-//        }
+        // Check if code is being changed and if new code already exists
+        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
+            throw new RuntimeException("Category Code already exists: " + request.getCode());
+        }
 
         mapper.updateEntity(entity, request);
         return mapper.toResponse(repository.save(entity));
@@ -77,18 +65,18 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public Page<CategoryResponse> searchAndFilter(String keyword, Boolean active, Long parentId, int page, int size, String sortBy) {
+    public Page<CategoryResponse> searchAndFilter(String keyword, Boolean active, int page, int size, String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
-        return repository.searchCategories(keyword, active, parentId, pageable)
+        return repository.searchCategories(keyword, active, pageable)
                 .map(mapper::toResponse);
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        Category entity = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
-        // Optional: Check if it has child categories before deleting
-        repository.delete(entity);
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("Category not found with id: " + id);
+        }
+        repository.deleteById(id);
     }
 }
