@@ -30,12 +30,10 @@ public class GstMapper {
     }
 
     public void updateEntity(Gst entity, GstRequest request) {
-        entity.setCode(request.getCode());
-        entity.setName(request.getName());
-        entity.setRate(request.getRate());
-        entity.setDescription(request.getDescription());
-        if (request.getActive() != null) {
-            entity.setActive(request.getActive());
-        }
+        if (request.getCode() != null)        entity.setCode(request.getCode());
+        if (request.getName() != null)        entity.setName(request.getName());
+        if (request.getRate() != null)        entity.setRate(request.getRate());
+        if (request.getDescription() != null) entity.setDescription(request.getDescription());
+        if (request.getActive() != null)      entity.setActive(request.getActive());
     }
 }

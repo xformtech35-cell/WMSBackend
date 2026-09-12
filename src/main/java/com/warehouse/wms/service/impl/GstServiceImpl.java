@@ -1,13 +1,9 @@
 package com.warehouse.wms.service.impl;
 
-import com.warehouse.wms.dto.request.GstRequest;
-import com.warehouse.wms.dto.response.GstResponse;
-import com.warehouse.wms.entity.Gst;
-import com.warehouse.wms.exception.ResourceNotFoundException;
-import com.warehouse.wms.mapper.GstMapper;
-import com.warehouse.wms.repository.GstRepository;
-import com.warehouse.wms.service.GstService;
-import lombok.RequiredArgsConstructor;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -15,9 +11,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.warehouse.wms.dto.request.GstRequest;
+import com.warehouse.wms.dto.response.GstResponse;
+import com.warehouse.wms.entity.Gst;
+import com.warehouse.wms.exception.DuplicateResourceException;
+import com.warehouse.wms.exception.ResourceNotFoundException;
+import com.warehouse.wms.mapper.GstMapper;
+import com.warehouse.wms.repository.GstRepository;
+import com.warehouse.wms.service.GstService;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +32,9 @@ public class GstServiceImpl implements GstService {
     @Override
     @Transactional
     public GstResponse create(GstRequest request) {
-        if (repository.existsByCode(request.getCode())) {
-            throw new RuntimeException("GST Code already exists: " + request.getCode());
-        }
+    	  if (request.getCode() != null && repository.existsByCode(request.getCode())) {
+              throw new DuplicateResourceException("GST Code already exists: " + request.getCode());
+          }
         Gst entity = mapper.toEntity(request);
         return mapper.toResponse(repository.save(entity));
     }
