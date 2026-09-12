@@ -42,10 +42,10 @@ public class GstServiceImpl implements GstService {
         Gst entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("GST not found with id: " + id));
 
-        // Check if code changed and new code already exists
-        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
-            throw new RuntimeException("GST Code already exists: " + request.getCode());
-        }
+//        // Check if code changed and new code already exists
+//        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
+//            throw new RuntimeException("GST Code already exists: " + request.getCode());
+//        }
 
         mapper.updateEntity(entity, request);
         return mapper.toResponse(repository.save(entity));
