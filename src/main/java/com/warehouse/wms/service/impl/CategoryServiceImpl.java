@@ -48,17 +48,17 @@ public class CategoryServiceImpl implements CategoryService {
         Category entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
-        Category parent = null;
-        if (request.getParentId() != null) {
-            // Prevent setting itself as parent
-            if (request.getParentId().equals(id)) {
-                throw new RuntimeException("Category cannot be its own parent");
-            }
-            parent = repository.findById(request.getParentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found"));
-        }
+//        Category parent = null;
+//        if (request.getParentId() != null) {
+//            // Prevent setting itself as parent
+//            if (request.getParentId().equals(id)) {
+//                throw new RuntimeException("Category cannot be its own parent");
+//            }
+//            parent = repository.findById(request.getParentId())
+//                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category not found"));
+//        }
 
-        mapper.updateEntity(entity, request, parent);
+        mapper.updateEntity(entity, request);
         return mapper.toResponse(repository.save(entity));
     }
 

@@ -26,10 +26,7 @@ public class Category {
 
     private String description;
 
-    // Self-referencing parent category for hierarchy (Optional)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private Category parent;
+ 
 
     @Column(nullable = false)
     private Boolean active = true;

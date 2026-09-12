@@ -13,8 +13,7 @@ public class CategoryMapper {
                 .code(request.getCode())
                 .name(request.getName())
                 .description(request.getDescription())
-                .parent(parent)
-                .active(request.getActive() != null ? request.getActive() : true)
+              
                 .build();
     }
 
@@ -24,17 +23,16 @@ public class CategoryMapper {
                 .code(entity.getCode())
                 .name(entity.getName())
                 .description(entity.getDescription())
-                .parentId(entity.getParent() != null ? entity.getParent().getId() : null)
-                .parentName(entity.getParent() != null ? entity.getParent().getName() : null)
+//                .parentId(entity.getParent() != null ? entity.getParent().getId() : null)
+//                .parentName(entity.getParent() != null ? entity.getParent().getName() : null)
                 .active(entity.getActive())
                 .build();
     }
 
-    public void updateEntity(Category entity, CategoryRequest request, Category parent) {
+    public void updateEntity(Category entity, CategoryRequest request) {
         entity.setCode(request.getCode());
         entity.setName(request.getName());
         entity.setDescription(request.getDescription());
-        entity.setParent(parent);
         if (request.getActive() != null) {
             entity.setActive(request.getActive());
         }

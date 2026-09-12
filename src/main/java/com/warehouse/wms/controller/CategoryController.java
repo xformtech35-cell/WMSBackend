@@ -43,14 +43,14 @@ public class CategoryController {
 
     @GetMapping
     public ResponseEntity<Page<CategoryResponse>> searchAndFilter(
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String Search,
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Long parentId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
 
-        return ResponseEntity.ok(service.searchAndFilter(keyword, active, parentId, page, size, sortBy));
+        return ResponseEntity.ok(service.searchAndFilter(Search, active, parentId, page, size, sortBy));
     }
 
     @DeleteMapping("/{id}")
