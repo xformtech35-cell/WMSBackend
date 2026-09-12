@@ -42,9 +42,9 @@ public class CategoryServiceImpl implements CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
         // Check if code is being changed and if new code already exists
-        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
-            throw new RuntimeException("Category Code already exists: " + request.getCode());
-        }
+//        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
+//            throw new RuntimeException("Category Code already exists: " + request.getCode());
+//        }
 
         mapper.updateEntity(entity, request);
         return mapper.toResponse(repository.save(entity));
