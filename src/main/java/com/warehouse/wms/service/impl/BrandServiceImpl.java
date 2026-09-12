@@ -41,10 +41,10 @@ public class BrandServiceImpl implements BrandService {
         Brand entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Brand not found with id: " + id));
 
-        // Check if code changed and new code already exists
-        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
-            throw new RuntimeException("Brand Code already exists: " + request.getCode());
-        }
+//        // Check if code changed and new code already exists
+//        if (!entity.getCode().equals(request.getCode()) && repository.existsByCode(request.getCode())) {
+//            throw new RuntimeException("Brand Code already exists: " + request.getCode());
+//        }
 
         mapper.updateEntity(entity, request);
         return mapper.toResponse(repository.save(entity));

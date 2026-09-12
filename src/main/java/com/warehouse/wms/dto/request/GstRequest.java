@@ -11,10 +11,8 @@ import java.math.BigDecimal;
 @Data
 public class GstRequest {
 
-    @NotBlank(message = "Code is required")
     private String code;
 
-    @NotBlank(message = "Name is required")
     private String name;
 
     @NotNull(message = "Rate is required")

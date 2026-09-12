@@ -20,10 +20,8 @@ public class Gst {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
     private String code; // e.g., "GST5", "GST12"
 
-    @Column(nullable = false)
     private String name; // e.g., "GST 5%", "GST 12%"
 
     @Column(nullable = false, precision = 5, scale = 2)
