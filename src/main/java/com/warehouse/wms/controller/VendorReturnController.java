@@ -72,7 +72,6 @@ public class VendorReturnController {
 
     @PostMapping("/requests")
     @Operation(summary = "Create a return request")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> createReturnRequest(
             @Valid @RequestBody VendorReturnRequestDTO request) {
         log.info("REST request to create return request");
@@ -83,7 +82,6 @@ public class VendorReturnController {
 
     @PutMapping("/requests/{id}")
     @Operation(summary = "Update a return request")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> updateReturnRequest(
             @PathVariable Long id,
             @Valid @RequestBody VendorReturnRequestDTO request) {
@@ -94,7 +92,6 @@ public class VendorReturnController {
 
     @GetMapping("/requests/{id}")
     @Operation(summary = "Get return request by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> getReturnRequestById(@PathVariable Long id) {
         log.info("REST request to get return request by ID: {}", id);
         VendorReturnResponseDTO response = vendorReturnService.getReturnRequestById(id);
@@ -103,7 +100,6 @@ public class VendorReturnController {
 
     @GetMapping("/requests")
     @Operation(summary = "Get all return requests with pagination")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<VendorReturnResponseDTO>>> getAllReturnRequests(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         log.info("REST request to get all return requests");
@@ -113,7 +109,6 @@ public class VendorReturnController {
 
     @GetMapping("/requests/search")
     @Operation(summary = "Search return requests")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<VendorReturnResponseDTO>>> searchReturnRequests(
             @RequestParam(required = false) String supplierName,
             @RequestParam(required = false) String status,
@@ -127,7 +122,6 @@ public class VendorReturnController {
 
     @PatchMapping("/requests/{id}/submit")
     @Operation(summary = "Submit return request for approval")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     public ResponseEntity<ApiResponse<VendorReturnResponseDTO>> submitReturnRequest(@PathVariable Long id) {
         log.info("REST request to submit return request: {}", id);
         VendorReturnResponseDTO response = vendorReturnService.submitReturnRequest(id);
@@ -167,7 +161,6 @@ public class VendorReturnController {
 
     @PostMapping("/orders")
     @Operation(summary = "Create a return order")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> createReturnOrder(
             @Valid @RequestBody VendorReturnOrderDTO request) {
         log.info("REST request to create return order");
@@ -178,7 +171,6 @@ public class VendorReturnController {
 
     @GetMapping("/orders/{id}")
     @Operation(summary = "Get return order by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> getReturnOrderById(@PathVariable Long id) {
         log.info("REST request to get return order by ID: {}", id);
         VendorReturnOrderResponseDTO response = vendorReturnService.getReturnOrderById(id);
@@ -198,7 +190,6 @@ public class VendorReturnController {
     
     @GetMapping("/orders")
     @Operation(summary = "Get all return orders with pagination and filters")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<VendorReturnOrderResponseDTO>>> getAllReturnOrders(
             // Search parameter
             @RequestParam(required = false) String search,
@@ -267,7 +258,6 @@ public class VendorReturnController {
 
     @PostMapping("/orders/{id}/generate-picklist")
     @Operation(summary = "Generate pick list for return order")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> generatePickList(@PathVariable Long id, @RequestParam  String assignTo) 
     {
     	
@@ -280,7 +270,6 @@ public class VendorReturnController {
     
     @PostMapping("/picklists/search")
     @Operation(summary = "Search pick lists with advanced filters")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
             @RequestParam(required = false) String vroNumber,
             @RequestParam(required = false) String assignTo,
@@ -319,7 +308,6 @@ public class VendorReturnController {
 
     @PatchMapping("/orders/{id}/pick")
     @Operation(summary = "Perform picking for return order")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> performPicking(
             @PathVariable Long id,
             @RequestBody List<PickingDTO> pickingDetails) {
@@ -330,7 +318,6 @@ public class VendorReturnController {
 
     @PatchMapping("/orders/{id}/qc")
     @Operation(summary = "Perform QC for return order")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> performQC(
             @PathVariable Long id,
             @RequestBody List<QCDTO> qcDetails) {
@@ -342,7 +329,6 @@ public class VendorReturnController {
     
     @PatchMapping("/orders/{orderId}/pack")
     @Operation(summary = "Perform packing for return order")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<VendorReturnOrderResponseDTO>> performPacking(
             @PathVariable Long orderId,
             @Valid @RequestBody List<PackingDTO> packingDetails) {
@@ -353,7 +339,6 @@ public class VendorReturnController {
     
     @GetMapping("/packs")
     @Operation(summary = "Get all packed orders with search and filters")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<PackedOrderResponseDTO>>> getAllPackedOrders(
 
             // Search
@@ -421,7 +406,6 @@ public class VendorReturnController {
     
     @PostMapping("/dispatches")
     @Operation(summary = "Create a dispatch")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<DispatchResponseDTO>> createDispatch(
             @Valid @RequestBody DispatchDTO dispatchDTO) {
         log.info("REST request to create dispatch");
@@ -434,7 +418,6 @@ public class VendorReturnController {
     
     @GetMapping("/dispatches")
     @Operation(summary = "Get all dispatches with search and filters")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<DispatchListResponseDTO>>> getAllDispatches(
 
             // Free-text search
@@ -525,7 +508,6 @@ public class VendorReturnController {
 
     @PatchMapping("/dispatches/{id}/confirm")
     @Operation(summary = "Confirm dispatch")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<DispatchResponseDTO>> confirmDispatch(@PathVariable Long id) {
         log.info("REST request to confirm dispatch: {}", id);
         DispatchResponseDTO response = vendorReturnService.confirmDispatch(id);
@@ -536,7 +518,6 @@ public class VendorReturnController {
 
     @PostMapping("/receipts")
     @Operation(summary = "Create a vendor receipt")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE')")
     public ResponseEntity<ApiResponse<VendorReceiptResponseDTO>> createReceipt(
             @Valid @RequestBody VendorReceiptDTO receiptDTO) {
         log.info("REST request to create receipt");
@@ -550,7 +531,6 @@ public class VendorReturnController {
     
     @GetMapping("/receipts")
     @Operation(summary = "Get all receipts with search and filters")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WAREHOUSE', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<VendorReceiptListResponseDTO>>> getAllReceipts(
 
             // Free-text search
@@ -645,7 +625,6 @@ public class VendorReturnController {
 
     @PostMapping("/settlements")
     @Operation(summary = "Create a settlement")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'FINANCE')")
     public ResponseEntity<ApiResponse<SettlementResponseDTO>> createSettlement(
             @Valid @RequestBody SettlementDTO settlementDTO) {
         log.info("REST request to create settlement");
@@ -658,7 +637,6 @@ public class VendorReturnController {
 
     @GetMapping("/statistics/status-counts")
     @Operation(summary = "Get status counts for orders")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> getStatusCounts() {
         log.info("REST request to get status counts");
         Map<String, Long> counts = vendorReturnService.getStatusCounts();
@@ -667,7 +645,6 @@ public class VendorReturnController {
 
     @GetMapping("/statistics/request-status-counts")
     @Operation(summary = "Get request status counts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> getRequestStatusCounts() {
         log.info("REST request to get request status counts");
         Map<String, Long> counts = vendorReturnService.getRequestStatusCounts();
