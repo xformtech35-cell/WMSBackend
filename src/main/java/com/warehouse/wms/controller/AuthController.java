@@ -61,7 +61,7 @@ public class AuthController {
                 .map(Enum::name)
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new AuthResponse(token,user.getId(),user.getUsername(), user.getRole().getName(), permissions));
+        return ResponseEntity.ok(new AuthResponse(token,user.getId(),user.getFullName(), user.getUsername(), user.getRole().getName(), permissions));
     }
 
     @PostMapping("/register")
@@ -85,6 +85,7 @@ public class AuthController {
         	    new AuthResponse(
         	        token,
         	        user.getId(),
+        	        user.getFullName(),
         	        user.getUsername(),
         	        user.getRole().getName(),
         	        permissions

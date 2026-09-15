@@ -12,6 +12,7 @@ import java.util.List;
 public class AuthResponse {
     private String token;
     private Long id;
+    private String fullName;
     private String username;
     private String role;
     private List<String> permissions;
