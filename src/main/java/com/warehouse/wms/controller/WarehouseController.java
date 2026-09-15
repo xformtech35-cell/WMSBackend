@@ -120,7 +120,6 @@ public class WarehouseController {
     
     @PostMapping("/filter")
     @Operation(summary = "Get warehouses with filter as request body")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     public ResponseEntity<ApiResponse<Page<WarehouseResponse>>> filterWarehouses(
             @RequestBody WarehouseFilterRequest filter) {
         
