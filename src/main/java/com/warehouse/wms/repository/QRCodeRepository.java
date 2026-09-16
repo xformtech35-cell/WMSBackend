@@ -38,6 +38,9 @@ public interface QRCodeRepository extends JpaRepository<QRCode, Long> {
     List<QRCode> findByItemCodeAndStatus(String itemCode, QRStatus status);
 
     List<QRCode> findByStatus(QRStatus status);
+    
+    List<QRCode> findAllByBarcode(String barcode);
+
 
     @Query("SELECT q FROM QRCode q WHERE q.status = :status AND q.createdAt < :expiryTime")
     List<QRCode> findExpiredQRCodes(@Param("status") QRStatus status,

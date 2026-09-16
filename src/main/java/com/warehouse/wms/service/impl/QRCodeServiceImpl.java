@@ -1,10 +1,12 @@
 // ====== FILE: src/main/java/com/warehouse/wms/service/impl/QRCodeServiceImpl.java ======
 package com.warehouse.wms.service.impl;
 
+
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -453,51 +455,70 @@ private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
     }
 }
 
-    @Override
-    @Transactional
-    public QRCodeResponse scanBarCode(String qrCode, String scannedBy) {
-        log.info("Scanning Barcode: {}", qrCode);
-        
-        // Validate inputs
-        if (qrCode == null || qrCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("Barcode cannot be empty");
-        }
-        if (scannedBy == null || scannedBy.trim().isEmpty()) {
-            throw new IllegalArgumentException("Scanned by cannot be empty");
-        }
-        
-        QRCode qrCodeEntity = qrCodeRepository.findByBarcode(qrCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Barcode not found: " + qrCode));
+   @Override
+@Transactional
+public QRCodeResponse scanBarCode(String qrCode, String scannedBy) {
+    log.info("Scanning Barcode: {}", qrCode);
 
-//        if (qrCodeEntity.getStatus() == QRStatus.USED) {
-//            throw new IllegalStateException("Barcode already used");
-//        }
-//        
-//        if (qrCodeEntity.getStatus() == QRStatus.EXPIRED) {
-//            throw new IllegalStateException("Barcode has expired");
-//        }
-
-        // ✅ Update StockAvailability - reserve quantity when barcode is scanned
-        updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
-
-        // Update QR Code status
-        Integer currentScanCount = qrCodeEntity.getScanCount();
-        if (currentScanCount == null) {
-            currentScanCount = 0;
-        }
-        int newScanCount = currentScanCount + 1;
-
-        qrCodeEntity.setStatus(QRStatus.SCANNED);
-        qrCodeEntity.setScannedBy(scannedBy);
-        qrCodeEntity.setScannedAt(LocalDateTime.now());
-        qrCodeEntity.setScanCount(newScanCount);
-
-        QRCode updatedQRCode = qrCodeRepository.save(qrCodeEntity);
-        log.info("✅ Barcode scanned successfully: {} (Scan count: {})", qrCode, newScanCount);
-
-        return qrCodeMapper.toResponse(updatedQRCode);
+    // Validate inputs
+    if (qrCode == null || qrCode.trim().isEmpty()) {
+        throw new IllegalArgumentException("Barcode cannot be empty");
+    }
+    if (scannedBy == null || scannedBy.trim().isEmpty()) {
+        throw new IllegalArgumentException("Scanned by cannot be empty");
     }
 
+    // Fetch all matches (barcode may not be unique)
+    List<QRCode> matches = qrCodeRepository.findAllByBarcode(qrCode);
+
+    if (matches.isEmpty()) {
+        throw new ResourceNotFoundException("Barcode not found: " + qrCode);
+    }
+
+    // Handle duplicates explicitly
+    QRCode qrCodeEntity;
+    if (matches.size() == 1) {
+        qrCodeEntity = matches.get(0);
+    } else {
+        log.warn("Multiple ({}) QRCode records found for barcode '{}'. IDs: {}",
+                matches.size(), qrCode,
+                matches.stream().map(QRCode::getId).toList());
+
+        // Pick the most recent non-USED record; fall back to most recent overall
+        qrCodeEntity = matches.stream()
+                .filter(q -> q.getStatus() != QRStatus.USED)
+                .max(Comparator.comparing(QRCode::getCreatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElseGet(() -> matches.stream()
+                        .max(Comparator.comparing(QRCode::getCreatedAt,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                        .orElse(matches.get(0)));
+
+        log.info("Using QRCode id={} (status={}) for barcode '{}'",
+                qrCodeEntity.getId(), qrCodeEntity.getStatus(), qrCode);
+    }
+
+    // ✅ Update StockAvailability - reserve quantity when barcode is scanned
+    updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
+
+    // Update QR Code status
+    Integer currentScanCount = qrCodeEntity.getScanCount();
+    if (currentScanCount == null) {
+        currentScanCount = 0;
+    }
+    int newScanCount = currentScanCount + 1;
+
+    qrCodeEntity.setStatus(QRStatus.SCANNED);
+    qrCodeEntity.setScannedBy(scannedBy);
+    qrCodeEntity.setScannedAt(LocalDateTime.now());
+    qrCodeEntity.setScanCount(newScanCount);
+
+    QRCode updatedQRCode = qrCodeRepository.save(qrCodeEntity);
+    log.info("✅ Barcode scanned successfully: {} (id={}, Scan count: {})",
+            qrCode, updatedQRCode.getId(), newScanCount);
+
+    return qrCodeMapper.toResponse(updatedQRCode);
+}
 //    @Override
 //    @Transactional
 //    public QRCodeResponse scanBarcode(String barcode, String scannedBy) {
@@ -638,4 +659,69 @@ private void updateReservedQuantityOnScan(QRCode qrCode, String scannedBy) {
             return data.toString();
         }
     }
+
+//	@Override
+//	@Transactional
+//	public QRCodeResponse scanBarCode(String qrCode, String scannedBy) {
+//	    log.info("Scanning Barcode: {}", qrCode);
+//	
+//	    // Validate inputs
+//	    if (qrCode == null || qrCode.trim().isEmpty()) {
+//	        throw new IllegalArgumentException("Barcode cannot be empty");
+//	    }
+//	    if (scannedBy == null || scannedBy.trim().isEmpty()) {
+//	        throw new IllegalArgumentException("Scanned by cannot be empty");
+//	    }
+//	
+//	    // Fetch all matches (barcode may not be unique)
+//	    List<QRCode> matches = qrCodeRepository.findAllByBarcode(qrCode);
+//	
+//	    if (matches.isEmpty()) {
+//	        throw new ResourceNotFoundException("Barcode not found: " + qrCode);
+//	    }
+//	
+//	    // Handle duplicates explicitly
+//	    QRCode qrCodeEntity;
+//	    if (matches.size() == 1) {
+//	        qrCodeEntity = matches.get(0);
+//	    } else {
+//	        log.warn("Multiple ({}) QRCode records found for barcode '{}'. IDs: {}",
+//	                matches.size(), qrCode,
+//	                matches.stream().map(QRCode::getId).toList());
+//	
+//	        // Pick the most recent non-USED record; fall back to most recent overall
+//	        qrCodeEntity = matches.stream()
+//	                .filter(q -> q.getStatus() != QRStatus.USED)
+//	                .max(Comparator.comparing(QRCode::getCreatedAt,
+//	                        Comparator.nullsLast(Comparator.naturalOrder())))
+//	                .orElseGet(() -> matches.stream()
+//	                        .max(Comparator.comparing(QRCode::getCreatedAt,
+//	                                Comparator.nullsLast(Comparator.naturalOrder())))
+//	                        .orElse(matches.get(0)));
+//	
+//	        log.info("Using QRCode id={} (status={}) for barcode '{}'",
+//	                qrCodeEntity.getId(), qrCodeEntity.getStatus(), qrCode);
+//	    }
+//	
+//	    // ✅ Update StockAvailability - reserve quantity when barcode is scanned
+//	    updateReservedQuantityOnScan(qrCodeEntity, scannedBy);
+//	
+//	    // Update QR Code status
+//	    Integer currentScanCount = qrCodeEntity.getScanCount();
+//	    if (currentScanCount == null) {
+//	        currentScanCount = 0;
+//	    }
+//	    int newScanCount = currentScanCount + 1;
+//	
+//	    qrCodeEntity.setStatus(QRStatus.SCANNED);
+//	    qrCodeEntity.setScannedBy(scannedBy);
+//	    qrCodeEntity.setScannedAt(LocalDateTime.now());
+//	    qrCodeEntity.setScanCount(newScanCount);
+//	
+//	    QRCode updatedQRCode = qrCodeRepository.save(qrCodeEntity);
+//	    log.info("✅ Barcode scanned successfully: {} (id={}, Scan count: {})",
+//	            qrCode, updatedQRCode.getId(), newScanCount);
+//	
+//	    return qrCodeMapper.toResponse(updatedQRCode);
+//	}
 }
