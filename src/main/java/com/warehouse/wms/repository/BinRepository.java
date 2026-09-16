@@ -1,9 +1,10 @@
 // ====== FILE: src/main/java/com/warehouse/wms/repository/BinRepository.java ======
 package com.warehouse.wms.repository;
 
-import com.warehouse.wms.entity.Bin;
-import com.warehouse.wms.entity.BinLocation;
-import com.warehouse.wms.entity.Bin.BinStatus;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,9 +14,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import com.warehouse.wms.dto.reports.BinStatusResponse;
+import com.warehouse.wms.entity.Bin;
+import com.warehouse.wms.entity.Bin.BinStatus;
 
 @Repository
 public interface BinRepository extends JpaRepository<Bin, Long> {
@@ -135,4 +136,58 @@ public interface BinRepository extends JpaRepository<Bin, Long> {
     
     // Alternative: Find by level entity
     List<Bin> findByLevelId(Long levelId);
+    
+    
+    
+    long count();
+//    long countByStatusNot(String st);
+//    Double sumMaxCapacity();
+//    Double sumOccupiedVolume();
+//    List<BinStatusResponse> groupByStatus();
+//    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @Query("SELECT COUNT(b) FROM Bin b WHERE CAST(b.status AS string) <> :status")
+    long countByStatusNot(@Param("status") String status);
+    
+    @Query("SELECT COALESCE(SUM(b.occupiedVolumeCm3), 0) FROM Bin b")
+    Double sumOccupiedVolume();
+
+    @Query("SELECT COALESCE(SUM(b.occupiedWeightG), 0) FROM Bin b")
+    Double sumOccupiedWeight();
+
+    @Query("SELECT COALESCE(SUM(b.maxWeightG), 0) FROM Bin b")
+    Double sumMaxWeight();
+
+    @Query("SELECT COALESCE(SUM(b.heightCm * b.lengthCm * b.widthCm), 0) FROM Bin b")
+    Double sumMaxCapacity();
+
+    @Query("SELECT COUNT(b) FROM Bin b WHERE b.status <> 'AVAILABLE'")
+    long countOccupiedBins();
+
+    // *** THE FIX: return List<Object[]>, NOT List<BinStatusResponse> ***
+    @Query("SELECT b.status, COUNT(b) FROM Bin b GROUP BY b.status")
+    List<Object[]> groupByStatus();
+    
+    
+    
+    
+    
+   
 }

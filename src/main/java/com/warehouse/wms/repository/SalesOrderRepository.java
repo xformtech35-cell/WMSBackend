@@ -1,6 +1,10 @@
 package com.warehouse.wms.repository;
 
-import com.warehouse.wms.entity.SalesOrder;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,9 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.warehouse.wms.entity.SalesOrder;
 
 @Repository
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
@@ -171,4 +173,30 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
      
      @Query("SELECT so FROM SalesOrder so ORDER BY so.createdAt DESC")
      List<SalesOrder> findTop10ByOrderByCreatedAtDesc();
+     
+     
+ 
+     
+     
+     
+     
+     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM SalesOrder o WHERE o.status IN :statuses")
+     BigDecimal sumTotalAmountByStatusIn(@Param("statuses") List<String> statuses);
+
+    
+     
+     
+     
+     
+     
+    	@Query(value = """
+    		       SELECT AVG(TIMESTAMPDIFF(MINUTE, o.created_at, o.updated_at))
+    		       FROM sales_orders o
+    		       WHERE o.status = 'DELIVERED'
+    		       """, nativeQuery = true)
+    		Double calculateAvgFulfillmentTimeMinutes();
+    	
+    	
+     
+     
 }

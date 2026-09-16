@@ -44,4 +44,7 @@ public interface SalesOrderItemRepository extends JpaRepository<SalesOrderItem, 
            "GROUP BY soi.itemCode, soi.itemName, soi.uom " +
            "ORDER BY SUM(soi.orderedQuantity) DESC")
     List<Object[]> findTopItem();
-}
+    
+    
+    @Query("SELECT COALESCE(SUM(i.shippedQuantity), 0) FROM SalesOrderItem i")
+    Long sumShippedQuantity();}

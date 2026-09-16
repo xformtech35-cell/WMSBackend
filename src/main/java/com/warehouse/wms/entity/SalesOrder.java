@@ -1,6 +1,6 @@
 package com.warehouse.wms.entity;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +69,9 @@ public class SalesOrder {
 
     @Column(name = "total_quantity")
     private Integer totalQuantity = 0;
+    
+    @Column(name = "total_amount", precision = 15, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Column(name = "total_weight")
     private Double totalWeight = 0.0;

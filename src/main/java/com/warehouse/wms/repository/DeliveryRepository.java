@@ -78,4 +78,18 @@ public interface DeliveryRepository extends JpaRepository<Delivery, Long> {
     @Transactional
     @Query("UPDATE Delivery d SET d.deliveryStatus = :deliveryStatus WHERE d.deliveryNumber = :deliveryNumber")
     void updateDeliveryStatus(@Param("deliveryNumber") String deliveryNumber, @Param("deliveryStatus") String deliveryStatus);
-}
+    
+    
+    
+    long countByDeliveryStatus(String status);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(d) = 0 THEN 0.0
+                    ELSE SUM(CASE WHEN d.deliveryDate <= d.createdAt THEN 1 ELSE 0 END) * 1.0
+                         / COUNT(d)
+               END
+        FROM Delivery d
+        WHERE d.deliveryStatus = 'DELIVERED'
+    """)
+    double computeOnTimeRate();
+    }

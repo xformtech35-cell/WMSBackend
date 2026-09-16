@@ -305,6 +305,78 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
                 @Param("warehouseId") String warehouseId,
                 @Param("quantity")    Integer quantity,
                 Pageable pageable);
-        	
         
+        
+  
+        @Query("SELECT COALESCE(SUM(s.availableQuantity), 0) FROM InventoryStock s")
+        Long sumAvailableQuantity();
+
+        @Query("SELECT COALESCE(SUM(s.inTransitQuantity), 0) FROM InventoryStock s")
+        Long sumInTransitQuantity();
+
+        @Query("SELECT COALESCE(SUM(s.quantity * s.unitCost), 0) FROM InventoryStock s")
+        Double sumInventoryValue();
+
+        @Query("SELECT COUNT(s) FROM InventoryStock s WHERE s.quantity <= 0")
+        long countOutOfStockItems();
+
+        
+        
+        @Query("""
+        	    SELECT s.zone, SUM(s.quantity)
+        	    FROM InventoryStock s
+        	    WHERE s.zone IS NOT NULL
+        	    GROUP BY s.zone
+        	    ORDER BY SUM(s.quantity) DESC
+        	""")
+        	List<Object[]> findTopPerformingZone();
+        
+//        // was: long countOverStockItems();  -> replace with:
+//        @Query("SELECT COUNT(s) FROM InventoryStock s WHERE s.quantity > s.maxStockLevel")
+//        long countOverStockItems();
+
+        // was: Long sumReservedQuantity();  -> replace with:
+        @Query("SELECT COALESCE(SUM(s.reservedQuantity), 0) FROM InventoryStock s")
+        Long sumReservedQuantity();
+        	
+     
+        
+     
+  
+
+        
+        	@Query("""
+        		    SELECT s.zone,
+        		           COALESCE(SUM(s.quantity), 0),
+        		           COALESCE(SUM(s.reservedQuantity), 0)
+        		    FROM InventoryStock s
+        		    WHERE s.zone IS NOT NULL
+        		    GROUP BY s.zone
+        		    ORDER BY s.zone
+        		""")
+        		List<Object[]> zoneUsage();
+        
+  
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        @Query("SELECT COUNT(s) FROM InventoryStock s WHERE s.quantity > 1000")
+        long countOverStockItems();
+
+        @Query("SELECT COUNT(s) FROM InventoryStock s WHERE s.quantity <= 10")
+        long countLowStockItems();
+    
 }

@@ -151,7 +151,15 @@ public class InventoryStock {
 
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
+    
+    @Column(name = "unit_cost", precision = 15, scale = 2)
+    private java.math.BigDecimal unitCost = java.math.BigDecimal.ZERO;
 
+    @Column(name = "min_stock_level")
+    private Integer minStockLevel = 0;
+
+    @Column(name = "max_stock_level")
+    private Integer maxStockLevel = 0;
 
     
     public void addQuantity(Integer qty) {

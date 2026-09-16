@@ -83,4 +83,14 @@ public interface PackageInfoRepository extends JpaRepository<PackageInfo, Long> 
             "LOWER(p.packageType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(p.status) LIKE LOWER(CONCAT('%', :search, '%'))")
      Page<PackageInfo> searchPackages(@Param("search") String search, Pageable pageable);
+     
+     
+     @Query("SELECT COALESCE(SUM(p.packedQuantity), 0) FROM PackageInfo p")
+     Long sumPackedQuantity();
+     
+     @Query("SELECT COALESCE(SUM(p.weight), 0) FROM PackageInfo p")
+     Double sumWeight();
+
+     @Query("SELECT COALESCE(SUM(p.volume), 0) FROM PackageInfo p")
+     Double sumVolume();
 }

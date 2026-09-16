@@ -42,4 +42,9 @@ public interface InboundLineRepository extends JpaRepository<InboundLine, Long> 
            "WHERE i.inboundDate BETWEEN :startDate AND :endDate")
     Double sumVolumeByDateRange(@Param("startDate") LocalDate startDate,
                                 @Param("endDate") LocalDate endDate);
+    
+    
+    
+    
+    
 }

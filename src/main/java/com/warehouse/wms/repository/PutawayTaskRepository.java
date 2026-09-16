@@ -41,8 +41,8 @@ public interface PutawayTaskRepository extends JpaRepository<PutawayTask, Long>,
     List<PutawayTask> findConfirmedBetween(@Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT COUNT(p) FROM PutawayTask p WHERE p.status = :status")
-    Long countByStatus(@Param("status") PutawayStatus status);
+//    @Query("SELECT COUNT(p) FROM PutawayTask p WHERE p.status = :status")
+//    Long countByStatus(@Param("status") PutawayStatus status);
 
     @Query("SELECT p FROM PutawayTask p WHERE p.warehouseId = :warehouseId AND p.status = :status")
     List<PutawayTask> findByWarehouseAndStatus(@Param("warehouseId") String warehouseId,
@@ -54,4 +54,17 @@ public interface PutawayTaskRepository extends JpaRepository<PutawayTask, Long>,
     Page<PutawayTask> findByStatus(PutawayStatus status, Pageable pageable);
 
     Page<PutawayTask> findByAssignedTo(String assignedTo, Pageable pageable);
+    
+    
+    
+//    long countByStatus(String st);
+    
+    
+    
+    
+    
+    
+    
+    @Query("SELECT COUNT(p) FROM PutawayTask p WHERE CAST(p.status AS string) = :status")
+    long countByStatus(@Param("status") String status);
 }

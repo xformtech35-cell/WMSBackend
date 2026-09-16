@@ -1,7 +1,7 @@
 package com.warehouse.wms.repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -337,4 +337,11 @@ public interface InboundRepository extends JpaRepository<Inbound, Long> {
         "AND i.approvalDate IS NOT NULL")
  Double calculateAvgProcessingTime(@Param("startDate") LocalDate startDate,
                                    @Param("endDate") LocalDate endDate);
+ 
+ 
+
+ 
+ 
+ 
+
 }

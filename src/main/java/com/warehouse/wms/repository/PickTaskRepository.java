@@ -107,4 +107,24 @@ public interface PickTaskRepository extends JpaRepository<PickTask, Long> {
      
      @Query("SELECT COUNT(pt) FROM PickTask pt WHERE pt.status = :status")
      long countByStatus(@Param("status") String status);
+     
+     
+     
+//     Long sumPickedQuantity();
+//     Long sumRequiredQuantity();
+//     List<Object[]> findTopPerformer();
+     @Query("SELECT COALESCE(SUM(p.pickedQuantity), 0) FROM PickTask p")
+     Long sumPickedQuantity();
+
+     @Query("SELECT COALESCE(SUM(p.requiredQuantity), 0) FROM PickTask p")
+     Long sumRequiredQuantity();
+
+     @Query("""
+         SELECT p.pickerId, SUM(p.pickedQuantity)
+         FROM PickTask p
+         WHERE p.pickerId IS NOT NULL
+         GROUP BY p.pickerId
+         ORDER BY SUM(p.pickedQuantity) DESC
+     """)
+     List<Object[]> findTopPerformer();
 }
