@@ -1,6 +1,7 @@
 package com.warehouse.wms.controller;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +13,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -268,41 +268,54 @@ public class VendorReturnController {
     }
     
     
-    @PostMapping("/picklists/search")
-    @Operation(summary = "Search pick lists with advanced filters")
-    public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
-            @RequestParam(required = false) String vroNumber,
-            @RequestParam(required = false) String assignTo,
-            @RequestParam(required = false) String supplierName,
-            @RequestParam(required = false) String assignedFromDate,
-            @RequestParam(required = false) String assignedToDate,
-            @RequestParam(required = false) String pickedFromDate,
-            @RequestParam(required = false) String pickedToDate,
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "pickListGeneratedAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection) {
-        log.info("REST request to search pick lists with filters");
-        
-        // Build filter from query parameters
-        PickListFilterDTO filter = PickListFilterDTO.builder()
-                .vroNumber(vroNumber)
-                .assignedTo(assignTo)
-                .supplierName(supplierName)
-                .assignedFromDate(assignedFromDate != null ? LocalDate.parse(assignedFromDate) : null)
-                .assignedToDate(assignedToDate != null ? LocalDate.parse(assignedToDate) : null)
-                .pickedFromDate(pickedFromDate != null ? LocalDate.parse(pickedFromDate) : null)
-                .pickedToDate(pickedToDate != null ? LocalDate.parse(pickedToDate) : null)
-                .searchTerm(search)
-                .build();
-        
-        Pageable pageable = PageRequest.of(page, size, 
-                Sort.Direction.fromString(sortDirection), sortBy);
-        
-        Page<PickListResponseDTO> response = vendorReturnService.searchPickLists(filter, pageable);
-        return ResponseEntity.ok(ApiResponse.success(response));
+  @PostMapping("/picklists/search")
+@Operation(summary = "Search pick lists with advanced filters")
+public ResponseEntity<ApiResponse<Page<PickListResponseDTO>>> searchPickLists(
+        @RequestParam(required = false) String vroNumber,
+        @RequestParam(required = false) String assignTo,
+        @RequestParam(required = false) String supplierName,
+        @RequestParam(required = false) String status,          // ✅ NEW
+        @RequestParam(required = false) String assignedFromDate,
+        @RequestParam(required = false) String assignedToDate,
+        @RequestParam(required = false) String pickedFromDate,
+        @RequestParam(required = false) String pickedToDate,
+        @RequestParam(required = false) String search,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "pickListGeneratedAt") String sortBy,
+        @RequestParam(defaultValue = "DESC") String sortDirection) {
+    log.info("REST request to search pick lists with filters");
+
+    // ✅ NEW: safely parse status
+    VendorReturnOrder.OrderStatus statusEnum = null;
+    if (status != null && !status.isBlank()) {
+        try {
+            statusEnum = VendorReturnOrder.OrderStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status: " + status
+                    + ". Allowed values: " + Arrays.toString(VendorReturnOrder.OrderStatus.values()));
+        }
     }
+
+    // Build filter from query parameters
+    PickListFilterDTO filter = PickListFilterDTO.builder()
+            .vroNumber(vroNumber)
+            .assignedTo(assignTo)
+            .supplierName(supplierName)
+            .status(statusEnum)                                  // ✅ NEW
+            .assignedFromDate(assignedFromDate != null ? LocalDate.parse(assignedFromDate) : null)
+            .assignedToDate(assignedToDate != null ? LocalDate.parse(assignedToDate) : null)
+            .pickedFromDate(pickedFromDate != null ? LocalDate.parse(pickedFromDate) : null)
+            .pickedToDate(pickedToDate != null ? LocalDate.parse(pickedToDate) : null)
+            .searchTerm(search)
+            .build();
+
+    Pageable pageable = PageRequest.of(page, size,
+            Sort.Direction.fromString(sortDirection), sortBy);
+
+    Page<PickListResponseDTO> response = vendorReturnService.searchPickLists(filter, pageable);
+    return ResponseEntity.ok(ApiResponse.success(response));
+}
     
     // ========== WAREHOUSE EXECUTION APIs ==========
 

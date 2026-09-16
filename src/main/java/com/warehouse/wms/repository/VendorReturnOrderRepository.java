@@ -190,32 +190,33 @@ public interface VendorReturnOrderRepository extends JpaRepository<VendorReturnO
     @Query("SELECT o FROM VendorReturnOrder o WHERE o.status IN ('PENDING_PICKING', 'PICKING', 'PENDING_QC', 'QC', 'QC_PASSED', 'QC_FAILED', 'PENDING_PACKING', 'PACKED')")
     List<VendorReturnOrder> findInProgressOrders();
     
-    @Query("SELECT o FROM VendorReturnOrder o " +
-            "WHERE o.pickListGenerated = true " +
-            "AND (:vroNumber IS NULL OR o.vroNumber LIKE CONCAT('%', :vroNumber, '%')) " +
-            "AND (:assignTo IS NULL OR o.assignTo LIKE CONCAT('%', :assignTo, '%')) " +
-            "AND (:supplierName IS NULL OR LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :supplierName, '%'))) " +
-            "AND (:assignedFromDate IS NULL OR DATE(o.pickListGeneratedAt) >= :assignedFromDate) " +
-            "AND (:assignedToDate IS NULL OR DATE(o.pickListGeneratedAt) <= :assignedToDate) " +
-            "AND (:pickedFromDate IS NULL OR DATE(o.pickedAt) >= :pickedFromDate) " +
-            "AND (:pickedToDate IS NULL OR DATE(o.pickedAt) <= :pickedToDate) " +
-            "AND (:searchTerm IS NULL OR " +
-            "LOWER(o.vroNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.supplierName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.supplierCode) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.assignTo) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.dispatchNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(o.trackingNumber) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
-     Page<VendorReturnOrder> findPickListsWithAdvancedFilters(
-             @Param("vroNumber") String vroNumber,
-             @Param("assignTo") String assignTo,
-             @Param("supplierName") String supplierName,
-             @Param("assignedFromDate") LocalDate assignedFromDate,
-             @Param("assignedToDate") LocalDate assignedToDate,
-             @Param("pickedFromDate") LocalDate pickedFromDate,
-             @Param("pickedToDate") LocalDate pickedToDate,
-             @Param("searchTerm") String searchTerm,
-             Pageable pageable);
+    @Query("""
+            SELECT DISTINCT o FROM VendorReturnOrder o
+            LEFT JOIN o.lines l
+            WHERE (:vroNumber IS NULL OR o.vroNumber LIKE CONCAT('%', :vroNumber, '%'))
+              AND (:assignedTo IS NULL OR o.assignTo LIKE CONCAT('%', :assignedTo, '%'))
+              AND (:supplierName IS NULL OR o.supplierName LIKE CONCAT('%', :supplierName, '%'))
+              AND (:status IS NULL OR o.status = :status)
+              AND (:assignedFromDate IS NULL OR o.pickListGeneratedAt >= :assignedFromDate)
+              AND (:assignedToDate IS NULL OR o.pickListGeneratedAt < :assignedToDate)
+              AND (:pickedFromDate IS NULL OR o.pickedAt >= :pickedFromDate)
+              AND (:pickedToDate IS NULL OR o.pickedAt < :pickedToDate)
+              AND (:searchTerm IS NULL OR
+                   LOWER(o.vroNumber)     LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR
+                   LOWER(o.supplierName)  LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR
+                   LOWER(o.assignTo)      LIKE LOWER(CONCAT('%', :searchTerm, '%')))
+            """)
+    Page<VendorReturnOrder> findPickListsWithAdvancedFilters(
+            @Param("vroNumber") String vroNumber,
+            @Param("assignedTo") String assignedTo,
+            @Param("supplierName") String supplierName,
+            @Param("status") VendorReturnOrder.OrderStatus status,
+            @Param("assignedFromDate") LocalDate assignedFromDate,
+            @Param("assignedToDate") LocalDate assignedToDate,
+            @Param("pickedFromDate") LocalDate pickedFromDate,
+            @Param("pickedToDate") LocalDate pickedToDate,
+            @Param("searchTerm") String searchTerm,
+            Pageable pageable);
     
     @Query("""
     	    SELECT DISTINCT o FROM VendorReturnOrder o

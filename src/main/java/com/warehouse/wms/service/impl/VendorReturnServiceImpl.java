@@ -1755,16 +1755,16 @@ public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO
     @Override
     public Page<PickListResponseDTO> searchPickLists(PickListFilterDTO filter, Pageable pageable) {
         log.info("Searching pick lists with filters: {}", filter);
-        
+
         if (filter == null) {
             return getAllPickLists(pageable);
         }
-        
-        // ✅ FIXED: Extract values from DTO and pass as individual parameters
+
         Page<VendorReturnOrder> orders = orderRepository.findPickListsWithAdvancedFilters(
                 filter.getVroNumber(),
                 filter.getAssignedTo(),
                 filter.getSupplierName(),
+                filter.getStatus(),           // ✅ NEW
                 filter.getAssignedFromDate(),
                 filter.getAssignedToDate(),
                 filter.getPickedFromDate(),
@@ -1772,11 +1772,11 @@ public VendorReturnOrderResponseDTO performPacking(Long orderId, List<PackingDTO
                 filter.getSearchTerm(),
                 pageable
         );
-        
+
         List<PickListResponseDTO> pickLists = orders.getContent().stream()
                 .map(this::mapToPickListResponseDTO)
                 .collect(Collectors.toList());
-        
+
         return new PageImpl<>(pickLists, pageable, orders.getTotalElements());
     }
 
