@@ -14,7 +14,7 @@ import java.util.List;
 public class InventoryFilterResponse {
 
     // List of matching stock entries (paginated)
-    private List<InventoryStockResponse> items;
+    //private List<InventoryStockResponse> items;
 
     // Aggregated totals
     private Long totalQuantity;

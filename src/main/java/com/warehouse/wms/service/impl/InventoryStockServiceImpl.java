@@ -401,50 +401,22 @@ public InventoryFilterResponse filterInventoryWithTotals(
     String whFilter   = (warehouseId == null || warehouseId.isBlank()) ? null : warehouseId.trim();
     Integer qtyFilter = quantity;
 
-    // 1. Specification for pageable items
-    Specification<InventoryStock> spec = (root, query, cb) -> {
-        List<Predicate> predicates = new ArrayList<>();
-
-        if (codeFilter != null) {
-            predicates.add(cb.like(cb.lower(root.get("itemCode")),
-                    "%" + codeFilter.toLowerCase() + "%"));
-        }
-        if (nameFilter != null) {
-            predicates.add(cb.like(cb.lower(root.get("itemName")),
-                    "%" + nameFilter.toLowerCase() + "%"));
-        }
-        if (whFilter != null) {
-            predicates.add(cb.equal(root.get("warehouseId"), whFilter));
-        }
-        if (qtyFilter != null) {
-            predicates.add(cb.greaterThanOrEqualTo(root.get("quantity"), qtyFilter));
-        }
-        return cb.and(predicates.toArray(new Predicate[0]));
-    };
-
-    // 2. Paginated items
-//    Page<InventoryStock> page = inventoryStockRepository.findAll(spec, pageable);
-//    List<InventoryStockResponse> items = page.getContent()
-//            .stream()
-//            .map(inventoryStockMapper::toResponses)
-//            .toList();
-
-    // 3. Aggregated totals
+    // 1. Aggregated totals
     InventoryTotalsProjection totals = inventoryStockRepository
             .getFilteredTotals(codeFilter, nameFilter, whFilter, qtyFilter);
 
-    // 4. ✅ Total bin capacity (SUM of Bin.maxCapacity)
+    // 2. Total bin capacity
     Long totalBinCapacity = inventoryStockRepository
             .getTotalBinCapacity(codeFilter, nameFilter, whFilter, qtyFilter);
 
- // 5. Single location suggestion
+    // 3. Single location suggestion
     LocationSuggestion locationSuggestion = inventoryStockRepository
             .findLocationSuggestion(codeFilter, nameFilter, whFilter, qtyFilter, PageRequest.of(0, 1))
             .stream()
             .findFirst()
             .map(row -> LocationSuggestion.builder()
                     .binId((String) row[0])
-                    .warehouseId((String) row[1])   // ✅ NEW
+                    .warehouseId((String) row[1])
                     .fullLocation((String) row[2])
                     .zone((String) row[3])
                     .aisle((String) row[4])
@@ -455,15 +427,25 @@ public InventoryFilterResponse filterInventoryWithTotals(
                     .build())
             .orElse(null);
 
-    // 6. Build response
+    // 4. Null-safe totals
+    long totalQuantity          = (totals == null || totals.getTotalQuantity()          == null) ? 0L : totals.getTotalQuantity();
+    long totalInTransitQuantity = (totals == null || totals.getTotalInTransitQuantity() == null) ? 0L : totals.getTotalInTransitQuantity();
+    long totalReservedQuantity  = (totals == null || totals.getTotalReservedQuantity()  == null) ? 0L : totals.getTotalReservedQuantity();
+    long totalAvailableQuantity = (totals == null || totals.getTotalAvailableQuantity() == null) ? 0L : totals.getTotalAvailableQuantity();
+    long binCapacity            = (totalBinCapacity == null) ? 0L : totalBinCapacity;
+
+    // 5. Free capacity = total capacity - (available + reserved) = capacity - quantity
+    //    Guard against negatives if capacity data is stale
+    long availableCapacity = Math.max(0L,
+            binCapacity - totalAvailableQuantity - totalReservedQuantity);
+
     return InventoryFilterResponse.builder()
-           // .items(items)
-            .totalQuantity(totals.getTotalQuantity())
-            .totalInTransitQuantity(totals.getTotalInTransitQuantity())
-            .totalReservedQuantity(totals.getTotalReservedQuantity())
-            .totalAvailableQuantity(totals.getTotalAvailableQuantity())
-            .totalBinCapacity(totalBinCapacity == null ? 0L : totalBinCapacity)
-            .availableSlots(totalBinCapacity-totals.getTotalQuantity())
+            .totalQuantity(totalQuantity)
+            .totalInTransitQuantity(totalInTransitQuantity)
+            .totalReservedQuantity(totalReservedQuantity)
+            .totalAvailableQuantity(totalAvailableQuantity)
+            .totalBinCapacity(binCapacity)
+            .availableSlots(availableCapacity)
             .locationSuggestion(locationSuggestion)
             .build();
 }
