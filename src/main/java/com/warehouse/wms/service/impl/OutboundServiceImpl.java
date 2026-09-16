@@ -219,10 +219,10 @@ public class OutboundServiceImpl implements OutboundService {
         SalesOrder salesOrder = salesOrderRepository.findBySoNumber(soNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Sales Order not found: " + soNumber));
 
-        if (!salesOrder.getStatus().equals("DRAFT") && !salesOrder.getStatus().equals("CONFIRMED") &&
-            !salesOrder.getStatus().equals("PROCESSING")) {
-            throw new BusinessException("Cannot edit order in status: " + salesOrder.getStatus());
-        }
+//        if (!salesOrder.getStatus().equals("DRAFT") ||salesOrder.getStatus().equals("PENDING") && !salesOrder.getStatus().equals("CONFIRMED") &&
+//            !salesOrder.getStatus().equals("PROCESSING")) {
+//            throw new BusinessException("Cannot edit order in status: " + salesOrder.getStatus());
+//        }
 
         if (request.getCustomerCode() != null) salesOrder.setCustomerCode(request.getCustomerCode());
         if (request.getCustomerName() != null) salesOrder.setCustomerName(request.getCustomerName());
