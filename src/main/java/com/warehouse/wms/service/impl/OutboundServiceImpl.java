@@ -250,7 +250,7 @@ public class OutboundServiceImpl implements OutboundService {
                         .itemName(itemReq.getItemName())
                         .uom(itemReq.getUom() != null ? itemReq.getUom() : "EA")
                         .orderedQuantity(itemReq.getOrderedQuantity())
-                        .reservedQuantity(0)
+                        .reservedQuantity(itemReq.getReservedQuantity())
                         .pickedQuantity(0)
                         .shippedQuantity(0)
                         .batchNumber(itemReq.getBatchNumber())

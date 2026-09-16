@@ -24,6 +24,9 @@ public class SalesOrderItemRequest {
     @NotNull(message = "Ordered quantity is required")
     @Positive(message = "Ordered quantity must be greater than 0")
     private Integer orderedQuantity;
+    
+    private Integer reservedQuantity;
+
 
     private String batchNumber;
     
