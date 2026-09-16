@@ -275,15 +275,29 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
 
             // ---------- Single location suggestion (filtered by quantity too) ----------
         @Query("""
-                SELECT i.binId, i.warehouseId, i.fullLocation, i.zone, i.aisle,
-                       i.rack, i.shelf, i.level, i.binBarcode
+                SELECT
+                    i.binId,
+                    w.warehouseId,
+                    CONCAT(w.warehouseId, '/', z.zoneId, '/', a.aisleId, '/',
+                           r.rackId, '/', l.levelId, '/', b.barcode),
+                    z.zoneId,
+                    a.aisleId,
+                    r.rackId,
+                    NULL,
+                    l.levelId,
+                    b.barcode
                 FROM InventoryStock i
-                JOIN Bin b ON b.barcode = i.binId
+                JOIN Bin b       ON b.barcode = i.binId
+                JOIN Level l     ON l.id = b.level.id
+                JOIN Rack r      ON r.id = l.rack.id
+                JOIN Aisle a     ON a.id = r.aisle.id
+                JOIN Zone z      ON z.id = a.zone.id
+                JOIN Warehouse w ON w.id = z.warehouse.id
                 WHERE (:itemCode IS NULL OR LOWER(i.itemCode) LIKE LOWER(CONCAT('%', :itemCode, '%')))
                   AND (:itemName IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
                   AND (:warehouseId IS NULL OR i.warehouseId = :warehouseId)
                   AND (:quantity IS NULL OR (b.maxCapacity - i.quantity) >= :quantity)
-                ORDER BY (b.maxCapacity - i.quantity) ASC
+                ORDER BY (b.maxCapacity - i.quantity) DESC
                 """)
         List<Object[]> findLocationSuggestion(
                 @Param("itemCode")    String itemCode,
@@ -291,7 +305,6 @@ public interface InventoryStockRepository extends JpaRepository<InventoryStock, 
                 @Param("warehouseId") String warehouseId,
                 @Param("quantity")    Integer quantity,
                 Pageable pageable);
-        	
         	
         
 }
