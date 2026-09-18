@@ -1266,6 +1266,16 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
 
+        
+        
+        PickConfirmation PickConfirmation = pickConfirmationRepository.findByConfirmationNumber(request.getPickListNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getConfirmationNumber()));
+        PickConfirmation.setStatus("CONFIRMED_TO_PACK");
+        
+        
+        pickConfirmationRepository.save(PickConfirmation);
+
+        
         String packageNumber = generatePackageNumber();
         String packageBarcode = generatePackageBarcode();
 

@@ -29,6 +29,8 @@ public class PackageRequest {
 
     @NotBlank(message = "Package type is required")
     private String packageType; // CARTON, BOX, PALLET, BAG
+    
+    private String confirmationNumber;
 
     private Double weight;
     private Double length;
