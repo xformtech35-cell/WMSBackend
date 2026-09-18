@@ -1268,7 +1268,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         
         
-        PickConfirmation PickConfirmation = pickConfirmationRepository.findByConfirmationNumber(request.getPickListNumber())
+        PickConfirmation PickConfirmation = pickConfirmationRepository.findByConfirmationNumber(request.getConfirmationNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getConfirmationNumber()));
         PickConfirmation.setStatus("CONFIRMED_TO_PACK");
         

@@ -108,13 +108,13 @@ public class UserService {
             user.setRole(roleService.findByNameOrThrow(req.getRole()));
         }
 
-        // Update password if provided
-        if (req.getPassword() != null && !req.getPassword().isBlank()) {
-            if (req.getPassword().length() < 8) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters");
-            }
-            user.setPassword(passwordEncoder.encode(req.getPassword()));
-        }
+//        // Update password if provided
+//        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+//            if (req.getPassword().length() < 8) {
+//                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 8 characters");
+//            }
+//            user.setPassword(passwordEncoder.encode(req.getPassword()));
+//        }
 
         // Update profile fields
         setProfileFields(user, req.getFullName(), req.getMobileNumber(),

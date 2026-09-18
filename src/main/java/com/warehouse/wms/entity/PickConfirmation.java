@@ -63,7 +63,7 @@ public class PickConfirmation {
     private LocalDateTime confirmedDate;
 
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "CONFIRMED"; // CONFIRMED, PARTIAL, REJECTED
+    private String status = "CONFIRMED"; // CONFIRMED, PARTIAL, REJECTED,CONFIRMED_To_PACK
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
