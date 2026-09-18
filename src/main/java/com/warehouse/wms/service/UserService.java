@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.warehouse.wms.dto.ChangePasswordRequest;
 import com.warehouse.wms.dto.CreateUserRequest;
 import com.warehouse.wms.dto.ForgotPasswordRequest;
 import com.warehouse.wms.dto.PasswordResetResponse;
@@ -448,6 +449,72 @@ public class UserService {
         
         return new PasswordResetResponse(true, "OTP resent to your email address", email, user.getId());
     }
+    
+    
+    
+    
+    
+    
+ // ========== CHANGE PASSWORD (Authenticated User) ==========
+
+/**
+ * Change password for an authenticated user using old password verification
+ */
+@Transactional
+public PasswordResetResponse changePassword(ChangePasswordRequest request) {
+
+    // 1. Find user by ID
+    User user = findOrThrow(request.getId());
+
+    // 2. Check user is active
+    if (!user.getIsActive()) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "User account is deactivated. Please contact administrator.");
+    }
+
+    // 3. Verify old password
+    if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Old password is incorrect");
+    }
+
+    // 4. Check new passwords match
+    if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "New password and confirm password do not match");
+    }
+
+    // 5. Ensure new password is different from old
+    if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "New password cannot be the same as the old password");
+    }
+
+    // 6. Encode and save new password
+    user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+    userRepository.save(user);
+
+    // 7. Optional: send confirmation email
+    try {
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            emailService.sendPasswordResetConfirmation(
+                    user.getEmail(),
+                    user.getFullName() != null ? user.getFullName() : user.getUsername()
+            );
+        }
+    } catch (Exception e) {
+        log.warn("Failed to send password change confirmation email: {}", e.getMessage());
+    }
+
+    log.info("Password changed successfully for user ID: {}", user.getId());
+
+    return new PasswordResetResponse(
+            true,
+            "Password changed successfully",
+            user.getEmail(),
+            user.getId()
+    );
+}
 
     // ========== HELPERS ==========
 

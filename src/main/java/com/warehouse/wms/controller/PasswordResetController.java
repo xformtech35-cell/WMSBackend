@@ -1,12 +1,23 @@
 package com.warehouse.wms.controller;
 
-import com.warehouse.wms.dto.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.warehouse.wms.dto.ChangePasswordRequest;
+import com.warehouse.wms.dto.ForgotPasswordRequest;
+import com.warehouse.wms.dto.PasswordResetResponse;
+import com.warehouse.wms.dto.ResetPasswordRequest;
+import com.warehouse.wms.dto.VerifyOtpRequest;
 import com.warehouse.wms.service.UserService;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -57,6 +68,13 @@ public class PasswordResetController {
     public ResponseEntity<PasswordResetResponse> resendOtp(
             @Valid @RequestBody ForgotPasswordRequest request) {
         PasswordResetResponse response = userService.resendOtp(request.getEmail());
+        return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/change")
+    public ResponseEntity<PasswordResetResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        PasswordResetResponse response = userService.changePassword(request);
         return ResponseEntity.ok(response);
     }
 }
