@@ -2354,7 +2354,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
         }
 
         Map<String, List<String>> validTransitions = new HashMap<>();
-        validTransitions.put("DRAFT", List.of("PENDING", "CONFIRMED", "CANCELLED"));
+        validTransitions.put("DRAFT", List.of("PENDING", "CONFIRMED", "CANCELLED","APPROVED"));
         validTransitions.put("PENDING", List.of("APPROVED", "CONFIRMED", "CANCELLED"));
         validTransitions.put("APPROVED", List.of("PROCESSING", "CANCELLED"));
         validTransitions.put("CONFIRMED", List.of("PROCESSING", "CANCELLED"));
