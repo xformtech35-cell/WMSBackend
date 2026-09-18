@@ -128,12 +128,15 @@ public class UserService {
         
         // Update active status
      
-        if(user.getEmail()==null)
-        {
-        	user.setEmail(req.getEmail());
-        }
+       
         
-        
+        if (req.getFullName()     != null) user.setFullName(req.getFullName());
+        if (req.getMobileNumber() != null) user.setMobileNumber(req.getMobileNumber());
+        if (req.getDesignation()  != null) user.setDesignation(req.getDesignation());
+        if (req.getEmail()        != null) user.setEmail(req.getEmail());
+        if (req.getDepartment()   != null) user.setDepartment(req.getDepartment());
+        if (req.getLocation()     != null) user.setLocation(req.getLocation());
+        if (req.getBio()          != null) user.setBio(req.getBio());
 
         User updatedUser = userRepository.save(user);
         log.info("User updated successfully with ID: {}", updatedUser.getId());
