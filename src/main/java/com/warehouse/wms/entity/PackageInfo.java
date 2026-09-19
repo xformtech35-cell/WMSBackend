@@ -38,6 +38,9 @@ public class PackageInfo {
     @Column(name = "pick_list_number", length = 50)
     private String pickListNumber;
 
+    private String confirmationNumber;
+
+    
 //    @Column(name = "item_code", nullable = false, length = 50)
 //    private String itemCode;
 

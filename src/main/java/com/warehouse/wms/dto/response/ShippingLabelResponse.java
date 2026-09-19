@@ -16,6 +16,8 @@ public class ShippingLabelResponse {
     private String packageNumber;
     private String packageBarcode;
     private String soNumber;
+    private String confirmationNumber;
+
     private String customerCode;
     private String customerName;
     private String customerAddress;
@@ -35,4 +37,7 @@ public class ShippingLabelResponse {
     private String barcode;
 
     private LocalDateTime createdAt;
+    
+    private PickConfirmationResponse pickConfirmation;
+
 }

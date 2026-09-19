@@ -31,7 +31,8 @@ public class PackageResponse {
     private String status;
     private String remarks;
     private LocalDateTime createdAt;
-    
+    private String confirmationNumber;
+
     private PickListResponse pickList;
 
 }

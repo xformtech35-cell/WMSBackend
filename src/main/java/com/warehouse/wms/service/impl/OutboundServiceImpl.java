@@ -1648,6 +1648,7 @@ private Page<PickConfirmationResponse> groupAndMap(
                 .packageBarcode(packageBarcode)
                 .soNumber(request.getSoNumber())
                 .pickListNumber(request.getPickListNumber())
+                .confirmationNumber(PickConfirmation.getConfirmationNumber())
 //                .itemCode(request.getItemCode())
 //                .itemName(getItemNameFromPickList(request.getPickListNumber(), request.getItemCode()))
                 .packedQuantity(request.getPackedQuantity())
@@ -1779,6 +1780,7 @@ private Page<PickConfirmationResponse> groupAndMap(
         ShippingLabel label = ShippingLabel.builder()
                 .labelNumber(labelNumber)
                 .packageNumber(packageNumber)
+                .confirmationNumber(packageInfo.getConfirmationNumber())
                 .packageBarcode(packageInfo.getPackageBarcode())
                 .soNumber(packageInfo.getSoNumber())
                 .customerCode(salesOrder.getCustomerCode())
@@ -3518,6 +3520,7 @@ private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
             .packageNumber(packageInfo.getPackageNumber())
             .packageBarcode(packageInfo.getPackageBarcode())
             .soNumber(packageInfo.getSoNumber())
+            .confirmationNumber(packageInfo.getConfirmationNumber())
             .pickListNumber(packageInfo.getPickListNumber())
             .packedQuantity(packageInfo.getPackedQuantity())
             .packageType(packageInfo.getPackageType())
@@ -3536,11 +3539,36 @@ private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
 }
 
     private ShippingLabelResponse buildShippingLabelResponse(ShippingLabel label) {
+    	
+    	
+    	
+    	   // ⭐ Fetch PickConfirmation (header + items) by confirmationNumber
+        PickConfirmationResponse pickConfirmationResponse = null;
+
+        if (label.getConfirmationNumber() != null) {
+
+            PickConfirmation confirmation = pickConfirmationRepository
+                    .findByConfirmationNumber(label.getConfirmationNumber())
+                    .orElse(null);
+
+            if (confirmation != null) {
+                pickConfirmationResponse = buildConfirmationResponse(confirmation);
+            } else {
+                log.warn("PickConfirmation not found for confirmationNumber={}",
+                        label.getConfirmationNumber());
+            }
+        }
+    	
+    	
+    	
+    
+    	
         return ShippingLabelResponse.builder()
                 .labelNumber(label.getLabelNumber())
                 .packageNumber(label.getPackageNumber())
                 .packageBarcode(label.getPackageBarcode())
                 .soNumber(label.getSoNumber())
+                .confirmationNumber(label.getConfirmationNumber())
                 .customerCode(label.getCustomerCode())
                 .customerName(label.getCustomerName())
                 .customerAddress(label.getCustomerAddress())
@@ -3559,6 +3587,10 @@ private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
                 .qrImage(label.getQrImage())
                 .labelImage(label.getLabelImage())
                 .barcode(label.getBarcode())
+                
+                .pickConfirmation(pickConfirmationResponse)   // ⭐ nested
+
+                
                 .build();
     }
 

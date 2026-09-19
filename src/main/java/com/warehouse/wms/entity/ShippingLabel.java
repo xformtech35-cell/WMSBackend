@@ -34,6 +34,9 @@ public class ShippingLabel {
 
     @Column(name = "package_barcode", length = 100)
     private String packageBarcode;
+    
+    private String confirmationNumber;
+
 
     @Column(name = "so_number", nullable = false, length = 50)
     private String soNumber;
