@@ -35,8 +35,8 @@ public class PickTaskItemResponse {
     private String sourceLocation;
 
     // ===== Relationships =====
-    private Long inventoryId;            // InventoryStock.id (safe)
-    private Long salesOrderLineId;
+//    private Long inventoryId;            // InventoryStock.id (safe)
+//    private Long salesOrderLineId;
 
     // ===== Status =====
     private String status;               // PENDING, PICKING, PICKED, SHORT, CANCELLED

@@ -986,7 +986,7 @@ public class OutboundServiceImpl implements OutboundService {
                             ? inventoryStock.getBinId() : itemReq.getBinId())
                     .batchNumber(inventoryStock.getBatchNumber() != null
                             ? inventoryStock.getBatchNumber() : itemReq.getBatchNumber())
-                    .sourceLocation(inventoryStock.getFullLocation())
+                    .sourceLocation(itemReq.getSourceLocation())
                     .inventoryStock(inventoryStock)
                     .salesOrderLineId(salesOrderLineId)
                     .status(itemReq.getStatus() != null ? itemReq.getStatus() : "PENDING")
@@ -3352,11 +3352,11 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
 	            .batchNumber(item.getBatchNumber())
 	            .sourceLocation(item.getSourceLocation())
 
-	            // ---- Relationships ----
-	            .inventoryId(inventoryId)
-	            .salesOrderLineId(item.getSalesOrderLineId())
-
-	            // ---- Status ----
+//	            // ---- Relationships ----
+//	            .inventoryId(inventoryId)
+//	            .salesOrderLineId(item.getSalesOrderLineId())
+//
+//	            // ---- Status ----
 	            .status(item.getStatus())
 	            .priority(item.getPriority())
 	            .isScanned(item.getIsScanned())
@@ -3712,74 +3712,141 @@ private PickConfirmationResponse buildConfirmationResponse(List<PickConfirmation
     // ----------------------------------------------------------------
     // UPDATE
     // ----------------------------------------------------------------
-    @Override
-    @Transactional
-    public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest request) {
+  @Override
+@Transactional
+public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest request) {
 
-        log.info("Updating PickTaskItem id={}", id);
+    log.info("Updating PickTaskItem id={}", id);
 
-        PickTaskItem item = pickTaskItemRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "PickTaskItem not found with id: " + id));
+    PickTaskItem item = pickTaskItemRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "PickTaskItem not found with id: " + id));
 
-        item.setItemCode(request.getItemCode());
-        item.setItemName(request.getItemName());
-        item.setUom(request.getUom());
+    PickTask pickTask = pickTaskRepository.findById(item.getPickTask().getId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "PickTask not found with id: " + item.getPickTask().getId()));
 
-        if (request.getRequiredQuantity() != null) {
-            item.setRequiredQuantity(request.getRequiredQuantity());
-        }
-        if (request.getQuantityToPick() != null) {
-            item.setQuantityToPick(request.getQuantityToPick());
-        }
-        if (request.getPickedQuantity() != null) {
-            item.setPickedQuantity(request.getPickedQuantity());
-        }
-        if (request.getShortQuantity() != null) {
-            item.setShortQuantity(request.getShortQuantity());
-        }
+    // ---- Update item fields ----
+    item.setItemCode(request.getItemCode());
+    item.setItemName(request.getItemName());
+    item.setUom(request.getUom());
 
-        item.setLocationBarcode(request.getLocationBarcode());
-        item.setItemBarcode(request.getItemBarcode());
-        item.setBinId(request.getBinId());
-        item.setBatchNumber(request.getBatchNumber());
-        item.setSourceLocation(request.getSourceLocation());
-
-        if (request.getInventoryId() != null) {
-            InventoryStock inventoryStock = inventoryStockRepository.findById(request.getInventoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "InventoryStock not found with id: " + request.getInventoryId()));
-            item.setInventoryStock(inventoryStock);
-        }
-
-        item.setSalesOrderLineId(request.getSalesOrderLineId());
-
-        if (request.getStatus() != null) {
-            item.setStatus(request.getStatus());
-        }
-        item.setPriority(request.getPriority());
-
-        // Handle scan transition
-        if (request.getIsScanned() != null) {
-            boolean wasScanned = Boolean.TRUE.equals(item.getIsScanned());
-            boolean nowScanned = request.getIsScanned();
-            item.setIsScanned(nowScanned);
-
-            if (!wasScanned && nowScanned) {
-                item.setScanTime(LocalDateTime.now());
-            } else if (wasScanned && !nowScanned) {
-                item.setScanTime(null);
-            }
-        }
-
-        item.setRemarks(request.getRemarks());
-
-        PickTaskItem updated = pickTaskItemRepository.save(item);
-        log.info("PickTaskItem updated id={}", updated.getId());
-
-        return buildPickTaskItemResponse(updated);
+    if (request.getRequiredQuantity() != null) {
+        item.setRequiredQuantity(request.getRequiredQuantity());
+    }
+    if (request.getQuantityToPick() != null) {
+        item.setQuantityToPick(request.getQuantityToPick());
+    }
+    if (request.getPickedQuantity() != null) {
+        item.setPickedQuantity(request.getPickedQuantity());
+    }
+    if (request.getShortQuantity() != null) {
+        item.setShortQuantity(request.getShortQuantity());
     }
 
+    item.setLocationBarcode(request.getLocationBarcode());
+    item.setItemBarcode(request.getItemBarcode());
+    item.setBinId(request.getBinId());
+    item.setBatchNumber(request.getBatchNumber());
+    item.setSourceLocation(request.getSourceLocation());
+
+    if (request.getInventoryId() != null) {
+        InventoryStock inventoryStock = inventoryStockRepository.findById(request.getInventoryId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "InventoryStock not found with id: " + request.getInventoryId()));
+        item.setInventoryStock(inventoryStock);
+    }
+
+    item.setSalesOrderLineId(request.getSalesOrderLineId());
+
+    if (request.getStatus() != null) {
+        item.setStatus(request.getStatus());
+    }
+    item.setPriority(request.getPriority());
+
+    // ---- Handle scan transition ----
+    if (request.getIsScanned() != null) {
+        boolean wasScanned = Boolean.TRUE.equals(item.getIsScanned());
+        boolean nowScanned = request.getIsScanned();
+        item.setIsScanned(nowScanned);
+
+        if (!wasScanned && nowScanned) {
+            item.setScanTime(LocalDateTime.now());
+        } else if (wasScanned && !nowScanned) {
+            item.setScanTime(null);
+        }
+    }
+
+    item.setRemarks(request.getRemarks());
+
+    PickTaskItem updated = pickTaskItemRepository.save(item);
+    log.info("PickTaskItem updated id={}", updated.getId());
+
+    // ⭐ ---- Auto-update parent PickTask status based on items ----
+    updatePickTaskStatusBasedOnItems(pickTask);
+
+    return buildPickTaskItemResponse(updated);
+}
+
+  /**
+   * Recalculates and updates the parent PickTask status based on
+   * the current statuses of all its PickTaskItems.
+   *
+   * Rules:
+   *  - ALL items PENDING                       → PickTask = PENDING
+   *  - ALL items PICKING (or mix PENDING+PICKING) → PickTask = PICKING
+   *  - ALL items COMPLETED                     → PickTask = COMPLETED
+   *  - ALL items SHORT                         → PickTask = SHORT
+   *  - ANY item COMPLETED (mixed)              → PickTask = IN_PROGRESS
+   */
+  private void updatePickTaskStatusBasedOnItems(PickTask pickTask) {
+
+      // Fetch fresh list of items (in case collection is stale)
+      List<PickTaskItem> items = pickTaskItemRepository.findByPickTaskId(pickTask.getId());
+
+      if (items == null || items.isEmpty()) {
+          log.warn("No items found for PickTask id={}", pickTask.getId());
+          return;
+      }
+
+      long total       = items.size();
+      long pending     = items.stream().filter(i -> "PENDING".equalsIgnoreCase(i.getStatus())).count();
+      long picking     = items.stream().filter(i -> "PICKING".equalsIgnoreCase(i.getStatus())).count();
+      long completed   = items.stream().filter(i -> "COMPLETED".equalsIgnoreCase(i.getStatus())).count();
+      long shortCount  = items.stream().filter(i -> "SHORT".equalsIgnoreCase(i.getStatus())).count();
+
+      String newStatus;
+
+      if (pending == total) {
+          newStatus = "PENDING";
+      } else if (picking == total) {
+          // 🔥 YOUR REQUIREMENT: all items PICKING → PickTask = PICKING
+          newStatus = "PICKING";
+      } else if (completed == total) {
+          newStatus = "COMPLETED";
+      } else if (shortCount == total) {
+          newStatus = "SHORT";
+      } else if (completed + shortCount == total) {
+          // All items are in a terminal state (completed or short)
+          newStatus = "COMPLETED";
+      } else {
+          // Mixed (some picking, some pending, some completed, etc.)
+          newStatus = "IN_PROGRESS";
+      }
+
+      if (!newStatus.equalsIgnoreCase(pickTask.getStatus())) {
+          log.info("Auto-updating PickTask {} status: {} → {}",
+                  pickTask.getPickTaskNumber(), pickTask.getStatus(), newStatus);
+          pickTask.setStatus(newStatus);
+
+        
+        
+
+          pickTaskRepository.save(pickTask);
+      }
+  }
+  
+  
     // ----------------------------------------------------------------
     // GET BY ID
     // ----------------------------------------------------------------

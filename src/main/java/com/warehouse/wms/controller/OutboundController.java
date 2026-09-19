@@ -498,7 +498,7 @@ public class OutboundController {
     // ----------------------------------------------------------------
     // UPDATE
     // ----------------------------------------------------------------
-    @PutMapping("/{id}")
+    @PutMapping("/PickTaskItem/{id}")
     public ResponseEntity<PickTaskItemResponse> updatePickTaskItem(
             @PathVariable Long id,
             @Valid @RequestBody PickTaskItemRequest request) {
