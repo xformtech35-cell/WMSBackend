@@ -657,12 +657,12 @@ public class OutboundServiceImpl implements OutboundService {
                     .mapToInt(s -> s.getAvailableQuantity() != null ? s.getAvailableQuantity() : 0)
                     .sum();
 
-            if (totalAvailable < item.getOrderedQuantity()) {
+            if (totalAvailable < item.getReservedQuantity()) {
                 throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
                         ". Available: " + totalAvailable + ", Required: " + item.getReservedQuantity());
             }
 
-            int remainingToReserve = item.getOrderedQuantity();
+            int remainingToReserve = item.getReservedQuantity();
             for (InventoryStock stock : stocks) {
                 if (remainingToReserve <= 0) break;
 
@@ -823,6 +823,10 @@ public class OutboundServiceImpl implements OutboundService {
             items.add(pickListItemRepository.save(item));
         }
 
+        PickTask pickTask = createPickTaskFromPickList(savedPickList, items);
+
+        
+        
         salesOrder.setStatus("PICKING");
         salesOrder.setUpdatedBy(request.getCreatedBy());
         salesOrderRepository.save(salesOrder);
@@ -830,6 +834,68 @@ public class OutboundServiceImpl implements OutboundService {
         log.info("Pick List created successfully: {}", pickListNumber);
         return buildPickListResponse(savedPickList, items);
     }
+    
+    /**
+     * Creates a Pick Task (header + items) from an already-saved PickList
+     * and its PickListItems. Auto-generates a unique PickTask number.
+     */
+    private PickTask createPickTaskFromPickList(PickList pickList,
+                                                List<PickListItem> pickListItems) {
+
+        String pickTaskNumber = generatePickTaskNumber();
+
+        PickTask pickTask = PickTask.builder()
+                .pickTaskNumber(pickTaskNumber)
+                .pickListNumber(pickList.getPickListNumber())
+                .soNumber(pickList.getSoNumber())
+                .warehouseId(pickList.getWarehouseId())
+                .assignedTo(pickList.getAssignedTo())
+                .priority(pickList.getPriority())
+                .status("PENDING")
+                .totalItems(pickListItems.size())
+                .totalQuantity(pickListItems.stream()
+                        .mapToInt(i -> i.getRequiredQuantity() != null ? i.getRequiredQuantity() : 0)
+                        .sum())
+                .remarks("Auto-generated from PickList " + pickList.getPickListNumber())
+                .createdBy(pickList.getCreatedBy())
+                .build();
+
+        List<PickTaskItem> taskItems = new ArrayList<>();
+
+        for (PickListItem pli : pickListItems) {
+
+            int qty = pli.getRequiredQuantity() != null ? pli.getRequiredQuantity() : 0;
+
+            PickTaskItem pti = PickTaskItem.builder()
+                    .pickTask(pickTask)
+                    .itemCode(pli.getItemCode())
+                    .itemName(pli.getItemName())
+                    .uom(pli.getUom())
+                    .requiredQuantity(qty)
+                    .quantityToPick(qty)
+                    .pickedQuantity(0)
+                    .shortQuantity(0)
+                    .sourceLocation(pli.getSourceLocation())
+                    .locationBarcode(pli.getSourceLocation())
+                    .batchNumber(pli.getBatchNumber())
+                    .status("PENDING")
+                    .priority(pli.getPriority())
+                    .isScanned(false)
+                    .remarks(pli.getRemarks())
+                    .build();
+
+            taskItems.add(pti);
+        }
+
+        pickTask.setItems(taskItems);
+
+        PickTask savedTask = pickTaskRepository.save(pickTask);
+        log.info("PickTask {} created with {} items",
+                savedTask.getPickTaskNumber(), taskItems.size());
+
+        return savedTask;
+    }
+    
 
     @Override
     public PickListResponse getPickListByNumber(String pickListNumber) {
