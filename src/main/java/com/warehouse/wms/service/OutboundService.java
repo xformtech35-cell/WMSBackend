@@ -12,6 +12,7 @@ import com.warehouse.wms.dto.request.DispatchRequest;
 import com.warehouse.wms.dto.request.PackageRequest;
 import com.warehouse.wms.dto.request.PickConfirmationRequest;
 import com.warehouse.wms.dto.request.PickListRequest;
+import com.warehouse.wms.dto.request.PickTaskItemRequest;
 import com.warehouse.wms.dto.request.PickTaskRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
@@ -23,6 +24,7 @@ import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
+import com.warehouse.wms.dto.response.PickTaskItemResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
 import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
@@ -159,6 +161,21 @@ public interface OutboundService {
 
     void deletePickTask(String pickTaskNumber);
 
+    
+    
+    
+    PickTaskItemResponse addPickTaskItem(Long pickTaskId, PickTaskItemRequest request);
+
+    PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest request);
+
+    PickTaskItemResponse getPickTaskItemById(Long id);
+
+    List<PickTaskItemResponse> getPickTaskItemsByPickTaskId(Long pickTaskId);
+
+    List<PickTaskItemResponse> getAllPickTaskItems();
+
+    void deletePickTaskItem(Long id);
+    
     // ============================================================
     // ================== PICK CONFIRMATION ========================
     // ============================================================
@@ -214,8 +231,7 @@ public interface OutboundService {
             String packageBarcode,
             String soNumber,
             String pickListNumber,
-            String itemCode,
-            String itemName,
+         
             String packageType,
             String status,
             String packedBy,

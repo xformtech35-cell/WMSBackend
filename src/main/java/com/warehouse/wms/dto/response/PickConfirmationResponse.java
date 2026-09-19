@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -13,21 +14,27 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PickConfirmationResponse {
 
+    // ---- Identifiers ----
+    private Long id;
     private String confirmationNumber;
     private String pickTaskNumber;
     private String pickListNumber;
     private String soNumber;
-    private String itemCode;
-    private String itemName;
-    private Integer requiredQuantity;
-    private Integer pickedQuantity;
-    private Integer shortQuantity;
-    private String barcode;
+    private String warehouseId;
+
+    // ---- Summary ----
+    private Integer totalItems;
+    private Integer totalPickedQuantity;
+    private Integer totalShortQuantity;
+
+    // ---- Audit / Status ----
     private String confirmedBy;
     private LocalDateTime confirmedDate;
     private String status;
     private String remarks;
-    
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
+    // ---- Child items ----
+    private List<PickConfirmationItemResponse> items;
 }

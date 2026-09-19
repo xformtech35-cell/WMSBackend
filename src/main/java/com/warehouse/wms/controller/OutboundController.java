@@ -27,6 +27,7 @@ import com.warehouse.wms.dto.request.DispatchRequest;
 import com.warehouse.wms.dto.request.PackageRequest;
 import com.warehouse.wms.dto.request.PickConfirmationRequest;
 import com.warehouse.wms.dto.request.PickListRequest;
+import com.warehouse.wms.dto.request.PickTaskItemRequest;
 import com.warehouse.wms.dto.request.PickTaskRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
 import com.warehouse.wms.dto.request.SalesOrderRequest;
@@ -37,6 +38,7 @@ import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
+import com.warehouse.wms.dto.response.PickTaskItemResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
 import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
@@ -477,6 +479,80 @@ public class OutboundController {
         outboundService.deletePickTask(pickTaskNumber);
         return ResponseEntity.noContent().build();
     }
+    
+    
+    
+    
+    
+    
+    @PostMapping("/pick-task/{pickTaskId}")
+    public ResponseEntity<PickTaskItemResponse> addPickTaskItem(
+            @PathVariable Long pickTaskId,
+            @Valid @RequestBody PickTaskItemRequest request) {
+
+        log.info("REST request to add PickTaskItem for pickTaskId={}", pickTaskId);
+        PickTaskItemResponse response = outboundService.addPickTaskItem(pickTaskId, request);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    // ----------------------------------------------------------------
+    // UPDATE
+    // ----------------------------------------------------------------
+    @PutMapping("/{id}")
+    public ResponseEntity<PickTaskItemResponse> updatePickTaskItem(
+            @PathVariable Long id,
+            @Valid @RequestBody PickTaskItemRequest request) {
+
+        log.info("REST request to update PickTaskItem id={}", id);
+        PickTaskItemResponse response = outboundService.updatePickTaskItem(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    // ----------------------------------------------------------------
+    // GET BY ID
+    // ----------------------------------------------------------------
+    @GetMapping("/{id}")
+    public ResponseEntity<PickTaskItemResponse> getPickTaskItemById(@PathVariable Long id) {
+        return ResponseEntity.ok(outboundService.getPickTaskItemById(id));
+    }
+
+    // ----------------------------------------------------------------
+    // GET BY PICK TASK ID
+    // ----------------------------------------------------------------
+    @GetMapping("/pick-task/{pickTaskId}")
+    public ResponseEntity<List<PickTaskItemResponse>> getByPickTaskId(
+            @PathVariable Long pickTaskId) {
+        return ResponseEntity.ok(
+        		outboundService.getPickTaskItemsByPickTaskId(pickTaskId));
+    }
+
+    // ----------------------------------------------------------------
+    // GET ALL
+    // ----------------------------------------------------------------
+    @GetMapping
+    public ResponseEntity<List<PickTaskItemResponse>> getAllPickTaskItems() {
+        return ResponseEntity.ok(outboundService.getAllPickTaskItems());
+    }
+
+    // ----------------------------------------------------------------
+    // DELETE
+    // ----------------------------------------------------------------
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePickTaskItem(@PathVariable Long id) {
+    	outboundService.deletePickTaskItem(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     // ============================================================
     // ================== PICK CONFIRMATION ========================
@@ -567,8 +643,7 @@ public class OutboundController {
             @RequestParam(required = false) String packageBarcode,
             @RequestParam(required = false) String soNumber,
             @RequestParam(required = false) String pickListNumber,
-            @RequestParam(required = false) String itemCode,
-            @RequestParam(required = false) String itemName,
+         
             @RequestParam(required = false) String packageType,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String packedBy,
@@ -591,7 +666,7 @@ public class OutboundController {
 
         Page<PackageResponse> response = outboundService.getAllPackagesWithFilters(
                 packageNumber, packageBarcode, soNumber, pickListNumber,
-                itemCode, itemName, packageType, status, packedBy,
+                packageType, status, packedBy,
                 startDate, endDate, startPackedDate, endPackedDate,
                 minWeight, maxWeight, minQuantity, maxQuantity, pageable);
 

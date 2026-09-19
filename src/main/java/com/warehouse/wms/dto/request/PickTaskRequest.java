@@ -1,12 +1,14 @@
 package com.warehouse.wms.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @Builder
@@ -17,32 +19,23 @@ public class PickTaskRequest {
     @NotBlank(message = "Pick List Number is required")
     private String pickListNumber;
 
-    @NotBlank(message = "Item code is required")
-    private String itemCode;
+    private String soNumber;
 
-    @NotNull(message = "Required quantity is required")
-    @Positive(message = "Required quantity must be greater than 0")
-    private Integer requiredQuantity;
+    private String warehouseId;
 
-    @NotBlank(message = "Location barcode is required")
-    private String locationBarcode;
+    private String priority;
 
-    @NotBlank(message = "Item barcode is required")
-    private String itemBarcode;
+    private String assignedTo;
 
-    private String binId;
+    private String status;
 
-    private String batchNumber;
-
-    private String pickerId;
-    
-    private Long inventoryId;  // ADD THIS FIELD
-    
-    private Long salesOrderLineId;  // ADD THIS FIELD
-
-    
-
-    private String pickerName;
+    private String remarks;
 
     private String createdBy;
+
+    private String updatedBy;
+
+    @NotEmpty(message = "At least one item is required")
+    @Valid
+    private List<PickTaskItemRequest> items;
 }

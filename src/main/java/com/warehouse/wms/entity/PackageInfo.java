@@ -38,8 +38,8 @@ public class PackageInfo {
     @Column(name = "pick_list_number", length = 50)
     private String pickListNumber;
 
-    @Column(name = "item_code", nullable = false, length = 50)
-    private String itemCode;
+//    @Column(name = "item_code", nullable = false, length = 50)
+//    private String itemCode;
 
     @Column(name = "item_name", length = 200)
     private String itemName;

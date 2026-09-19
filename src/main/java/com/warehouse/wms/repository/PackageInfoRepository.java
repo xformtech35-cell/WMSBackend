@@ -39,8 +39,6 @@ public interface PackageInfoRepository extends JpaRepository<PackageInfo, Long> 
             "(:packageBarcode IS NULL OR p.packageBarcode LIKE %:packageBarcode%) AND " +
             "(:soNumber IS NULL OR p.soNumber LIKE %:soNumber%) AND " +
             "(:pickListNumber IS NULL OR p.pickListNumber LIKE %:pickListNumber%) AND " +
-            "(:itemCode IS NULL OR p.itemCode LIKE %:itemCode%) AND " +
-            "(:itemName IS NULL OR LOWER(p.itemName) LIKE LOWER(CONCAT('%', :itemName, '%'))) AND " +
             "(:packageType IS NULL OR p.packageType = :packageType) AND " +
             "(:status IS NULL OR p.status = :status) AND " +
             "(:packedBy IS NULL OR LOWER(p.packedBy) LIKE LOWER(CONCAT('%', :packedBy, '%'))) AND " +
@@ -57,8 +55,6 @@ public interface PackageInfoRepository extends JpaRepository<PackageInfo, Long> 
              @Param("packageBarcode") String packageBarcode,
              @Param("soNumber") String soNumber,
              @Param("pickListNumber") String pickListNumber,
-             @Param("itemCode") String itemCode,
-             @Param("itemName") String itemName,
              @Param("packageType") String packageType,
              @Param("status") String status,
              @Param("packedBy") String packedBy,
@@ -78,8 +74,6 @@ public interface PackageInfoRepository extends JpaRepository<PackageInfo, Long> 
             "LOWER(p.packageBarcode) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(p.soNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(p.pickListNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(p.itemCode) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(p.itemName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(p.packageType) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "LOWER(p.status) LIKE LOWER(CONCAT('%', :search, '%'))")
      Page<PackageInfo> searchPackages(@Param("search") String search, Pageable pageable);

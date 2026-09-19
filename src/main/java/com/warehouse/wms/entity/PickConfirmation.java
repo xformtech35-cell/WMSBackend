@@ -9,12 +9,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "wms_pick_confirmation", indexes = {
-    @Index(name = "idx_pc_number", columnList = "confirmation_number"),
-    @Index(name = "idx_pc_so_number", columnList = "so_number"),
-    @Index(name = "idx_pc_pt_number", columnList = "pick_task_number")
+    @Index(name = "idx_pc_number",  columnList = "confirmation_number"),
+    @Index(name = "idx_pc_so",      columnList = "so_number"),
+    @Index(name = "idx_pc_pt",      columnList = "pick_task_number"),
+    @Index(name = "idx_pc_status",  columnList = "status")
 })
 @Data
 @Builder
@@ -26,6 +29,7 @@ public class PickConfirmation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Unique per confirmation (one header = one confirmation). */
     @Column(name = "confirmation_number", unique = true, nullable = false, length = 50)
     private String confirmationNumber;
 
@@ -38,23 +42,8 @@ public class PickConfirmation {
     @Column(name = "so_number", length = 50)
     private String soNumber;
 
-    @Column(name = "item_code", nullable = false, length = 50)
-    private String itemCode;
-
-    @Column(name = "item_name", length = 200)
-    private String itemName;
-
-    @Column(name = "required_quantity")
-    private Integer requiredQuantity = 0;
-
-    @Column(name = "picked_quantity", nullable = false)
-    private Integer pickedQuantity = 0;
-
-    @Column(name = "short_quantity")
-    private Integer shortQuantity = 0;
-
-    @Column(name = "barcode", length = 100)
-    private String barcode;
+    @Column(name = "warehouse_id", length = 50)
+    private String warehouseId;
 
     @Column(name = "confirmed_by", length = 100)
     private String confirmedBy;
@@ -62,8 +51,18 @@ public class PickConfirmation {
     @Column(name = "confirmed_date")
     private LocalDateTime confirmedDate;
 
+    /** CONFIRMED, PARTIAL, REJECTED, CONFIRMED_TO_PACK */
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "CONFIRMED"; // CONFIRMED, PARTIAL, REJECTED,CONFIRMED_To_PACK
+    private String status = "CONFIRMED";
+
+    @Column(name = "total_items")
+    private Integer totalItems = 0;
+
+    @Column(name = "total_picked_quantity")
+    private Integer totalPickedQuantity = 0;
+
+    @Column(name = "total_short_quantity")
+    private Integer totalShortQuantity = 0;
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
@@ -75,4 +74,22 @@ public class PickConfirmation {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // ---------------- One-to-Many with items ----------------
+    @OneToMany(mappedBy = "pickConfirmation",
+               cascade = CascadeType.ALL,
+               orphanRemoval = true,
+               fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<PickConfirmationItem> items = new ArrayList<>();
+
+    public void addItem(PickConfirmationItem item) {
+        items.add(item);
+        item.setPickConfirmation(this);
+    }
+
+    public void removeItem(PickConfirmationItem item) {
+        items.remove(item);
+        item.setPickConfirmation(null);
+    }
 }

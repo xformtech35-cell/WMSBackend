@@ -20,8 +20,7 @@ public class PackageRequest {
     @NotBlank(message = "Pick List Number is required")
     private String pickListNumber;
 
-    @NotBlank(message = "Item code is required")
-    private String itemCode;
+
 
     @NotNull(message = "Packed quantity is required")
     @Positive(message = "Packed quantity must be greater than 0")

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +32,11 @@ import com.warehouse.wms.dto.request.BarcodeScanRequest;
 import com.warehouse.wms.dto.request.DeliveryRequest;
 import com.warehouse.wms.dto.request.DispatchRequest;
 import com.warehouse.wms.dto.request.PackageRequest;
+import com.warehouse.wms.dto.request.PickConfirmationItemRequest;
 import com.warehouse.wms.dto.request.PickConfirmationRequest;
 import com.warehouse.wms.dto.request.PickListItemRequest;
 import com.warehouse.wms.dto.request.PickListRequest;
+import com.warehouse.wms.dto.request.PickTaskItemRequest;
 import com.warehouse.wms.dto.request.PickTaskRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemRequest;
 import com.warehouse.wms.dto.request.SalesOrderItemUpdateRequest;
@@ -43,9 +47,11 @@ import com.warehouse.wms.dto.response.DeliveryResponse;
 import com.warehouse.wms.dto.response.DispatchResponse;
 import com.warehouse.wms.dto.response.LabelImageResponse;
 import com.warehouse.wms.dto.response.PackageResponse;
+import com.warehouse.wms.dto.response.PickConfirmationItemResponse;
 import com.warehouse.wms.dto.response.PickConfirmationResponse;
 import com.warehouse.wms.dto.response.PickListItemResponse;
 import com.warehouse.wms.dto.response.PickListResponse;
+import com.warehouse.wms.dto.response.PickTaskItemResponse;
 import com.warehouse.wms.dto.response.PickTaskResponse;
 import com.warehouse.wms.dto.response.QrCodeResponses;
 import com.warehouse.wms.dto.response.SalesOrderItemResponse;
@@ -59,9 +65,11 @@ import com.warehouse.wms.entity.Dispatch;
 import com.warehouse.wms.entity.InventoryStock;
 import com.warehouse.wms.entity.PackageInfo;
 import com.warehouse.wms.entity.PickConfirmation;
+import com.warehouse.wms.entity.PickConfirmationItem;
 import com.warehouse.wms.entity.PickList;
 import com.warehouse.wms.entity.PickListItem;
 import com.warehouse.wms.entity.PickTask;
+import com.warehouse.wms.entity.PickTaskItem;
 import com.warehouse.wms.entity.SalesOrder;
 import com.warehouse.wms.entity.SalesOrderItem;
 import com.warehouse.wms.entity.ShipmentConfirmation;
@@ -77,6 +85,7 @@ import com.warehouse.wms.repository.PackageInfoRepository;
 import com.warehouse.wms.repository.PickConfirmationRepository;
 import com.warehouse.wms.repository.PickListItemRepository;
 import com.warehouse.wms.repository.PickListRepository;
+import com.warehouse.wms.repository.PickTaskItemRepository;
 import com.warehouse.wms.repository.PickTaskRepository;
 import com.warehouse.wms.repository.SalesOrderItemRepository;
 import com.warehouse.wms.repository.SalesOrderRepository;
@@ -111,6 +120,7 @@ public class OutboundServiceImpl implements OutboundService {
     private final InventoryStockRepository inventoryStockRepository;
     private final SoNumberGenerator soNumberGenerator;
     private final BarcodeUtils barcodeUtils;
+    private final PickTaskItemRepository pickTaskItemRepository;
 
     // ============================================================
     // ===================== SALES ORDER ===========================
@@ -649,7 +659,7 @@ public class OutboundServiceImpl implements OutboundService {
 
             if (totalAvailable < item.getOrderedQuantity()) {
                 throw new BusinessException("Insufficient stock for item: " + item.getItemCode() +
-                        ". Available: " + totalAvailable + ", Required: " + item.getOrderedQuantity());
+                        ". Available: " + totalAvailable + ", Required: " + item.getReservedQuantity());
             }
 
             int remainingToReserve = item.getOrderedQuantity();
@@ -901,107 +911,132 @@ public class OutboundServiceImpl implements OutboundService {
     // ===================== PICK TASK =============================
     // ============================================================
 
- @Override
-public PickTaskResponse createPickTask(PickTaskRequest request) {
-    log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
+    @Override
+    @Transactional
+    public PickTaskResponse createPickTask(PickTaskRequest request) {
+        log.info("Creating Pick Task for Pick List: {}", request.getPickListNumber());
 
-    PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
-            .orElseThrow(() -> new ResourceNotFoundException("Pick List not found: " + request.getPickListNumber()));
+        // 1) Validate Pick List
+        PickList pickList = pickListRepository.findByPickListNumber(request.getPickListNumber())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Pick List not found: " + request.getPickListNumber()));
 
-    List<PickListItem> items = pickListItemRepository.findByPickListNumber(request.getPickListNumber());
-    PickListItem pickItem = items.stream()
-            .filter(item -> item.getItemCode().equals(request.getItemCode()))
-            .findFirst()
-            .orElseThrow(() -> new ResourceNotFoundException("Item not found in Pick List: " + request.getItemCode()));
+        // 2) Load all Pick List Items for lookup
+        List<PickListItem> pickListItems =
+                pickListItemRepository.findByPickListNumber(request.getPickListNumber());
 
-    String pickTaskNumber = generatePickTaskNumber();
+        // 3) Generate task number
+        String pickTaskNumber = generatePickTaskNumber();
 
-    // ✅ FIND INVENTORY STOCK
-    InventoryStock inventoryStock = null;
-    String locationBarcode = request.getLocationBarcode();
-    String batchNumber = request.getBatchNumber();
-    String binId = request.getBinId();
+        // 4) Build header
+        PickTask pickTask = PickTask.builder()
+                .pickTaskNumber(pickTaskNumber)
+                .pickListNumber(request.getPickListNumber())
+                .soNumber(request.getSoNumber() != null
+                        ? request.getSoNumber()
+                        : pickList.getSoNumber())
+                .warehouseId(request.getWarehouseId())
+                .assignedTo(request.getAssignedTo())
+                .priority(request.getPriority() != null ? request.getPriority() : "NORMAL")
+                .status(request.getStatus() != null ? request.getStatus() : "PENDING")
+                .remarks(request.getRemarks())
+                .createdBy(request.getCreatedBy())
+                .updatedBy(request.getUpdatedBy())
+                .totalItems(0)
+                .totalQuantity(0)
+                .build();
 
-    // 1. First try to find inventory by location if provided
-    if (locationBarcode != null && !locationBarcode.isEmpty()) {
-        inventoryStock = inventoryStockRepository
-                .findByItemCodeAndFullLocationAndAvailableQuantityGreaterThan(
-                        request.getItemCode(),
-                        locationBarcode,
-                        0
-                )
-                .orElse(null);
-        
-        if (inventoryStock != null) {
-            binId = inventoryStock.getBinId();
-            batchNumber = inventoryStock.getBatchNumber();
-            locationBarcode = inventoryStock.getFullLocation();
+        // 5) Build items
+        int totalQty = 0;
+        for (PickTaskItemRequest itemReq : request.getItems()) {
+
+            // 5a) Validate item exists in Pick List
+            PickListItem pickItem = pickListItems.stream()
+                    .filter(pli -> pli.getItemCode().equals(itemReq.getItemCode()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Item not found in Pick List: " + itemReq.getItemCode()));
+
+            // 5b) Resolve inventory
+            InventoryStock inventoryStock = resolveInventory(itemReq);
+
+            // 5c) Resolve SO line
+            Long salesOrderLineId = resolveSalesOrderLineId(itemReq);
+
+            // 5d) Build item
+            PickTaskItem taskItem = PickTaskItem.builder()
+                    .itemCode(itemReq.getItemCode())
+                    .itemName(itemReq.getItemName() != null
+                            ? itemReq.getItemName()
+                            : pickItem.getItemName())
+                    .uom(itemReq.getUom() != null ? itemReq.getUom() : pickItem.getUom())
+                    .requiredQuantity(itemReq.getRequiredQuantity())
+                    .quantityToPick(itemReq.getQuantityToPick() != null
+                            ? itemReq.getQuantityToPick()
+                            : itemReq.getRequiredQuantity())
+                    .pickedQuantity(itemReq.getPickedQuantity() != null
+                            ? itemReq.getPickedQuantity() : 0)
+                    .shortQuantity(itemReq.getShortQuantity() != null
+                            ? itemReq.getShortQuantity() : 0)
+                    .locationBarcode(inventoryStock.getFullLocation() != null
+                            ? inventoryStock.getFullLocation()
+                            : itemReq.getLocationBarcode())
+                    .itemBarcode(itemReq.getItemBarcode())
+                    .binId(inventoryStock.getBinId() != null
+                            ? inventoryStock.getBinId() : itemReq.getBinId())
+                    .batchNumber(inventoryStock.getBatchNumber() != null
+                            ? inventoryStock.getBatchNumber() : itemReq.getBatchNumber())
+                    .sourceLocation(inventoryStock.getFullLocation())
+                    .inventoryStock(inventoryStock)
+                    .salesOrderLineId(salesOrderLineId)
+                    .status(itemReq.getStatus() != null ? itemReq.getStatus() : "PENDING")
+                    .priority(itemReq.getPriority() != null
+                            ? itemReq.getPriority() : request.getPriority())
+                    .isScanned(itemReq.getIsScanned() != null ? itemReq.getIsScanned() : false)
+                    .remarks(itemReq.getRemarks())
+                    .createdBy(request.getCreatedBy())
+                    .build();
+
+            pickTask.addItem(taskItem);
+            totalQty += itemReq.getRequiredQuantity();
         }
-    }
 
-    // 2. If not found by location, find any available inventory
-    if (inventoryStock == null) {
-        inventoryStock = inventoryStockRepository
-                .findFirstByItemCodeAndAvailableQuantityGreaterThan(
-                        request.getItemCode(),
-                        0
-                )
-                .orElseThrow(() -> new InsufficientInventoryException(
-                        "No available inventory for item: " + request.getItemCode()
-                ));
-        
-        binId = inventoryStock.getBinId();
-        batchNumber = inventoryStock.getBatchNumber();
-        locationBarcode = inventoryStock.getFullLocation();
-    }
+        // 6) Set totals
+        pickTask.setTotalItems(request.getItems().size());
+        pickTask.setTotalQuantity(totalQty);
 
-    Long salesOrderLineId = request.getSalesOrderLineId();
-    if (salesOrderLineId == null) {
-        List<SalesOrderItem> orderItems = salesOrderItemRepository.findByItemCode(request.getItemCode());
-        if (!orderItems.isEmpty()) {
-            salesOrderLineId = orderItems.get(0).getId();
+        // 7) Save
+        PickTask savedTask = pickTaskRepository.save(pickTask);
+
+        // 8) Cascade to Pick List
+        pickList.setStatus("PICKING");
+        pickList.setUpdatedBy(request.getCreatedBy());
+        pickListRepository.save(pickList);
+
+        // 9) Cascade to Pick List Items
+        for (PickTaskItem taskItem : savedTask.getItems()) {
+            pickListItems.stream()
+                    .filter(pli -> pli.getItemCode().equals(taskItem.getItemCode()))
+                    .findFirst()
+                    .ifPresent(pli -> {
+                        pli.setStatus("PICKING");
+                        pickListItemRepository.save(pli);
+                    });
         }
+
+        log.info("Pick Task created successfully: {} with {} items",
+                pickTaskNumber, savedTask.getItems().size());
+        return buildPickTaskResponse(savedTask);
     }
 
-    PickTask pickTask = PickTask.builder()
-            .pickTaskNumber(pickTaskNumber)
-            .pickListNumber(request.getPickListNumber())
-            .soNumber(pickList.getSoNumber())
-            .itemCode(request.getItemCode())
-            .itemName(pickItem.getItemName())
-            .uom(pickItem.getUom())
-            .requiredQuantity(request.getRequiredQuantity())
-            .quantityToPick(request.getRequiredQuantity())
-            .inventoryStock(inventoryStock)  // ✅ Now defined
-            .salesOrderLineId(salesOrderLineId)
-            .pickedQuantity(0)
-            .locationBarcode(locationBarcode)
-            .itemBarcode(request.getItemBarcode())
-            .binId(binId)
-            .batchNumber(batchNumber)
-            .pickerId(request.getPickerId())
-            .pickerName(request.getPickerName())
-            .status("PENDING")
-            .isScanned(false)
-            .createdBy(request.getCreatedBy())
-            .build();
-
-    PickTask savedTask = pickTaskRepository.save(pickTask);
-
-    pickList.setStatus("PICKING");
-    pickList.setUpdatedBy(request.getCreatedBy());
-    pickListRepository.save(pickList);
-
-    pickItem.setStatus("PICKING");
-    pickListItemRepository.save(pickItem);
-
-    log.info("Pick Task created successfully: {}", pickTaskNumber);
-    return buildPickTaskResponse(savedTask);
-}
+    // ================================================================
+    // READ
+    // ================================================================
     @Override
     public PickTaskResponse getPickTaskByNumber(String pickTaskNumber) {
         PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Pick Task not found: " + pickTaskNumber));
         return buildPickTaskResponse(pickTask);
     }
 
@@ -1046,215 +1081,476 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .map(this::buildPickTaskResponse);
     }
 
+    // ================================================================
+    // SCAN (header + cascade to all pending items)
+    // ================================================================
     @Override
+    @Transactional
     public PickTaskResponse scanPickTask(String pickTaskNumber, String pickerId, String pickerName) {
         PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Pick Task not found: " + pickTaskNumber));
 
-        if (pickTask.getIsScanned()) {
-            throw new BusinessException("Pick Task already scanned");
+        if ("CONFIRMED".equals(pickTask.getStatus()) || "CANCELLED".equals(pickTask.getStatus())) {
+            throw new BusinessException("Cannot scan pick task in status: " + pickTask.getStatus());
         }
 
-        pickTask.setStatus("SCANNED");
-        pickTask.setIsScanned(true);
-        pickTask.setPickerId(pickerId);
-        pickTask.setPickerName(pickerName);
-        pickTask.setScanTime(LocalDateTime.now());
+        // ---- Header ----
+        pickTask.setStatus("PICKING");
+        pickTask.setAssignedTo(pickerId);
         pickTask.setUpdatedBy(pickerName);
+
+        // ---- Items (scan each pending item) ----
+        LocalDateTime now = LocalDateTime.now();
+        for (PickTaskItem item : pickTask.getItems()) {
+            if (!Boolean.TRUE.equals(item.getIsScanned())) {
+                item.setIsScanned(true);
+                item.setStatus("PICKING");
+                item.setScanTime(now);
+                item.setUpdatedBy(pickerName);
+            }
+        }
 
         PickTask updated = pickTaskRepository.save(pickTask);
 
-        PickList pickList = pickListRepository.findByPickListNumber(pickTask.getPickListNumber()).orElse(null);
-        if (pickList != null) {
-            pickList.setStatus("PICKING");
-            pickListRepository.save(pickList);
-        }
+        // ---- Cascade to Pick List ----
+        pickListRepository.findByPickListNumber(pickTask.getPickListNumber())
+                .ifPresent(pl -> {
+                    pl.setStatus("PICKING");
+                    pl.setUpdatedBy(pickerName);
+                    pickListRepository.save(pl);
+                });
 
-        List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
-        items.stream()
-                .filter(item -> item.getItemCode().equals(pickTask.getItemCode()))
-                .findFirst()
-                .ifPresent(item -> {
-                    item.setStatus("PICKING");
-                    pickListItemRepository.save(item);
+        // ---- Cascade to Pick List Items ----
+        pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber())
+                .stream()
+                .filter(pli -> pickTask.getItems().stream()
+                        .anyMatch(ti -> ti.getItemCode().equals(pli.getItemCode())))
+                .forEach(pli -> {
+                    pli.setStatus("PICKING");
+                    pickListItemRepository.save(pli);
                 });
 
         log.info("Pick Task scanned successfully: {}", pickTaskNumber);
         return buildPickTaskResponse(updated);
     }
 
+    // ================================================================
+    // UPDATE STATUS
+    // ================================================================
     @Override
+    @Transactional
     public PickTaskResponse updatePickTaskStatus(String pickTaskNumber, String status) {
         PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Pick Task not found: " + pickTaskNumber));
 
-        if (pickTask.getStatus().equals("CONFIRMED") || pickTask.getStatus().equals("CANCELLED")) {
-            throw new BusinessException("Cannot update status of confirmed or cancelled pick task");
+        if ("CONFIRMED".equals(pickTask.getStatus()) || "CANCELLED".equals(pickTask.getStatus())) {
+            throw new BusinessException(
+                    "Cannot update status of confirmed or cancelled pick task");
         }
 
         pickTask.setStatus(status);
         pickTask.setUpdatedBy("SYSTEM");
-        pickTask.setUpdatedAt(LocalDateTime.now());
+
+        if ("COMPLETED".equals(status) || "CONFIRMED".equals(status)) {
+            pickTask.setCompletedDate(LocalDateTime.now());
+        }
 
         PickTask updated = pickTaskRepository.save(pickTask);
         log.info("Pick Task status updated successfully: {}", pickTaskNumber);
         return buildPickTaskResponse(updated);
     }
 
+    // ================================================================
+    // UPDATE ITEM QUANTITY
+    // ================================================================
+  
+    public PickTaskItemResponse updateItemQuantity(Long itemId, Integer pickedQuantity, String remarks) {
+        PickTaskItem item = pickTaskItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PickTaskItem not found: " + itemId));
+
+        item.setPickedQuantity(pickedQuantity);
+        if (pickedQuantity >= item.getRequiredQuantity()) {
+            item.setStatus("PICKED");
+            item.setShortQuantity(0);
+        } else if (pickedQuantity > 0) {
+            item.setStatus("PARTIAL");
+            item.setShortQuantity(item.getRequiredQuantity() - pickedQuantity);
+        } else {
+            item.setStatus("PICKING");
+            item.setShortQuantity(item.getRequiredQuantity());
+        }
+
+        if (remarks != null) item.setRemarks(remarks);
+        item.setScanTime(LocalDateTime.now());
+        item.setIsScanned(true);
+
+        PickTaskItem saved = pickTaskItemRepository.save(item);
+
+        // Recalculate parent status
+        recalculateParentStatus(saved.getPickTask());
+
+        return buildPickTaskItemResponse(saved);
+    }
+
+    // ================================================================
+    // DELETE
+    // ================================================================
     @Override
+    @Transactional
     public void deletePickTask(String pickTaskNumber) {
         PickTask pickTask = pickTaskRepository.findByPickTaskNumber(pickTaskNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + pickTaskNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Pick Task not found: " + pickTaskNumber));
 
-        if (pickTask.getStatus().equals("CONFIRMED") || pickTask.getStatus().equals("SCANNED")) {
-            throw new BusinessException("Cannot delete pick task in status: " + pickTask.getStatus());
+        if ("CONFIRMED".equals(pickTask.getStatus()) || "SCANNED".equals(pickTask.getStatus())) {
+            throw new BusinessException(
+                    "Cannot delete pick task in status: " + pickTask.getStatus());
         }
 
         pickTaskRepository.delete(pickTask);
         log.info("Pick Task deleted successfully: {}", pickTaskNumber);
     }
 
+    // ================================================================
+    // HELPERS
+    // ================================================================
+
+    private InventoryStock resolveInventory(PickTaskItemRequest itemReq) {
+        // 1) Prefer explicit inventoryId if provided
+        if (itemReq.getInventoryId() != null) {
+            return inventoryStockRepository.findById(itemReq.getInventoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Inventory not found: " + itemReq.getInventoryId()));
+        }
+
+        // 2) Try by location
+        String locationBarcode = itemReq.getLocationBarcode();
+        if (locationBarcode != null && !locationBarcode.isEmpty()) {
+            InventoryStock stock = inventoryStockRepository
+                    .findByItemCodeAndFullLocationAndAvailableQuantityGreaterThan(
+                            itemReq.getItemCode(), locationBarcode, 0)
+                    .orElse(null);
+            if (stock != null) return stock;
+        }
+
+        // 3) Fallback: any available inventory
+        return inventoryStockRepository
+                .findFirstByItemCodeAndAvailableQuantityGreaterThan(itemReq.getItemCode(), 0)
+                .orElseThrow(() -> new InsufficientInventoryException(
+                        "No available inventory for item: " + itemReq.getItemCode()));
+    }
+
+    private Long resolveSalesOrderLineId(PickTaskItemRequest itemReq) {
+        if (itemReq.getSalesOrderLineId() != null) {
+            return itemReq.getSalesOrderLineId();
+        }
+        List<SalesOrderItem> orderItems =
+                salesOrderItemRepository.findByItemCode(itemReq.getItemCode());
+        return orderItems.isEmpty() ? null : orderItems.get(0).getId();
+    }
+
+    private void recalculateParentStatus(PickTask parent) {
+        if (parent == null || parent.getItems() == null || parent.getItems().isEmpty()) return;
+
+        long total = parent.getItems().size();
+        long picked = parent.getItems().stream()
+                .filter(i -> "PICKED".equals(i.getStatus())).count();
+        long partial = parent.getItems().stream()
+                .filter(i -> "PARTIAL".equals(i.getStatus())).count();
+
+        if (picked == total) {
+            parent.setStatus("COMPLETED");
+            parent.setCompletedDate(LocalDateTime.now());
+        } else if (picked + partial > 0) {
+            parent.setStatus("PARTIAL");
+        } else {
+            parent.setStatus("PICKING");
+        }
+        parent.setUpdatedAt(LocalDateTime.now());
+        pickTaskRepository.save(parent);
+    }
+
     // ============================================================
     // ================== PICK CONFIRMATION ========================
     // ============================================================
 
-    @Override
-    public PickConfirmationResponse confirmPick(PickConfirmationRequest request) {
-        log.info("Confirming pick for task: {}", request.getPickTaskNumber());
+@Override
+@Transactional
+public PickConfirmationResponse confirmPick(PickConfirmationRequest request) {
+    log.info("Confirming pick for task: {} with {} items",
+            request.getPickTaskNumber(), request.getItems().size());
 
-        PickTask pickTask = pickTaskRepository.findByPickTaskNumber(request.getPickTaskNumber())
-                .orElseThrow(() -> new ResourceNotFoundException("Pick Task not found: " + request.getPickTaskNumber()));
+    // ================================================================
+    // 1) Load PickTask
+    // ================================================================
+    PickTask pickTask = pickTaskRepository.findByPickTaskNumber(request.getPickTaskNumber())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Pick Task not found: " + request.getPickTaskNumber()));
 
-        if (pickTask.getStatus().equals("CONFIRMED")) {
-            throw new BusinessException("Pick Task already confirmed");
+    if ("CONFIRMED".equals(pickTask.getStatus()) || "CANCELLED".equals(pickTask.getStatus())) {
+        throw new BusinessException(
+                "Pick Task cannot be confirmed in status: " + pickTask.getStatus());
+    }
+
+    // ================================================================
+    // 2) Build the header (one row per confirmation)
+    // ================================================================
+    String confirmationNumber = generateConfirmationNumber();
+    LocalDateTime confirmedDate = LocalDateTime.now();
+
+    PickConfirmation header = PickConfirmation.builder()
+            .confirmationNumber(confirmationNumber)
+            .pickTaskNumber(pickTask.getPickTaskNumber())
+            .pickListNumber(pickTask.getPickListNumber())
+            .soNumber(pickTask.getSoNumber())
+            .warehouseId(pickTask.getWarehouseId())
+            .confirmedBy(request.getConfirmedBy())
+            .confirmedDate(confirmedDate)
+            .status("CONFIRMED")
+            .totalItems(0)
+            .totalPickedQuantity(0)
+            .totalShortQuantity(0)
+            .remarks(request.getRemarks())
+            .build();
+
+    int totalPicked = 0;
+    int totalShort = 0;
+    boolean anyShort = false;
+
+    // ================================================================
+    // 3) Loop items → build child rows and attach to header
+    // ================================================================
+    for (PickConfirmationItemRequest itemReq : request.getItems()) {
+
+        // 3a) Locate the PickTaskItem
+        PickTaskItem taskItem = pickTask.getItems().stream()
+                .filter(ti -> ti.getItemCode().equals(itemReq.getItemCode()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Item not found in Pick Task: " + itemReq.getItemCode()));
+
+        // 3b) Validate picked <= required
+        if (itemReq.getPickedQuantity() > taskItem.getRequiredQuantity()) {
+            throw new BusinessException(
+                    "Picked quantity cannot exceed required for item: "
+                            + itemReq.getItemCode());
         }
 
-        if (request.getPickedQuantity() > pickTask.getRequiredQuantity()) {
-            throw new BusinessException("Picked quantity cannot exceed required quantity");
-        }
+        // 3c) Compute short qty
+        int shortQty = itemReq.getShortQuantity() != null
+                ? itemReq.getShortQuantity()
+                : Math.max(0, taskItem.getRequiredQuantity() - itemReq.getPickedQuantity());
 
-        pickTask.setPickedQuantity(request.getPickedQuantity());
-        pickTask.setStatus("CONFIRMED");
-        pickTask.setScanTime(LocalDateTime.now());
-        pickTaskRepository.save(pickTask);
+        if (shortQty > 0) anyShort = true;
 
-        String confirmationNumber = generateConfirmationNumber();
-        PickConfirmation confirmation = PickConfirmation.builder()
-                .confirmationNumber(confirmationNumber)
-                .pickTaskNumber(request.getPickTaskNumber())
-                .pickListNumber(pickTask.getPickListNumber())
-                .soNumber(pickTask.getSoNumber())
-                .itemCode(request.getItemCode())
-                .itemName(pickTask.getItemName())
-                .requiredQuantity(pickTask.getRequiredQuantity())
-                .pickedQuantity(request.getPickedQuantity())
-                .shortQuantity(request.getShortQuantity() != null ? request.getShortQuantity() : 0)
-                .barcode(request.getBarcode())
-                .confirmedBy(request.getConfirmedBy())
-                .confirmedDate(LocalDateTime.now())
-                .status("CONFIRMED")
-                .remarks(request.getRemarks())
+        // 3d) Update the PickTaskItem
+        taskItem.setPickedQuantity(itemReq.getPickedQuantity());
+        taskItem.setShortQuantity(shortQty);
+        taskItem.setStatus(shortQty == 0 ? "PICKED" : "SHORT");
+        taskItem.setIsScanned(true);
+        taskItem.setScanTime(confirmedDate);
+        taskItem.setUpdatedBy(request.getConfirmedBy());
+        pickTaskItemRepository.save(taskItem);
+
+        // 3e) Build child item and attach to header
+        PickConfirmationItem item = PickConfirmationItem.builder()
+                .itemCode(taskItem.getItemCode())
+                .itemName(taskItem.getItemName())
+                .uom(taskItem.getUom())
+                .requiredQuantity(taskItem.getRequiredQuantity())
+                .pickedQuantity(itemReq.getPickedQuantity())
+                .shortQuantity(shortQty)
+                .barcode(itemReq.getBarcode())
+                .binId(taskItem.getBinId())
+                .batchNumber(taskItem.getBatchNumber())
+                .status(shortQty == 0 ? "CONFIRMED" : "PARTIAL")
+                .remarks(itemReq.getRemarks() != null
+                        ? itemReq.getRemarks()
+                        : request.getRemarks())
                 .build();
 
-        PickConfirmation savedConfirmation = pickConfirmationRepository.save(confirmation);
+        header.addItem(item);   // sets the back-reference automatically
 
-        List<PickListItem> items = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
-        items.stream()
-                .filter(item -> item.getItemCode().equals(pickTask.getItemCode()))
+        // 3f) Cascade to PickListItem
+        pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber())
+                .stream()
+                .filter(pli -> pli.getItemCode().equals(taskItem.getItemCode()))
                 .findFirst()
-                .ifPresent(item -> {
-                    item.setPickedQuantity(request.getPickedQuantity());
-                    item.setShortQuantity(request.getShortQuantity() != null ? request.getShortQuantity() : 0);
-                    item.setStatus(request.getPickedQuantity().equals(item.getRequiredQuantity()) ? "COMPLETED" : "SHORT");
-                    pickListItemRepository.save(item);
+                .ifPresent(pli -> {
+                    pli.setPickedQuantity(itemReq.getPickedQuantity());
+                    pli.setShortQuantity(shortQty);
+                    pli.setStatus(shortQty == 0 ? "COMPLETED" : "SHORT");
+                    pickListItemRepository.save(pli);
                 });
 
-        List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(pickTask.getItemCode());
-        int remainingToPick = request.getPickedQuantity();
-        for (InventoryStock stock : stocks) {
-            if (remainingToPick <= 0) break;
-            if (stock.getBinId() != null && stock.getBinId().equals(pickTask.getBinId())) {
-                int available = stock.getAvailableQuantity() != null ? stock.getAvailableQuantity() : 0;
-                int toPick = Math.min(available, remainingToPick);
-                stock.removeQuantity(toPick);
-                inventoryStockRepository.save(stock);
-                remainingToPick -= toPick;
-            }
-        }
+        // 3g) Deduct inventory from bin
+        deductInventory(taskItem, itemReq.getPickedQuantity());
 
-        List<PickListItem> allItems = pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
-        boolean allCompleted = allItems.stream().allMatch(item -> "COMPLETED".equals(item.getStatus()));
-
-        if (allCompleted) {
-            PickList pickList = pickListRepository.findByPickListNumber(pickTask.getPickListNumber())
-                    .orElse(null);
-            if (pickList != null) {
-                pickList.setStatus("COMPLETED");
-                pickList.setCompletedDate(LocalDateTime.now());
-                pickListRepository.save(pickList);
-            }
-
-            SalesOrder salesOrder = salesOrderRepository.findBySoNumber(pickTask.getSoNumber()).orElse(null);
-            if (salesOrder != null) {
-                salesOrder.setStatus("PACKING");
-                salesOrderRepository.save(salesOrder);
-            }
-        }
-
-        log.info("Pick confirmed successfully: {}", confirmationNumber);
-        return buildConfirmationResponse(savedConfirmation);
+        totalPicked += itemReq.getPickedQuantity();
+        totalShort  += shortQty;
     }
 
-    @Override
-    public PickConfirmationResponse getConfirmationByNumber(String confirmationNumber) {
-        PickConfirmation confirmation = pickConfirmationRepository.findByConfirmationNumber(confirmationNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Confirmation not found: " + confirmationNumber));
-        return buildConfirmationResponse(confirmation);
+    // ================================================================
+    // 4) Finalize header totals + overall status
+    // ================================================================
+    header.setTotalItems(request.getItems().size());
+    header.setTotalPickedQuantity(totalPicked);
+    header.setTotalShortQuantity(totalShort);
+    header.setStatus(anyShort ? "PARTIAL" : "CONFIRMED");
+
+    // ✅ ONE insert (cascade persists all child items)
+    PickConfirmation savedHeader = pickConfirmationRepository.save(header);
+
+    // ================================================================
+    // 5) Update the parent PickTask
+    // ================================================================
+    pickTask.setTotalQuantity(totalPicked);
+    pickTask.setStatus(anyShort ? "PARTIAL" : "COMPLETED");
+    pickTask.setCompletedDate(confirmedDate);
+    pickTask.setUpdatedBy(request.getConfirmedBy());
+    pickTaskRepository.save(pickTask);
+
+    // ================================================================
+    // 6) Cascade to PickList + SalesOrder (only if all items completed)
+    // ================================================================
+    List<PickListItem> allItems =
+            pickListItemRepository.findByPickListNumber(pickTask.getPickListNumber());
+    boolean allCompleted = allItems.stream()
+            .allMatch(i -> "COMPLETED".equals(i.getStatus()));
+
+    if (allCompleted) {
+        pickListRepository.findByPickListNumber(pickTask.getPickListNumber())
+                .ifPresent(pl -> {
+                    pl.setStatus("COMPLETED");
+                    pl.setCompletedDate(LocalDateTime.now());
+                    pl.setUpdatedBy(request.getConfirmedBy());
+                    pickListRepository.save(pl);
+                });
+
+        salesOrderRepository.findBySoNumber(pickTask.getSoNumber())
+                .ifPresent(so -> {
+                    so.setStatus("PACKING");
+                    salesOrderRepository.save(so);
+                });
     }
 
+    log.info("Pick confirmed successfully: {} for {} items",
+            confirmationNumber, savedHeader.getItems().size());
+
+    // ================================================================
+    // 7) Build response
+    // ================================================================
+    return buildPickConfirmationResponse(savedHeader);
+}
+  private void deductInventory(PickTaskItem taskItem, int pickedQty) {
+	    if (pickedQty <= 0) return;
+
+	    List<InventoryStock> stocks = inventoryStockRepository.findByItemCode(taskItem.getItemCode());
+	    int remaining = pickedQty;
+
+	    for (InventoryStock stock : stocks) {
+	        if (remaining <= 0) break;
+	        if (stock.getBinId() != null && stock.getBinId().equals(taskItem.getBinId())) {
+	            int available = stock.getAvailableQuantity() != null ? stock.getAvailableQuantity() : 0;
+	            int toPick = Math.min(available, remaining);
+	            stock.removeQuantity(toPick);
+	            inventoryStockRepository.save(stock);
+	            remaining -= toPick;
+	        }
+	    }
+
+	    if (remaining > 0) {
+	        log.warn("Could not deduct {} units for item {} from bin {}",
+	                remaining, taskItem.getItemCode(), taskItem.getBinId());
+	    }
+	}
+
+//================================================================
+//GET BY CONFIRMATION NUMBER
+//================================================================
+@Override
+public PickConfirmationResponse getConfirmationByNumber(String confirmationNumber) {
+
+    PickConfirmation header = pickConfirmationRepository
+            .findByConfirmationNumber(confirmationNumber)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Confirmation not found: " + confirmationNumber));
+
+    return buildConfirmationResponse(header);
+}
+
+//================================================================
+//FILTERED SEARCH (grouped by confirmationNumber)
+//================================================================
+@Override
+public Page<PickConfirmationResponse> getAllPickConfirmationsWithFilters(
+       String confirmationNumber,
+       String pickTaskNumber,
+       String pickListNumber,
+       String soNumber,
+       String itemCode,
+       String itemName,
+       String confirmedBy,
+       String status,
+       String barcode,
+       LocalDateTime startDate,
+       LocalDateTime endDate,
+       LocalDateTime startConfirmedDate,
+       LocalDateTime endConfirmedDate,
+       Integer minPickedQuantity,
+       Integer maxPickedQuantity,
+       Integer minShortQuantity,
+       Integer maxShortQuantity,
+       Pageable pageable) {
+
+   log.info("Fetching pick confirmations with filters");
+
+   Page<PickConfirmation> confirmationPage = pickConfirmationRepository.findByFilters(
+           confirmationNumber, pickTaskNumber, pickListNumber, soNumber,
+           itemCode, itemName, confirmedBy, status, barcode,
+           startDate, endDate, startConfirmedDate, endConfirmedDate,
+           minPickedQuantity, maxPickedQuantity,
+           minShortQuantity, maxShortQuantity, pageable);
+
+   return groupAndMap(confirmationPage, pageable);
+}
+
+//================================================================
+//FREE-TEXT SEARCH (grouped by confirmationNumber)
+//================================================================
+@Override
+public Page<PickConfirmationResponse> searchPickConfirmations(String search, Pageable pageable) {
+   log.info("Searching pick confirmations with keyword: {}", search);
+
+   Page<PickConfirmation> confirmationPage =
+           pickConfirmationRepository.searchPickConfirmations(search, pageable);
+
+   return groupAndMap(confirmationPage, pageable);
+}
     
-    @Override
-    public Page<PickConfirmationResponse> getAllPickConfirmationsWithFilters(
-            String confirmationNumber,
-            String pickTaskNumber,
-            String pickListNumber,
-            String soNumber,
-            String itemCode,
-            String itemName,
-            String confirmedBy,
-            String status,
-            String barcode,
-            LocalDateTime startDate,
-            LocalDateTime endDate,
-            LocalDateTime startConfirmedDate,
-            LocalDateTime endConfirmedDate,
-            Integer minPickedQuantity,
-            Integer maxPickedQuantity,
-            Integer minShortQuantity,
-            Integer maxShortQuantity,
-            Pageable pageable) {
 
-        log.info("Fetching pick confirmations with filters");
 
-        Page<PickConfirmation> confirmationPage = pickConfirmationRepository.findByFilters(
-                confirmationNumber, pickTaskNumber, pickListNumber, soNumber,
-                itemCode, itemName, confirmedBy, status, barcode,
-                startDate, endDate, startConfirmedDate, endConfirmedDate,
-                minPickedQuantity, maxPickedQuantity,
-                minShortQuantity, maxShortQuantity, pageable);
 
-        return confirmationPage.map(this::buildPickConfirmationResponse);
-    }
+private Page<PickConfirmationResponse> groupAndMap(
+        Page<PickConfirmation> page, Pageable pageable) {
 
-    // ====== SEARCH PICK CONFIRMATIONS ======
+    // Group rows by confirmationNumber, preserve order
+    Map<String, List<PickConfirmation>> grouped = page.getContent().stream()
+            .collect(Collectors.groupingBy(
+                    PickConfirmation::getConfirmationNumber,
+                    LinkedHashMap::new,
+                    Collectors.toList()));
 
-    @Override
-    public Page<PickConfirmationResponse> searchPickConfirmations(String search, Pageable pageable) {
-        log.info("Searching pick confirmations with keyword: {}", search);
-        return pickConfirmationRepository.searchPickConfirmations(search, pageable)
-                .map(this::buildPickConfirmationResponse);
-    }
-    
+    // Map each group → one PickConfirmationResponse with items[]
+    List<PickConfirmationResponse> responses = grouped.values().stream()
+            .map(this::buildConfirmationResponse)
+            .toList();
+
+    return new PageImpl<>(responses, pageable, page.getTotalElements());
+}
     // ============================================================
     // ===================== PACKAGE ===============================
     // ============================================================
@@ -1289,8 +1585,8 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .packageBarcode(packageBarcode)
                 .soNumber(request.getSoNumber())
                 .pickListNumber(request.getPickListNumber())
-                .itemCode(request.getItemCode())
-                .itemName(getItemNameFromPickList(request.getPickListNumber(), request.getItemCode()))
+//                .itemCode(request.getItemCode())
+//                .itemName(getItemNameFromPickList(request.getPickListNumber(), request.getItemCode()))
                 .packedQuantity(request.getPackedQuantity())
                 .packageType(request.getPackageType())
                 .weight(request.getWeight() != null ? request.getWeight() : 0.0)
@@ -1363,8 +1659,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
             String packageBarcode,
             String soNumber,
             String pickListNumber,
-            String itemCode,
-            String itemName,
+           
             String packageType,
             String status,
             String packedBy,
@@ -1382,7 +1677,7 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
 
         Page<PackageInfo> packagePage = packageInfoRepository.findByFilters(
                 packageNumber, packageBarcode, soNumber, pickListNumber,
-                itemCode, itemName, packageType, status, packedBy,
+                packageType, status, packedBy,
                 startDate, endDate, startPackedDate, endPackedDate,
                 minWeight, maxWeight, minQuantity, maxQuantity, pageable);
 
@@ -1426,8 +1721,8 @@ public PickTaskResponse createPickTask(PickTaskRequest request) {
                 .customerCode(salesOrder.getCustomerCode())
                 .customerName(salesOrder.getCustomerName())
                 .customerAddress(salesOrder.getDeliveryAddress())
-                .itemCode(packageInfo.getItemCode())
-                .itemName(packageInfo.getItemName())
+//                .itemCode(packageInfo.getItemCode())
+//                .itemName(packageInfo.getItemName())
                 .quantity(packageInfo.getPackedQuantity())
                 .weight(packageInfo.getWeight())
                 .shippingMethod(salesOrder.getShippingMethod())
@@ -2989,59 +3284,149 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .build();
     }
 
-    private PickTaskResponse buildPickTaskResponse(PickTask task) {
-        // ✅ Safe null check
-        Long inventoryId = null;
-        if (task.getInventoryStock() != null) {
-            inventoryId = task.getInventoryStock().getId();
-        } else {
-            log.warn("InventoryStock is null for PickTask: {}", task.getPickTaskNumber());
-        }
-        
-        return PickTaskResponse.builder()
-                .pickTaskNumber(task.getPickTaskNumber())
-                .pickListNumber(task.getPickListNumber())
-                .soNumber(task.getSoNumber())
-                .itemCode(task.getItemCode())
-                .itemName(task.getItemName())
-                .uom(task.getUom())
-                .requiredQuantity(task.getRequiredQuantity())
-                .quantityToPick(task.getQuantityToPick())
-                .pickedQuantity(task.getPickedQuantity())
-                .locationBarcode(task.getLocationBarcode())
-                .itemBarcode(task.getItemBarcode())
-                .binId(task.getBinId())
-                .inventoryId(inventoryId)  // ✅ Use safe variable
-                .salesOrderLineId(task.getSalesOrderLineId())
-                .batchNumber(task.getBatchNumber())
-                .pickerId(task.getPickerId())
-                .pickerName(task.getPickerName())
-                .scanTime(task.getScanTime())
-                .status(task.getStatus())
-                .isScanned(task.getIsScanned())
-                .remarks(task.getRemarks())
-                .createdAt(task.getCreatedAt())
+  private PickTaskResponse buildPickTaskResponse(PickTask task) {
+
+    List<PickTaskItemResponse> itemResponses = (task.getItems() == null)
+            ? List.of()
+            : task.getItems().stream()
+                .map(this::buildPickTaskItemResponse)
+                .toList();
+
+    return PickTaskResponse.builder()
+            // ---- Identifiers ----
+            .id(task.getId())
+            .pickTaskNumber(task.getPickTaskNumber())
+            .pickListNumber(task.getPickListNumber())
+            .soNumber(task.getSoNumber())
+
+            // ---- Header ----
+            .warehouseId(task.getWarehouseId())
+            .assignedTo(task.getAssignedTo())
+            .priority(task.getPriority())
+            .totalItems(task.getTotalItems())
+            .totalQuantity(task.getTotalQuantity())
+            .status(task.getStatus())
+
+            // ---- Meta ----
+            .remarks(task.getRemarks())
+            .createdBy(task.getCreatedBy())
+            .updatedBy(task.getUpdatedBy())
+            .completedDate(task.getCompletedDate())
+            .createdAt(task.getCreatedAt())
+            .updatedAt(task.getUpdatedAt())
+
+            // ---- Children ----
+            .items(itemResponses)
+            .build();
+}
+  
+  
+  private PickTaskItemResponse buildPickTaskItemResponse(PickTaskItem item) {
+
+	    Long inventoryId = null;
+	    if (item.getInventoryStock() != null) {
+	        inventoryId = item.getInventoryStock().getId();
+	    } else {
+	        log.warn("InventoryStock is null for PickTaskItem: {}", item.getId());
+	    }
+
+	    return PickTaskItemResponse.builder()
+	            .id(item.getId())
+	            .pickTaskId(item.getPickTask() != null ? item.getPickTask().getId() : null)
+
+	            // ---- Item ----
+	            .itemCode(item.getItemCode())
+	            .itemName(item.getItemName())
+	            .uom(item.getUom())
+
+	            // ---- Quantities ----
+	            .requiredQuantity(item.getRequiredQuantity())
+	            .quantityToPick(item.getQuantityToPick())
+	            .pickedQuantity(item.getPickedQuantity())
+	            .shortQuantity(item.getShortQuantity())
+
+	            // ---- Location / Barcode ----
+	            .locationBarcode(item.getLocationBarcode())
+	            .itemBarcode(item.getItemBarcode())
+	            .binId(item.getBinId())
+	            .batchNumber(item.getBatchNumber())
+	            .sourceLocation(item.getSourceLocation())
+
+	            // ---- Relationships ----
+	            .inventoryId(inventoryId)
+	            .salesOrderLineId(item.getSalesOrderLineId())
+
+	            // ---- Status ----
+	            .status(item.getStatus())
+	            .priority(item.getPriority())
+	            .isScanned(item.getIsScanned())
+	            .scanTime(item.getScanTime())
+
+	            // ---- Meta ----
+	            .remarks(item.getRemarks())
+	            .createdBy(item.getCreatedBy())
+	            .updatedBy(item.getUpdatedBy())
+	            .createdAt(item.getCreatedAt())
+	            .updatedAt(item.getUpdatedAt())
+	            .build();
+	}
+
+// ---------- Single-header (new, header+child design) ----------
+private PickConfirmationResponse buildConfirmationResponse(PickConfirmation header) {
+
+    if (header == null) {
+        return PickConfirmationResponse.builder()
+                .items(List.of())
                 .build();
     }
 
-    private PickConfirmationResponse buildConfirmationResponse(PickConfirmation confirmation) {
-        return PickConfirmationResponse.builder()
-                .confirmationNumber(confirmation.getConfirmationNumber())
-                .pickTaskNumber(confirmation.getPickTaskNumber())
-                .pickListNumber(confirmation.getPickListNumber())
-                .soNumber(confirmation.getSoNumber())
-                .itemCode(confirmation.getItemCode())
-                .itemName(confirmation.getItemName())
-                .requiredQuantity(confirmation.getRequiredQuantity())
-                .pickedQuantity(confirmation.getPickedQuantity())
-                .shortQuantity(confirmation.getShortQuantity())
-                .barcode(confirmation.getBarcode())
-                .confirmedBy(confirmation.getConfirmedBy())
-                .confirmedDate(confirmation.getConfirmedDate())
-                .status(confirmation.getStatus())
-                .remarks(confirmation.getRemarks())
-                .build();
+    List<PickConfirmationItemResponse> itemResponses =
+            header.getItems() == null ? List.of()
+                    : header.getItems().stream()
+                            .map(item -> PickConfirmationItemResponse.builder()
+                                    .id(item.getId())
+                                    .pickConfirmationId(header.getId())
+                                    .itemCode(item.getItemCode())
+                                    .itemName(item.getItemName())
+                                    .uom(item.getUom())
+                                    .requiredQuantity(item.getRequiredQuantity())
+                                    .pickedQuantity(item.getPickedQuantity())
+                                    .shortQuantity(item.getShortQuantity())
+                                    .barcode(item.getBarcode())
+                                    .binId(item.getBinId())
+                                    .batchNumber(item.getBatchNumber())
+                                    .status(item.getStatus())
+                                    .remarks(item.getRemarks())
+                                    .build())
+                            .toList();
+
+    return PickConfirmationResponse.builder()
+            .id(header.getId())
+            .confirmationNumber(header.getConfirmationNumber())
+            .pickTaskNumber(header.getPickTaskNumber())
+            .pickListNumber(header.getPickListNumber())
+            .soNumber(header.getSoNumber())
+            .warehouseId(header.getWarehouseId())
+            .totalItems(header.getTotalItems())
+            .totalPickedQuantity(header.getTotalPickedQuantity())
+            .totalShortQuantity(header.getTotalShortQuantity())
+            .confirmedBy(header.getConfirmedBy())
+            .confirmedDate(header.getConfirmedDate())
+            .status(header.getStatus())
+            .remarks(header.getRemarks())
+            .createdAt(header.getCreatedAt())
+            .updatedAt(header.getUpdatedAt())
+            .items(itemResponses)
+            .build();
+}
+
+// ---------- List overload (kept for compat, delegates to single-header) ----------
+private PickConfirmationResponse buildConfirmationResponse(List<PickConfirmation> confirmations) {
+    if (confirmations == null || confirmations.isEmpty()) {
+        return PickConfirmationResponse.builder().items(List.of()).build();
     }
+    return buildConfirmationResponse(confirmations.get(0));
+}
 
     private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
         return PackageResponse.builder()
@@ -3049,8 +3434,6 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
                 .packageBarcode(packageInfo.getPackageBarcode())
                 .soNumber(packageInfo.getSoNumber())
                 .pickListNumber(packageInfo.getPickListNumber())
-                .itemCode(packageInfo.getItemCode())
-                .itemName(packageInfo.getItemName())
                 .packedQuantity(packageInfo.getPackedQuantity())
                 .packageType(packageInfo.getPackageType())
                 .weight(packageInfo.getWeight())
@@ -3156,25 +3539,53 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
     }
     
     
-    private PickConfirmationResponse buildPickConfirmationResponse(PickConfirmation confirmation) {
+    private PickConfirmationResponse buildPickConfirmationResponse(PickConfirmation header) {
+
+    if (header == null) {
         return PickConfirmationResponse.builder()
-                .confirmationNumber(confirmation.getConfirmationNumber())
-                .pickTaskNumber(confirmation.getPickTaskNumber())
-                .pickListNumber(confirmation.getPickListNumber())
-                .soNumber(confirmation.getSoNumber())
-                .itemCode(confirmation.getItemCode())
-                .itemName(confirmation.getItemName())
-                .requiredQuantity(confirmation.getRequiredQuantity())
-                .pickedQuantity(confirmation.getPickedQuantity())
-                .shortQuantity(confirmation.getShortQuantity())
-                .barcode(confirmation.getBarcode())
-                .confirmedBy(confirmation.getConfirmedBy())
-                .confirmedDate(confirmation.getConfirmedDate())
-                .status(confirmation.getStatus())
-                .remarks(confirmation.getRemarks())
-                .createdAt(confirmation.getCreatedAt())
+                .items(List.of())
                 .build();
     }
+
+    List<PickConfirmationItemResponse> itemResponses =
+            header.getItems() == null ? List.of()
+                    : header.getItems().stream()
+                            .map(item -> PickConfirmationItemResponse.builder()
+                                    .id(item.getId())
+                                    .pickConfirmationId(header.getId())
+                                    .itemCode(item.getItemCode())
+                                    .itemName(item.getItemName())
+                                    .uom(item.getUom())
+                                    .requiredQuantity(item.getRequiredQuantity())
+                                    .pickedQuantity(item.getPickedQuantity())
+                                    .shortQuantity(item.getShortQuantity())
+                                    .barcode(item.getBarcode())
+                                    .binId(item.getBinId())
+                                    .batchNumber(item.getBatchNumber())
+                                    .status(item.getStatus())
+                                    .remarks(item.getRemarks())
+                                    .build())
+                            .toList();
+
+    return PickConfirmationResponse.builder()
+            .id(header.getId())
+            .confirmationNumber(header.getConfirmationNumber())
+            .pickTaskNumber(header.getPickTaskNumber())
+            .pickListNumber(header.getPickListNumber())
+            .soNumber(header.getSoNumber())
+            .warehouseId(header.getWarehouseId())
+            .confirmedBy(header.getConfirmedBy())
+            .confirmedDate(header.getConfirmedDate())
+            .status(header.getStatus())
+            .totalItems(header.getTotalItems())
+            .totalPickedQuantity(header.getTotalPickedQuantity())
+            .totalShortQuantity(header.getTotalShortQuantity())
+            .remarks(header.getRemarks())
+            .createdAt(header.getCreatedAt())
+            .updatedAt(header.getUpdatedAt())
+            .items(itemResponses)
+            .build();
+}
     
     
     
@@ -3248,4 +3659,181 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
             default: return Color.BLACK;
         }
     }
+    
+    
+    
+    @Override
+    @Transactional
+    public PickTaskItemResponse addPickTaskItem(Long pickTaskId, PickTaskItemRequest request) {
+
+        log.info("Adding PickTaskItem for pickTaskId={}, itemCode={}",
+                pickTaskId, request.getItemCode());
+
+        PickTask pickTask = pickTaskRepository.findById(pickTaskId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PickTask not found with id: " + pickTaskId));
+
+        InventoryStock inventoryStock = null;
+        if (request.getInventoryId() != null) {
+            inventoryStock = inventoryStockRepository.findById(request.getInventoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "InventoryStock not found with id: " + request.getInventoryId()));
+        }
+
+        PickTaskItem item = PickTaskItem.builder()
+                .pickTask(pickTask)
+                .itemCode(request.getItemCode())
+                .itemName(request.getItemName())
+                .uom(request.getUom())
+                .requiredQuantity(request.getRequiredQuantity() != null ? request.getRequiredQuantity() : 0)
+                .quantityToPick(request.getQuantityToPick() != null ? request.getQuantityToPick() : 0)
+                .pickedQuantity(request.getPickedQuantity() != null ? request.getPickedQuantity() : 0)
+                .shortQuantity(request.getShortQuantity() != null ? request.getShortQuantity() : 0)
+                .locationBarcode(request.getLocationBarcode())
+                .itemBarcode(request.getItemBarcode())
+                .binId(request.getBinId())
+                .batchNumber(request.getBatchNumber())
+                .sourceLocation(request.getSourceLocation())
+                .inventoryStock(inventoryStock)
+                .salesOrderLineId(request.getSalesOrderLineId())
+                .status(request.getStatus() != null ? request.getStatus() : "PENDING")
+                .priority(request.getPriority())
+                .isScanned(request.getIsScanned() != null ? request.getIsScanned() : false)
+                .scanTime(Boolean.TRUE.equals(request.getIsScanned()) ? LocalDateTime.now() : null)
+                .remarks(request.getRemarks())
+                .build();
+
+        PickTaskItem saved = pickTaskItemRepository.save(item);
+        log.info("PickTaskItem created with id={}", saved.getId());
+
+        return buildPickTaskItemResponse(saved);
+    }
+
+    // ----------------------------------------------------------------
+    // UPDATE
+    // ----------------------------------------------------------------
+    @Override
+    @Transactional
+    public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest request) {
+
+        log.info("Updating PickTaskItem id={}", id);
+
+        PickTaskItem item = pickTaskItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PickTaskItem not found with id: " + id));
+
+        item.setItemCode(request.getItemCode());
+        item.setItemName(request.getItemName());
+        item.setUom(request.getUom());
+
+        if (request.getRequiredQuantity() != null) {
+            item.setRequiredQuantity(request.getRequiredQuantity());
+        }
+        if (request.getQuantityToPick() != null) {
+            item.setQuantityToPick(request.getQuantityToPick());
+        }
+        if (request.getPickedQuantity() != null) {
+            item.setPickedQuantity(request.getPickedQuantity());
+        }
+        if (request.getShortQuantity() != null) {
+            item.setShortQuantity(request.getShortQuantity());
+        }
+
+        item.setLocationBarcode(request.getLocationBarcode());
+        item.setItemBarcode(request.getItemBarcode());
+        item.setBinId(request.getBinId());
+        item.setBatchNumber(request.getBatchNumber());
+        item.setSourceLocation(request.getSourceLocation());
+
+        if (request.getInventoryId() != null) {
+            InventoryStock inventoryStock = inventoryStockRepository.findById(request.getInventoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "InventoryStock not found with id: " + request.getInventoryId()));
+            item.setInventoryStock(inventoryStock);
+        }
+
+        item.setSalesOrderLineId(request.getSalesOrderLineId());
+
+        if (request.getStatus() != null) {
+            item.setStatus(request.getStatus());
+        }
+        item.setPriority(request.getPriority());
+
+        // Handle scan transition
+        if (request.getIsScanned() != null) {
+            boolean wasScanned = Boolean.TRUE.equals(item.getIsScanned());
+            boolean nowScanned = request.getIsScanned();
+            item.setIsScanned(nowScanned);
+
+            if (!wasScanned && nowScanned) {
+                item.setScanTime(LocalDateTime.now());
+            } else if (wasScanned && !nowScanned) {
+                item.setScanTime(null);
+            }
+        }
+
+        item.setRemarks(request.getRemarks());
+
+        PickTaskItem updated = pickTaskItemRepository.save(item);
+        log.info("PickTaskItem updated id={}", updated.getId());
+
+        return buildPickTaskItemResponse(updated);
+    }
+
+    // ----------------------------------------------------------------
+    // GET BY ID
+    // ----------------------------------------------------------------
+    @Override
+    @Transactional(readOnly = true)
+    public PickTaskItemResponse getPickTaskItemById(Long id) {
+        PickTaskItem item = pickTaskItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PickTaskItem not found with id: " + id));
+        return buildPickTaskItemResponse(item);
+    }
+
+    // ----------------------------------------------------------------
+    // GET BY PICK TASK ID
+    // ----------------------------------------------------------------
+    @Override
+    @Transactional(readOnly = true)
+    public List<PickTaskItemResponse> getPickTaskItemsByPickTaskId(Long pickTaskId) {
+        return pickTaskItemRepository.findByPickTaskId(pickTaskId)
+                .stream()
+                .map(this::buildPickTaskItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ----------------------------------------------------------------
+    // GET ALL
+    // ----------------------------------------------------------------
+    @Override
+    @Transactional(readOnly = true)
+    public List<PickTaskItemResponse> getAllPickTaskItems() {
+        return pickTaskItemRepository.findAll()
+                .stream()
+                .map(this::buildPickTaskItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ----------------------------------------------------------------
+    // DELETE
+    // ----------------------------------------------------------------
+    @Override
+    @Transactional
+    public void deletePickTaskItem(Long id) {
+        PickTaskItem item = pickTaskItemRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "PickTaskItem not found with id: " + id));
+        pickTaskItemRepository.delete(item);
+        log.info("PickTaskItem deleted id={}", id);
+    }
+
+    // ----------------------------------------------------------------
+    // MAPPER (the method you provided)
+    // ----------------------------------------------------------------
+
+    
+    
+    
 }

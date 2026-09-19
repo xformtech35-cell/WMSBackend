@@ -9,6 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "wms_pick_task", indexes = {
@@ -35,65 +37,35 @@ public class PickTask {
     @Column(name = "so_number", length = 50)
     private String soNumber;
 
-    @Column(name = "item_code", nullable = false, length = 50)
-    private String itemCode;
+    @Column(name = "warehouse_id", length = 50)
+    private String warehouseId;
 
-    @Column(name = "item_name", length = 200)
-    private String itemName;
+    @Column(name = "assigned_to", length = 100)
+    private String assignedTo;
 
-    @Column(name = "uom", length = 10)
-    private String uom;
+    @Column(name = "priority", length = 20)
+    private String priority;
 
-    @Column(name = "required_quantity", nullable = false)
-    private Integer requiredQuantity = 0;
+    @Column(name = "total_items")
+    private Integer totalItems = 0;
 
-    @Column(name = "picked_quantity")
-    private Integer pickedQuantity = 0;
-
-    @Column(name = "location_barcode", length = 100)
-    private String locationBarcode;
-
-    @Column(name = "item_barcode", length = 100)
-    private String itemBarcode;
-
-    @Column(name = "bin_id", length = 50)
-    private String binId;
-
-    @Column(name = "batch_number", length = 50)
-    private String batchNumber;
-
-    @Column(name = "picker_id", length = 100)
-    private String pickerId;
-
-    @Column(name = "picker_name", length = 100)
-    private String pickerName;
-
-    @Column(name = "scan_time")
-    private LocalDateTime scanTime;
+    @Column(name = "total_quantity")
+    private Integer totalQuantity = 0;
 
     @Column(name = "status", nullable = false, length = 30)
-    private String status = "PENDING"; // PENDING, SCANNED, CONFIRMED, CANCELLED
-
-    @Column(name = "quantity_to_pick", nullable = false)  // ADD THIS FIELD
-    private Integer quantityToPick = 0;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inventory_id", referencedColumnName = "id")
-    private InventoryStock inventoryStock;
-    
-    @Column(name = "sales_order_line_id")  // ADD THIS FIELD
-    private Long salesOrderLineId;
-    
-    @Column(name = "is_scanned")
-    private Boolean isScanned = false;
+    private String status = "PENDING"; // PENDING, PICKING, PARTIAL, COMPLETED, CANCELLED
 
     @Column(columnDefinition = "TEXT")
     private String remarks;
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
-    
+
+    @Column(name = "updated_by", length = 100)
     private String updatedBy;
+
+    @Column(name = "completed_date")
+    private LocalDateTime completedDate;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -102,4 +74,20 @@ public class PickTask {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // One-to-Many relationship with items
+    @OneToMany(mappedBy = "pickTask", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<PickTaskItem> items = new ArrayList<>();
+
+    // Helper methods
+    public void addItem(PickTaskItem item) {
+        items.add(item);
+        item.setPickTask(this);
+    }
+
+    public void removeItem(PickTaskItem item) {
+        items.remove(item);
+        item.setPickTask(null);
+    }
 }
