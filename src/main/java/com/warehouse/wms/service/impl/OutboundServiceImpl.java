@@ -876,7 +876,6 @@ public class OutboundServiceImpl implements OutboundService {
                     .pickedQuantity(0)
                     .shortQuantity(0)
                     .sourceLocation(pli.getSourceLocation())
-                    .locationBarcode(pli.getSourceLocation())
                     .batchNumber(pli.getBatchNumber())
                     .status("PENDING")
                     .priority(pli.getPriority())
@@ -1044,9 +1043,7 @@ public class OutboundServiceImpl implements OutboundService {
                             ? itemReq.getPickedQuantity() : 0)
                     .shortQuantity(itemReq.getShortQuantity() != null
                             ? itemReq.getShortQuantity() : 0)
-                    .locationBarcode(inventoryStock.getFullLocation() != null
-                            ? inventoryStock.getFullLocation()
-                            : itemReq.getLocationBarcode())
+                  
                     .itemBarcode(itemReq.getItemBarcode())
                     .binId(inventoryStock.getBinId() != null
                             ? inventoryStock.getBinId() : itemReq.getBinId())
@@ -1293,7 +1290,7 @@ public class OutboundServiceImpl implements OutboundService {
         }
 
         // 2) Try by location
-        String locationBarcode = itemReq.getLocationBarcode();
+        String locationBarcode = itemReq.getSourceLocation();
         if (locationBarcode != null && !locationBarcode.isEmpty()) {
             InventoryStock stock = inventoryStockRepository
                     .findByItemCodeAndFullLocationAndAvailableQuantityGreaterThan(
@@ -3412,7 +3409,6 @@ private void validateStatusSpecificRules(String soNumber, String currentStatus, 
 	            .shortQuantity(item.getShortQuantity())
 
 	            // ---- Location / Barcode ----
-	            .locationBarcode(item.getLocationBarcode())
 	            .itemBarcode(item.getItemBarcode())
 	            .binId(item.getBinId())
 	            .batchNumber(item.getBatchNumber())
@@ -3755,7 +3751,6 @@ private PickConfirmationResponse buildConfirmationResponse(List<PickConfirmation
                 .quantityToPick(request.getQuantityToPick() != null ? request.getQuantityToPick() : 0)
                 .pickedQuantity(request.getPickedQuantity() != null ? request.getPickedQuantity() : 0)
                 .shortQuantity(request.getShortQuantity() != null ? request.getShortQuantity() : 0)
-                .locationBarcode(request.getLocationBarcode())
                 .itemBarcode(request.getItemBarcode())
                 .binId(request.getBinId())
                 .batchNumber(request.getBatchNumber())
@@ -3810,12 +3805,11 @@ public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest requ
         item.setShortQuantity(request.getShortQuantity());
     }
 
-    item.setLocationBarcode(request.getLocationBarcode());
     
     item.setSourceLocation(request.getSourceLocation());
 
     // ⭐ ---- LOCATION VALIDATION ----
-    if (request.getLocationBarcode() != null && !request.getLocationBarcode().isBlank()) {
+    if (request.getSourceLocation() != null && !request.getSourceLocation().isBlank()) {
 
         String expectedLocation = item.getSourceLocation();
         String scannedLocation  = request.getItemBarcode();
@@ -3829,7 +3823,8 @@ public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest requ
         }
 
         // ✅ Location matches — save the scanned barcode
-        item.setLocationBarcode(scannedLocation);
+        
+        item.setItemBarcode(scannedLocation);
         log.info("Location barcode validated & set for PickTaskItem id={}", id);
     }
     

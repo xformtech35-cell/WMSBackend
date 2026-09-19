@@ -52,8 +52,7 @@ public class PickTaskItem {
     @Column(name = "quantity_to_pick", nullable = false)
     private Integer quantityToPick = 0;
 
-    @Column(name = "location_barcode", length = 100)
-    private String locationBarcode;
+ 
 
     @Column(name = "item_barcode", length = 100)
     private String itemBarcode;

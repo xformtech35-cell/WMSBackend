@@ -35,7 +35,6 @@ public class PickTaskItemRequest {
     @PositiveOrZero
     private Integer quantityToPick;
 
-    private String locationBarcode;
 
     private String itemBarcode;
 
