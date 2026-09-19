@@ -75,7 +75,6 @@ public interface PickTaskRepository
           AND (:itemCode       IS NULL OR i.itemCode        = :itemCode)
           AND (:itemName       IS NULL OR LOWER(i.itemName) LIKE LOWER(CONCAT('%', :itemName, '%')))
           AND (:binId          IS NULL OR i.binId           = :binId)
-          AND (:locationBarcode IS NULL OR i.locationBarcode = :locationBarcode)
           AND (:batchNumber    IS NULL OR i.batchNumber     = :batchNumber)
           AND (:isScanned      IS NULL OR i.isScanned       = :isScanned)
           AND (:createdBy      IS NULL OR pt.createdBy      = :createdBy)
@@ -98,7 +97,6 @@ public interface PickTaskRepository
             @Param("pickerId") String pickerId,
             @Param("pickerName") String pickerName,
             @Param("binId") String binId,
-            @Param("locationBarcode") String locationBarcode,
             @Param("batchNumber") String batchNumber,
             @Param("isScanned") Boolean isScanned,
             @Param("startDate") LocalDateTime startDate,

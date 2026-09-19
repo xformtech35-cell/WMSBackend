@@ -421,7 +421,7 @@ public class OutboundController {
             @RequestParam(required = false) String pickerId,
             @RequestParam(required = false) String pickerName,
             @RequestParam(required = false) String binId,
-            @RequestParam(required = false) String locationBarcode,
+//            @RequestParam(required = false) String locationBarcode,
             @RequestParam(required = false) String batchNumber,
             @RequestParam(required = false) Boolean isScanned,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
@@ -443,7 +443,7 @@ public class OutboundController {
 
         Page<PickTaskResponse> response = outboundService.getAllPickTasksWithFilters(
                 pickTaskNumber, pickListNumber, soNumber, itemCode, itemName,
-                status, pickerId, pickerName, binId, locationBarcode,
+                status, pickerId, pickerName, binId,
                 batchNumber, isScanned, startDate, endDate,
                 startScanDate, endScanDate,
                 minRequiredQuantity, maxRequiredQuantity,

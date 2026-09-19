@@ -1116,7 +1116,7 @@ public class OutboundServiceImpl implements OutboundService {
             String pickTaskNumber, String pickListNumber, String soNumber,
             String itemCode, String itemName, String status,
             String pickerId, String pickerName, String binId,
-            String locationBarcode, String batchNumber, Boolean isScanned,
+          String batchNumber, Boolean isScanned,
             LocalDateTime startDate, LocalDateTime endDate,
             LocalDateTime startScanDate, LocalDateTime endScanDate,
             Integer minRequiredQuantity, Integer maxRequiredQuantity,
@@ -1127,7 +1127,7 @@ public class OutboundServiceImpl implements OutboundService {
 
         Page<PickTask> pickTaskPage = pickTaskRepository.findByFilters(
                 pickTaskNumber, pickListNumber, soNumber, itemCode, itemName,
-                status, pickerId, pickerName, binId, locationBarcode,
+                status, pickerId, pickerName, binId,
                 batchNumber, isScanned, startDate, endDate,
                 startScanDate, endScanDate,
                 minRequiredQuantity, maxRequiredQuantity,

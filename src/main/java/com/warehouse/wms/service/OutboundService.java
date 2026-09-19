@@ -146,7 +146,7 @@ public interface OutboundService {
             String pickTaskNumber, String pickListNumber, String soNumber,
             String itemCode, String itemName, String status,
             String pickerId, String pickerName, String binId,
-            String locationBarcode, String batchNumber, Boolean isScanned,
+           String batchNumber, Boolean isScanned,
             LocalDateTime startDate, LocalDateTime endDate,
             LocalDateTime startScanDate, LocalDateTime endScanDate,
             Integer minRequiredQuantity, Integer maxRequiredQuantity,
