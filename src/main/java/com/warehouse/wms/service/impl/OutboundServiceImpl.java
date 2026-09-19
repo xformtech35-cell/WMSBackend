@@ -3811,7 +3811,30 @@ public PickTaskItemResponse updatePickTaskItem(Long id, PickTaskItemRequest requ
     }
 
     item.setLocationBarcode(request.getLocationBarcode());
-    item.setItemBarcode(request.getItemBarcode());
+    
+    item.setSourceLocation(request.getSourceLocation());
+
+    // ⭐ ---- LOCATION VALIDATION ----
+    if (request.getLocationBarcode() != null && !request.getLocationBarcode().isBlank()) {
+
+        String expectedLocation = item.getSourceLocation();
+        String scannedLocation  = request.getItemBarcode();
+
+        if (expectedLocation != null && !expectedLocation.equalsIgnoreCase(scannedLocation)) {
+            log.error("Location mismatch for PickTaskItem {}: expected='{}', scanned='{}'",
+                    id, expectedLocation, scannedLocation);
+            throw new IllegalStateException(
+                    "Location does not match! Expected: " + expectedLocation
+                    + " but scanned: " + scannedLocation);
+        }
+
+        // ✅ Location matches — save the scanned barcode
+        item.setLocationBarcode(scannedLocation);
+        log.info("Location barcode validated & set for PickTaskItem id={}", id);
+    }
+    
+    
+    
     item.setBinId(request.getBinId());
     item.setBatchNumber(request.getBatchNumber());
     item.setSourceLocation(request.getSourceLocation());
