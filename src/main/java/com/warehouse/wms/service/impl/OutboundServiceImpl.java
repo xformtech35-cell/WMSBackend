@@ -3490,26 +3490,50 @@ private PickConfirmationResponse buildConfirmationResponse(List<PickConfirmation
     return buildConfirmationResponse(confirmations.get(0));
 }
 
-    private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
-        return PackageResponse.builder()
-                .packageNumber(packageInfo.getPackageNumber())
-                .packageBarcode(packageInfo.getPackageBarcode())
-                .soNumber(packageInfo.getSoNumber())
-                .pickListNumber(packageInfo.getPickListNumber())
-                .packedQuantity(packageInfo.getPackedQuantity())
-                .packageType(packageInfo.getPackageType())
-                .weight(packageInfo.getWeight())
-                .length(packageInfo.getLength())
-                .width(packageInfo.getWidth())
-                .height(packageInfo.getHeight())
-                .volume(packageInfo.getVolume())
-                .packedBy(packageInfo.getPackedBy())
-                .packedDate(packageInfo.getPackedDate())
-                .status(packageInfo.getStatus())
-                .remarks(packageInfo.getRemarks())
-                .createdAt(packageInfo.getCreatedAt())
-                .build();
+private PackageResponse buildPackageResponse(PackageInfo packageInfo) {
+
+    // ⭐ Fetch the PickList along with its items
+    PickListResponse pickListResponse = null;
+
+    if (packageInfo.getPickListNumber() != null) {
+
+        PickList pickList = pickListRepository
+                .findByPickListNumber(packageInfo.getPickListNumber())
+                .orElse(null);
+
+        if (pickList != null) {
+
+            List<PickListItem> items = pickListItemRepository
+                    .findByPickListNumber(pickList.getPickListNumber());
+
+            pickListResponse = buildPickListResponse(pickList, items);
+        } else {
+            log.warn("PickList not found for pickListNumber={}",
+                    packageInfo.getPickListNumber());
+        }
     }
+
+    // ⭐ Build PackageResponse WITH nested PickList
+    return PackageResponse.builder()
+            .packageNumber(packageInfo.getPackageNumber())
+            .packageBarcode(packageInfo.getPackageBarcode())
+            .soNumber(packageInfo.getSoNumber())
+            .pickListNumber(packageInfo.getPickListNumber())
+            .packedQuantity(packageInfo.getPackedQuantity())
+            .packageType(packageInfo.getPackageType())
+            .weight(packageInfo.getWeight())
+            .length(packageInfo.getLength())
+            .width(packageInfo.getWidth())
+            .height(packageInfo.getHeight())
+            .volume(packageInfo.getVolume())
+            .packedBy(packageInfo.getPackedBy())
+            .packedDate(packageInfo.getPackedDate())
+            .status(packageInfo.getStatus())
+            .remarks(packageInfo.getRemarks())
+            .createdAt(packageInfo.getCreatedAt())
+            .pickList(pickListResponse)   // ⭐ nested PickList + items
+            .build();
+}
 
     private ShippingLabelResponse buildShippingLabelResponse(ShippingLabel label) {
         return ShippingLabelResponse.builder()
